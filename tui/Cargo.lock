@@ -254,24 +254,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "devtui"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytesize",
- "chrono",
- "color-eyre",
- "crossterm",
- "dirs",
- "fuzzy-matcher",
- "ratatui",
- "rayon",
- "serde",
- "serde_json",
- "walkdir",
-]
-
-[[package]]
 name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -714,6 +696,24 @@ dependencies = [
  "getrandom",
  "libredox",
  "thiserror",
+]
+
+[[package]]
+name = "rtbtui"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "bytesize",
+ "chrono",
+ "color-eyre",
+ "crossterm",
+ "dirs",
+ "fuzzy-matcher",
+ "ratatui",
+ "rayon",
+ "serde",
+ "serde_json",
+ "walkdir",
 ]
 
 [[package]]

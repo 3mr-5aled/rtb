@@ -44,6 +44,7 @@ function rtb {
         'archive'     { if ($Arguments) { Dev-Archive @Arguments } else { Dev-Archive } }
         'unarchive'   { if ($Arguments) { Dev-Unarchive @Arguments } else { Dev-Unarchive } }
         'list'        { if ($Arguments) { Dev-List @Arguments } else { Dev-List } }
+        'info'        { if ($Arguments) { Rtb-Info @Arguments } else { Rtb-Info } }
         'health'      { if ($Arguments) { Dev-Health @Arguments } else { Dev-Health } }
         'clean'       { if ($Arguments) { Dev-Clean @Arguments } else { Dev-Clean } }
         'index'       { if ($Arguments) { Dev-Index @Arguments } else { Dev-Index } }
@@ -72,5 +73,5 @@ if (Test-Path (Join-Path $PSScriptRoot 'src\completions\rtb.completion.ps1')) {
 }
 
 # Export functions
-Export-ModuleMember -Function 'rtb', 'dev', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
+Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
 

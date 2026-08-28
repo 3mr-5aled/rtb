@@ -5,7 +5,7 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Command' -ScriptBl
     
     $subCommands = @(
         'init', 'run', 'build', 'test', 'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
-        'unarchive', 'list', 'health', 'clean', 'index',
+        'unarchive', 'list', 'info', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
     )
     
@@ -30,7 +30,7 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Arguments' -Script
     if (-not $sub) { return }
 
     switch ($sub.ToLower()) {
-        { $_ -in 'goto', 'run', 'build', 'test' } {
+        { $_ -in 'goto', 'run', 'build', 'test', 'info' } {
             $projects = Get-AllProjectNames
             $projects |
                 Where-Object { $_ -like "$wordToComplete*" } |

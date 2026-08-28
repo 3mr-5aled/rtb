@@ -5,7 +5,7 @@
     Author            = 'devamr'
     Description       = 'RTB — Repository & Tooling Base (rtb) CLI'
     PowerShellVersion = '7.0'
-    FunctionsToExport = @('rtb', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig')
+    FunctionsToExport = @('*')
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport   = @()

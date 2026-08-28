@@ -57,6 +57,9 @@ pub struct Project {
     pub dep_size_bytes: u64,
     pub git: Option<GitInfo>,
     pub readme_preview: Option<String>,
+    pub is_monorepo: bool,
+    pub ci_cd: Option<String>,
+    pub runtime_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

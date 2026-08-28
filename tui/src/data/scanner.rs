@@ -86,6 +86,9 @@ fn scan_project(path: &Path, status: ProjectStatus) -> Project {
     let (total_size_bytes, dep_size_bytes) = get_sizes(path);
     let git = get_git_info(path);
     let readme_preview = get_readme_preview(path);
+    let is_monorepo = detect_monorepo(path);
+    let ci_cd = detect_ci_cd(path);
+    let runtime_version = detect_runtime_version(path);
 
     Project {
         name,
@@ -97,6 +100,9 @@ fn scan_project(path: &Path, status: ProjectStatus) -> Project {
         dep_size_bytes,
         git,
         readme_preview,
+        is_monorepo,
+        ci_cd,
+        runtime_version,
     }
 }
 
@@ -193,11 +199,182 @@ fn detect_stack(path: &Path) -> Vec<String> {
         stack.push("PowerShell".into());
     }
 
+    let has_dotnet = std::fs::read_dir(path)
+        .ok()
+        .map(|entries| {
+            entries.flatten().any(|e| {
+                let name = e.file_name().to_string_lossy().to_lowercase();
+                name.ends_with(".csproj") || name.ends_with(".sln")
+            })
+        })
+        .unwrap_or(false);
+
+    if has_dotnet {
+        stack.push(".NET".into());
+    }
+
     if stack.is_empty() {
         stack.push("-".into());
     }
 
     stack
+}
+
+fn detect_monorepo(path: &Path) -> bool {
+    if path.join("pnpm-workspace.yaml").exists()
+        || path.join("lerna.json").exists()
+        || path.join("nx.json").exists()
+        || path.join("turbo.json").exists()
+    {
+        return true;
+    }
+
+    let pkg_path = path.join("package.json");
+    if pkg_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+            if let Ok(pkg) = serde_json::from_str::<serde_json::Value>(&content) {
+                if pkg.get("workspaces").is_some() {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
+fn detect_ci_cd(path: &Path) -> Option<String> {
+    if path.join(".github").join("workflows").exists() {
+        Some("GitHub Actions".into())
+    } else if path.join(".gitlab-ci.yml").exists() {
+        Some("GitLab CI".into())
+    } else if path.join("azure-pipelines.yml").exists() {
+        Some("Azure Pipelines".into())
+    } else if path.join(".circleci").exists() {
+        Some("CircleCI".into())
+    } else {
+        None
+    }
+}
+
+fn detect_runtime_version(path: &Path) -> Option<String> {
+    let nvmrc = path.join(".nvmrc");
+    if nvmrc.exists() {
+        if let Ok(content) = std::fs::read_to_string(&nvmrc) {
+            let trimmed = content.lines().next().unwrap_or("").trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    let py_ver = path.join(".python-version");
+    if py_ver.exists() {
+        if let Ok(content) = std::fs::read_to_string(&py_ver) {
+            let trimmed = content.lines().next().unwrap_or("").trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    let rust_tc = path.join("rust-toolchain.toml");
+    if rust_tc.exists() {
+        if let Ok(content) = std::fs::read_to_string(&rust_tc) {
+            for line in content.lines() {
+                let line_trim = line.trim();
+                if line_trim.starts_with("channel") {
+                    if let Some(val) = line_trim.split('=').nth(1) {
+                        let clean = val.trim().trim_matches('"').trim_matches('\'').trim();
+                        if !clean.is_empty() {
+                            return Some(clean.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let pkg_path = path.join("package.json");
+    if pkg_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+            if let Ok(pkg) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(engines) = pkg.get("engines").and_then(|e| e.as_object()) {
+                    if let Some(node_ver) = engines.get("node").and_then(|v| v.as_str()) {
+                        if !node_ver.is_empty() {
+                            return Some(node_ver.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{self, File};
+    use std::io::Write;
+
+    #[test]
+    fn test_detect_dotnet_stack() {
+        let temp_dir = std::env::temp_dir().join("rtb_test_dotnet");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        File::create(temp_dir.join("TestApp.csproj")).unwrap();
+        let stack = detect_stack(&temp_dir);
+        assert!(stack.contains(&".NET".to_string()));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_monorepo() {
+        let temp_dir = std::env::temp_dir().join("rtb_test_monorepo");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        assert!(!detect_monorepo(&temp_dir));
+
+        File::create(temp_dir.join("pnpm-workspace.yaml")).unwrap();
+        assert!(detect_monorepo(&temp_dir));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_ci_cd() {
+        let temp_dir = std::env::temp_dir().join("rtb_test_cicd");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        assert_eq!(detect_ci_cd(&temp_dir), None);
+
+        let workflows = temp_dir.join(".github").join("workflows");
+        fs::create_dir_all(&workflows).unwrap();
+        assert_eq!(detect_ci_cd(&temp_dir), Some("GitHub Actions".to_string()));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_runtime_version() {
+        let temp_dir = std::env::temp_dir().join("rtb_test_runtime_ver");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        assert_eq!(detect_runtime_version(&temp_dir), None);
+
+        let mut file = File::create(temp_dir.join(".nvmrc")).unwrap();
+        writeln!(file, "v20.11.0").unwrap();
+        assert_eq!(detect_runtime_version(&temp_dir), Some("v20.11.0".to_string()));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
 }
 
 fn get_last_modified(path: &Path) -> Option<chrono::DateTime<chrono::Local>> {

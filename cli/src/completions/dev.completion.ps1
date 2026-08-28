@@ -6,7 +6,7 @@ Register-ArgumentCompleter -CommandName 'dev' -ParameterName 'Command' -ScriptBl
     
     $subCommands = @(
         'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
-        'unarchive', 'list', 'health', 'clean', 'index',
+        'unarchive', 'list', 'info', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
     )
     
@@ -33,7 +33,7 @@ Register-ArgumentCompleter -CommandName 'dev' -ParameterName 'Arguments' -Script
     if (-not $sub) { return }
 
     switch ($sub.ToLower()) {
-        'goto' {
+        { $_ -in 'goto', 'info' } {
             # List all projects across all roots
             $projects = Get-AllProjectNames
             $projects |
@@ -89,7 +89,7 @@ Register-ArgumentCompleter -CommandName 'dev' -ParameterName 'Arguments' -Script
         }
 
         'list' {
-            @('--active', '--paused', '--deployed', '--vibe', '--all') |
+            @('--active', '--paused', '--deployed', '--vibe', '--all', '--json') |
                 Where-Object { $_ -like "$wordToComplete*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)

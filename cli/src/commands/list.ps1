@@ -1,7 +1,8 @@
-function Dev-List {
+function Rtb-List {
     param([Parameter(ValueFromRemainingArguments)][string[]]$Flags)
 
     $filter = 'all'
+    $asJson = $false
     foreach ($a in $Flags) {
         switch ($a) {
             '--active'   { $filter = 'active' }
@@ -9,7 +10,15 @@ function Dev-List {
             '--deployed' { $filter = 'deployed' }
             '--vibe'     { $filter = 'vibe' }
             '--all'      { $filter = 'all' }
+            '--json'     { $asJson = $true }
+            '-Json'      { $asJson = $true }
         }
+    }
+
+    if ($asJson) {
+        $projects = Get-AllProjectsDetails -Filter $filter
+        $projects | ConvertTo-Json -Depth 5
+        return
     }
 
 
@@ -44,4 +53,8 @@ function Dev-List {
         Write-Host ''
     }
     Write-Host "  Total: $total projects" -ForegroundColor Gray
+}
+
+function Dev-List {
+    Rtb-List @args
 }
