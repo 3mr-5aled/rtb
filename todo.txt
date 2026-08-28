@@ -1,0 +1,16 @@
+# Main
+-[] change name into Rabt (ربط)
+
+# Improvements 
+-[] More clean and clear start page
+
+# Features to add
+-[] open markdown styled
+-[] details on git commit (little window making commits easier)
+-[] docker detection
+-[] open in Agent CLI
+
+# Compatibility
+-[] compatibility with empty folder
+-[] compatibility with other custom folder structure
+-[] compatibility with other OS

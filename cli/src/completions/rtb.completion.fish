@@ -1,0 +1,15 @@
+# Fish completion for rtb
+
+complete -c rtb -n "__fish_use_subcommand" -a "init" -d "Initialize RTB configuration"
+complete -c rtb -n "__fish_use_subcommand" -a "run" -d "Run project script"
+complete -c rtb -n "__fish_use_subcommand" -a "build" -d "Build project"
+complete -c rtb -n "__fish_use_subcommand" -a "test" -d "Run project tests"
+complete -c rtb -n "__fish_use_subcommand" -a "goto" -d "Navigate to project"
+complete -c rtb -n "__fish_use_subcommand" -a "new" -d "Create new project"
+complete -c rtb -n "__fish_use_subcommand" -a "pause" -d "Pause active project"
+complete -c rtb -n "__fish_use_subcommand" -a "resume" -d "Resume paused project"
+complete -c rtb -n "__fish_use_subcommand" -a "deploy" -d "Deploy project"
+complete -c rtb -n "__fish_use_subcommand" -a "archive" -d "Archive project"
+complete -c rtb -n "__fish_use_subcommand" -a "clean" -d "Clean dependencies"
+complete -c rtb -n "__fish_use_subcommand" -a "ui" -d "Launch Ratatui TUI"
+complete -c rtb -n "__fish_use_subcommand" -a "help" -d "Show help"
