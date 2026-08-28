@@ -52,6 +52,7 @@ function rtb {
         'guard'       { if ($Arguments) { Dev-Guard @Arguments } else { Dev-Guard } }
         'env'         { if ($Arguments) { Dev-Env @Arguments } else { Dev-Env } }
         'maintenance' { if ($Arguments) { Dev-Maintenance @Arguments } else { Dev-Maintenance } }
+        'agent'       { if ($Arguments) { Rtb-Agent @Arguments } else { Rtb-Agent } }
         'ui'          { Dev-Ui }
         'help'        { Dev-Help }
         default {
@@ -73,5 +74,5 @@ if (Test-Path (Join-Path $PSScriptRoot 'src\completions\rtb.completion.ps1')) {
 }
 
 # Export functions
-Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
+Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Agent', 'Dev-Agent', 'Get-InstalledAgents', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
 

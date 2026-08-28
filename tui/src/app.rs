@@ -1,5 +1,6 @@
 use crate::config::DevConfig;
 use crate::data::actions;
+use crate::data::agents;
 use crate::data::cache::{load_cache, save_cache};
 use crate::data::deps::{format_bytes, prune_selected_folders, scan_dependencies, DepFolder};
 use crate::data::disk::{calculate_disk_stats, DiskStats};
@@ -647,6 +648,21 @@ impl App {
                 }
             }
             KeyCode::Char('a') => {
+                if let Some(project) = self.selected_project() {
+                    if let Some(agent) = agents::get_default_agent() {
+                        let agent_name = agent.name.clone();
+                        let proj_name = project.name.clone();
+                        if agents::launch_agent(project, None) {
+                            self.status_message = Some(format!("Launched {} for {}", agent_name, proj_name));
+                        } else {
+                            self.status_message = Some("Failed to launch AI Agent".into());
+                        }
+                    } else {
+                        self.status_message = Some("No installed AI Agent found in PATH (agy, claude, gemini, codex)".into());
+                    }
+                }
+            }
+            KeyCode::Char('A') => {
                 if let Some(project) = self.selected_project() {
                     self.confirm_dialog = Some(ConfirmDialog {
                         title: "Archive Project".into(),

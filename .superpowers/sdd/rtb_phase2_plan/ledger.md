@@ -7,7 +7,7 @@
 | Task 2 (Agent CLI Launcher) | Task 3 (Command Palette) | `tui/src/ui/command_palette.rs` | Palette actions include Agent launch shortcut | Standardized action enum in `command_palette.rs` |
 
 ## Execution Progress
-- [ ] Task 1: Extended Project Intelligence (.NET, Monorepo, CI/CD, Runtime Versions) & CLI `--json`
+- [x] Task 1: Extended Project Intelligence (.NET, Monorepo, CI/CD, Runtime Versions) & CLI `--json`
 - [ ] Task 2: AI Agent Discovery & CLI Launcher (`rtb agent`)
 - [ ] Task 3: TUI Command Palette (`Ctrl+P`), Toast Notifications & Tab Memory
 - [ ] Task 4: Git Operations Extensions (Commit Amend, Branch Creation & Deletion)

@@ -5,7 +5,7 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Command' -ScriptBl
     
     $subCommands = @(
         'init', 'run', 'build', 'test', 'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
-        'unarchive', 'list', 'info', 'health', 'clean', 'index',
+        'unarchive', 'list', 'info', 'agent', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
     )
     
@@ -30,13 +30,22 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Arguments' -Script
     if (-not $sub) { return }
 
     switch ($sub.ToLower()) {
-        { $_ -in 'goto', 'run', 'build', 'test', 'info' } {
-            $projects = Get-AllProjectNames
-            $projects |
-                Where-Object { $_ -like "$wordToComplete*" } |
-                ForEach-Object {
-                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-                }
+        { $_ -in 'goto', 'run', 'build', 'test', 'info', 'agent' } {
+            $elements = $commandAst.CommandElements
+            if ($elements.Count -gt 2 -and $sub.ToLower() -eq 'agent') {
+                @('agy', 'claude', 'gemini', 'codex', '--list') |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                    }
+            } else {
+                $projects = Get-AllProjectNames
+                $projects |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                    }
+            }
         }
 
         { $_ -in 'pause', 'deploy' } {

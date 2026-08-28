@@ -43,6 +43,12 @@ function Rtb-Test {
         return
     }
 
+    if (Test-Path 'cli/tests') {
+        Write-Host "Running 'Invoke-Pester' in $targetPath/cli/tests..." -ForegroundColor Green
+        Invoke-Pester cli/tests/ @ExtraArgs
+        return
+    }
+
     if (Test-Path 'tests') {
         Write-Host "Running 'Invoke-Pester' in $targetPath..." -ForegroundColor Green
         Invoke-Pester tests/ @ExtraArgs

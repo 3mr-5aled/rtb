@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod agents;
 pub mod cache;
 pub mod deps;
 pub mod disk;

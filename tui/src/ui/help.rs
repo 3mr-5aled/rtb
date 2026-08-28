@@ -84,8 +84,8 @@ pub fn draw(f: &mut Frame, area: Rect) {
         Span::styled("        Pause active project / Resume paused project", Style::default().fg(Color::White)),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("  d / a", Style::default().fg(Color::Cyan)),
-        Span::styled("        Deploy to Production / Archive project to .tar.gz", Style::default().fg(Color::White)),
+        Span::styled("  a / A", Style::default().fg(Color::Cyan)),
+        Span::styled("        Launch default AI Agent / Archive project to .tar.gz", Style::default().fg(Color::White)),
     ]));
     lines.push(Line::from(vec![
         Span::styled("  f", Style::default().fg(Color::Cyan)),

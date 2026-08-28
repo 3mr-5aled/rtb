@@ -259,6 +259,8 @@ fn draw_action_bar(f: &mut Frame, area: Rect) {
     let line = Line::from(vec![
         Span::styled(" ✨ [N] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
         Span::styled("New  ", Style::default().fg(Color::White)),
+        Span::styled("🤖 [a] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled("Agent  ", Style::default().fg(Color::White)),
         Span::styled("🔐 [E] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
         Span::styled(".env  ", Style::default().fg(Color::White)),
         Span::styled("🌿 [d] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
