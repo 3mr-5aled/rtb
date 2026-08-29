@@ -91,3 +91,6 @@ function Rtb-Workspace {
 function Dev-Workspace {
     Rtb-Workspace @args
 }
+
+
+function Get-RtbWorkspace { Rtb-Workspace @args }

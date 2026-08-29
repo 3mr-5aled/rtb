@@ -21,3 +21,6 @@ function Dev-Goto {
         Get-AllProjectNames | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray }
     }
 }
+
+
+function Set-RtbLocation { Dev-Goto @args }

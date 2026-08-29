@@ -29,3 +29,6 @@ function Dev-Deploy {
     Move-Item -Path $activePath -Destination $deployPath -Force
     Write-Host "  '$kebabName' deployed to $target!" -ForegroundColor Green
 }
+
+
+function Deploy-RtbProject { Dev-Deploy @args }

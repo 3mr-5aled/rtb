@@ -56,3 +56,6 @@ function Dev-Archive {
         Write-Host '  Archive creation failed!' -ForegroundColor Red
     }
 }
+
+
+function Compress-RtbProject { Rtb-Archive @args }

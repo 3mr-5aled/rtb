@@ -45,3 +45,6 @@ function Rtb-Build {
 
     Write-Host "No build configuration detected in $targetPath." -ForegroundColor Yellow
 }
+
+
+function Build-RtbProject { Rtb-Build @args }

@@ -48,3 +48,6 @@ function Rtb-Clean {
 function Dev-Clean {
     Rtb-Clean @args
 }
+
+
+function Clear-RtbDependencies { Rtb-Clean @args }

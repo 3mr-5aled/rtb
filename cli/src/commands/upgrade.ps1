@@ -27,3 +27,6 @@ function Rtb-Upgrade {
 function Dev-Upgrade {
     Rtb-Upgrade @args
 }
+
+
+function Update-RtbCli { Rtb-Upgrade @args }

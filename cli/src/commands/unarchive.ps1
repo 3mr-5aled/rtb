@@ -35,3 +35,6 @@ function Dev-Unarchive {
     Write-Host "  Extracted to: $activeDir" -ForegroundColor Green
     Write-Host '  Run: dev list --active' -ForegroundColor Cyan
 }
+
+
+function Expand-RtbProject { Dev-Unarchive @args }

@@ -7,3 +7,6 @@ function Dev-Maintenance {
         & 'D:\06-Tools\scripts\weekly-maintenance.ps1'
     }
 }
+
+
+function Invoke-RtbMaintenance { Dev-Maintenance @args }

@@ -55,3 +55,6 @@ function Rtb-Run {
 
     Write-Host "No runnable script or main entrypoint detected in $targetPath." -ForegroundColor Yellow
 }
+
+
+function Start-RtbScript { Rtb-Run @args }

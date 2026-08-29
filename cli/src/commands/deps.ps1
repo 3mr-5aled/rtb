@@ -97,3 +97,6 @@ function Rtb-Deps {
 function Dev-Deps {
     Rtb-Deps @args
 }
+
+
+function Get-RtbDependencies { Rtb-Deps @args }

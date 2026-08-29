@@ -68,3 +68,6 @@ function Rtb-Info {
 function Dev-Info {
     Rtb-Info @args
 }
+
+
+function Get-RtbProjectInfo { Rtb-Info @args }

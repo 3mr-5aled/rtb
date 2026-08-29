@@ -56,3 +56,6 @@ function Dev-New {
     Write-Host "`n  Project '$kebabName' created in 01-Active!" -ForegroundColor Green
     Write-Host "  Run: dev goto $kebabName" -ForegroundColor Cyan
 }
+
+
+function New-RtbProject { Dev-New @args }

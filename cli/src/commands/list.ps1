@@ -58,3 +58,6 @@ function Rtb-List {
 function Dev-List {
     Rtb-List @args
 }
+
+
+function Get-RtbProjectList { Dev-List @args }

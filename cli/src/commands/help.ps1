@@ -51,3 +51,6 @@ function Rtb-Help {
 function Dev-Help {
     Rtb-Help
 }
+
+
+function Get-RtbHelp { Rtb-Help @args }

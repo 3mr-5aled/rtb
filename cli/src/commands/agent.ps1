@@ -134,3 +134,6 @@ function Rtb-Agent {
 function Dev-Agent {
     Rtb-Agent @args
 }
+
+
+function Invoke-RtbAgent { Rtb-Agent @args }

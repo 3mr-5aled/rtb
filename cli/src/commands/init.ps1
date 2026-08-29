@@ -50,3 +50,6 @@ function Rtb-Init {
     Set-Content -Path $userConfigFile -Value $json -Encoding UTF8
     Write-Host "Successfully initialized RTB configuration at: $userConfigFile" -ForegroundColor Green
 }
+
+
+function Initialize-RtbConfig { Rtb-Init @args }

@@ -12,3 +12,6 @@ function Dev-Ui {
     }
     & $binary
 }
+
+
+function Start-RtbUi { Dev-Ui @args }

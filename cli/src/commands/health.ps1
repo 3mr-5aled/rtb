@@ -38,3 +38,6 @@ function Dev-Health {
     }
     Write-Host "`n  Scanned: $scanned repos | Issues: $issues" -ForegroundColor $(if ($issues) {'Yellow'} else {'Green'})
 }
+
+
+function Test-RtbHealth { Dev-Health @args }

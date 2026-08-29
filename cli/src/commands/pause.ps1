@@ -40,3 +40,6 @@ function Dev-Pause {
     Move-Item -Path $activePath -Destination $pausedPath -Force
     Write-Host "  '$kebabName' moved to 04-Paused" -ForegroundColor Green
 }
+
+
+function Suspend-RtbProject { Dev-Pause @args }

@@ -76,11 +76,16 @@ if (-not (Test-Path $PROFILE)) {
 $profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
 if ($null -eq $profileContent) { $profileContent = "" }
 
-$moduleImportLine = "Import-Module '$cliPsdPath' -Force"
+$moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
 $oldModuleLine1   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-tools\cli\dev.psd1' -Force"
 $oldModuleLine2   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-cli\dev.psd1' -Force"
+$oldModuleLine3   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-tools\cli\rtb.psd1' -Force"
 
-if ($profileContent -match [regex]::Escape($oldModuleLine1)) {
+if ($profileContent -match [regex]::Escape($oldModuleLine3)) {
+    $profileContent = $profileContent.Replace($oldModuleLine3, $moduleImportLine)
+    Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
+    Write-Host "Updated profile entry to include -DisableNameChecking." -ForegroundColor Green
+} elseif ($profileContent -match [regex]::Escape($oldModuleLine1)) {
     $profileContent = $profileContent.Replace($oldModuleLine1, $moduleImportLine)
     Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
     Write-Host "Updated profile entry to rtb.psd1." -ForegroundColor Green
@@ -96,7 +101,7 @@ if ($profileContent -match [regex]::Escape($oldModuleLine1)) {
 }
 
 # 4. Import module in current session
-Import-Module $cliPsdPath -Force
+Import-Module $cliPsdPath -DisableNameChecking -Force
 Write-Host "Successfully loaded 'rtb' CLI module into current session!" -ForegroundColor Cyan
 
 Write-Host "`nInstallation Complete! Available commands:" -ForegroundColor Green

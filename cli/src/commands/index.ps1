@@ -40,3 +40,6 @@ function Dev-Index {
     $output | Set-Content $outPath -Encoding UTF8
     Write-Host "  Generated index: $total projects → $outPath" -ForegroundColor Green
 }
+
+
+function Update-RtbIndex { Dev-Index @args }

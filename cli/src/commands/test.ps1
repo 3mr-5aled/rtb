@@ -57,3 +57,6 @@ function Rtb-Test {
 
     Write-Host "No test configuration detected in $targetPath." -ForegroundColor Yellow
 }
+
+
+function Test-RtbProject { Rtb-Test @args }

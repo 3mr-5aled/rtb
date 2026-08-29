@@ -42,3 +42,6 @@ function Dev-Resume {
 
     Write-Host "  Run: dev goto $kebabName" -ForegroundColor Cyan
 }
+
+
+function Resume-RtbProject { Dev-Resume @args }
