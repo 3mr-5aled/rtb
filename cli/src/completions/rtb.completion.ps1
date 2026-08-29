@@ -1,39 +1,34 @@
-# Tab completion registration for the RTB (rtb) CLI
+# Tab completion registration for the RTB (rtb / dev) CLI
 
-Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Command' -ScriptBlock {
-    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-    
+$rtbCompleter = {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    $elements = $commandAst.CommandElements
+    $count = $elements.Count
+
     $subCommands = @(
-        'init', 'run', 'build', 'test', 'info', 'agent', 'deps', 'workspace', 'upgrade',
+        'init', 'run', 'build', 'test', 'commit', 'info', 'agent', 'deps', 'workspace', 'upgrade',
         'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
         'unarchive', 'list', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
     )
-    
-    $subCommands |
-        Where-Object { $_ -like "$wordToComplete*" } |
-        ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "rtb $_")
-        }
-}
 
-Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Arguments' -ScriptBlock {
-    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-    
-    $sub = $fakeBoundParameters['Command']
-    if (-not $sub) {
-        $elements = $commandAst.CommandElements
-        if ($elements.Count -gt 1) {
-            $sub = $elements[1].Extent.Text
-        }
+    # 1. Complete subcommand (first argument after binary/function name)
+    if ($count -le 2) {
+        $subCommands |
+            Where-Object { $_ -like "$wordToComplete*" } |
+            ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+        return
     }
-    
-    if (-not $sub) { return }
 
-    switch ($sub.ToLower()) {
+    # 2. Complete subsequent arguments based on active subcommand
+    $sub = $elements[1].Extent.Text.ToLower()
+
+    switch ($sub) {
         { $_ -in 'goto', 'run', 'build', 'test', 'info', 'agent' } {
-            $elements = $commandAst.CommandElements
-            if ($elements.Count -gt 2 -and $sub.ToLower() -eq 'agent') {
+            if ($sub -eq 'agent' -and $count -gt 2) {
                 @('agy', 'claude', 'gemini', 'codex', '--list') |
                     Where-Object { $_ -like "$wordToComplete*" } |
                     ForEach-Object {
@@ -78,6 +73,36 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Arguments' -Script
                 }
         }
 
+        'unarchive' {
+            $archiveDir = 'D:\08-Backup\project-snapshots'
+            if (Test-Path $archiveDir) {
+                Get-ChildItem -Path $archiveDir -Filter '*.tar.gz' -ErrorAction SilentlyContinue | ForEach-Object {
+                    $base = $_.Name -replace '\.tar\.gz$', ''
+                    if ($base -like "$wordToComplete*") {
+                        [System.Management.Automation.CompletionResult]::new($base, $base, 'ParameterValue', $_.Name)
+                    }
+                }
+            }
+        }
+
+        'list' {
+            @('--active', '--paused', '--deployed', '--vibe', '--all', '--json') |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+        }
+
+        'new' {
+            if ($wordToComplete -like '--*' -or $elements.Count -gt 2) {
+                @('--stack', 'react', 'nextjs', 'node', 'python', 'generic') |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                    }
+            }
+        }
+
         'clean' {
             @('--force', '--dry-run', '--days') |
                 Where-Object { $_ -like "$wordToComplete*" } |
@@ -85,5 +110,17 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Arguments' -Script
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
         }
+
+        'commit' {
+            @('--amend', '--push') |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+        }
     }
 }
+
+Register-ArgumentCompleter -CommandName 'rtb', 'dev' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -CommandName 'rtb', 'dev' -ParameterName 'Command' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -CommandName 'rtb', 'dev' -ParameterName 'Arguments' -ScriptBlock $rtbCompleter

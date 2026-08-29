@@ -67,7 +67,20 @@ function rtb {
 }
 
 function dev {
-    rtb @args
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [string]$Command,
+
+        [Parameter(Position = 1, ValueFromRemainingArguments)]
+        [string[]]$Arguments
+    )
+
+    if ($Command) {
+        if ($Arguments) { rtb $Command @Arguments } else { rtb $Command }
+    } else {
+        rtb
+    }
 }
 
 # Load tab completion
