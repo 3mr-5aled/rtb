@@ -15,6 +15,7 @@ pub mod readme_viewer;
 pub mod scaffold;
 pub mod search;
 pub mod status_bar;
+pub mod tab;
 pub mod toast;
 
 use crate::app::{App, Tab};
