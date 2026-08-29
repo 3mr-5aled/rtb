@@ -44,7 +44,8 @@ rtbtui
 | `x` | Launch Live Program dev server in terminal window |
 | `f` (Git Health) | Cycle repository filters (`Needs Attention`, `Local Clean`, `Synced`, etc.) |
 | `c` (Git Health) | Open Git Commit & Push dialog popup |
-| `r` | Refresh workspace & trigger multi-threaded scan |
+| `R` | Global Refresh workspace & trigger multi-threaded scan |
+| `r` | View-specific action (Resume paused project in Projects, Re-scan in Git Health/Cleaner/Ports) |
 | `/` | Global fuzzy search |
 | `?` | Help overlay |
 | `Esc` | Close overlay / modal |

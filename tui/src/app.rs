@@ -373,7 +373,7 @@ impl App {
                 self.current_tab = Tab::Projects;
                 self.save_session_state();
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('R') => {
                 self.active_ports = scan_dev_ports();
                 self.start_background_scan("Refreshing workspace...");
             }

@@ -47,7 +47,7 @@ pub fn draw(f: &mut Frame, area: Rect) {
         Span::styled("            Global fuzzy search modal", Style::default().fg(Color::White)),
     ]));
     lines.push(Line::from(vec![
-        Span::styled("  r", Style::default().fg(Color::Cyan)),
+        Span::styled("  R", Style::default().fg(Color::Cyan)),
         Span::styled("            Multi-threaded refresh & re-scan", Style::default().fg(Color::White)),
     ]));
     lines.push(Line::from(vec![

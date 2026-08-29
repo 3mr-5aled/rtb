@@ -84,7 +84,7 @@ Launch by running `rtb ui` or `rtbtui` directly in your terminal.
 - **`x`**: **Run Live Program** — Spawns project dev server (`npm run dev`, `cargo run`, `python main.py`) in an interactive terminal window
 - **`f` in Git Health**: Cycle Git repository filters (`ALL`, `Needs Attention`, `Local Clean`, `Synced`, `Non-Git`)
 - **`c` in Git Health**: Trigger commit dialog popup
-- **`r`**: Multi-threaded workspace refresh with live spinner indicator
+- **`R`**: Multi-threaded workspace refresh with live spinner indicator
 - **`/`**: Global fuzzy search modal
 - **`?`**: Toggle help and keyboard shortcuts overlay
 - **`v`**: Open interactive Markdown viewer (`README.md`)
