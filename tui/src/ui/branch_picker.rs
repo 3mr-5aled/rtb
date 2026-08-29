@@ -15,6 +15,8 @@ pub struct BranchPickerModal {
     pub branches: Vec<String>,
     pub current_branch: String,
     pub selected_index: usize,
+    pub creating_branch: bool,
+    pub new_branch_name: String,
 }
 
 impl BranchPickerModal {
@@ -53,6 +55,8 @@ impl BranchPickerModal {
             branches,
             current_branch,
             selected_index: 0,
+            creating_branch: false,
+            new_branch_name: String::new(),
         })
     }
 }
@@ -96,12 +100,36 @@ pub fn draw(f: &mut Frame, picker: &BranchPickerModal, area: Rect) {
     }
 
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![
-        Span::styled("  [Enter] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        Span::styled("Checkout Branch   ", Style::default().fg(Color::White)),
-        Span::styled("[Esc/b] ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
-        Span::styled("Cancel", Style::default().fg(Color::White)),
-    ]));
+    if picker.creating_branch {
+        lines.push(Line::from(vec![
+            Span::styled("  ➕ Create New Branch", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled("  Branch name: ", Style::default().fg(Color::Cyan)),
+            Span::styled(
+                format!("{}_", picker.new_branch_name),
+                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+        lines.push(Line::from(""));
+        lines.push(Line::from(vec![
+            Span::styled("  [Enter] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("Create & Checkout   ", Style::default().fg(Color::White)),
+            Span::styled("[Esc] ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled("Cancel", Style::default().fg(Color::White)),
+        ]));
+    } else {
+        lines.push(Line::from(vec![
+            Span::styled("  [Enter] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled("Checkout   ", Style::default().fg(Color::White)),
+            Span::styled("[c] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("New Branch   ", Style::default().fg(Color::White)),
+            Span::styled("[d] ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled("Delete   ", Style::default().fg(Color::White)),
+            Span::styled("[Esc/b] ", Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+            Span::styled("Cancel", Style::default().fg(Color::White)),
+        ]));
+    }
 
     let title = format!(" 🌿 Switch Branch — {} ", picker.repo_name);
 
@@ -134,3 +162,25 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_branch_picker_modal_initial_state() {
+        let picker = BranchPickerModal {
+            repo_name: "test-repo".into(),
+            repo_path: PathBuf::from("D:\\test"),
+            branches: vec!["main".into(), "dev".into()],
+            current_branch: "main".into(),
+            selected_index: 0,
+            creating_branch: false,
+            new_branch_name: String::new(),
+        };
+        assert!(!picker.creating_branch);
+        assert_eq!(picker.branches.len(), 2);
+        assert_eq!(picker.current_branch, "main");
+    }
+}
+

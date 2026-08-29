@@ -1,7 +1,7 @@
 use crate::config::DevConfig;
 use crate::data::actions;
 use crate::data::agents;
-use crate::data::cache::{load_cache, save_cache};
+use crate::data::cache::{load_cache, save_cache, SessionState};
 use crate::data::deps::{format_bytes, prune_selected_folders, scan_dependencies, DepFolder};
 use crate::data::disk::{calculate_disk_stats, DiskStats};
 use crate::data::maintenance::{MaintenanceMessage, MaintenanceState, TaskStatus};
@@ -9,10 +9,12 @@ use crate::data::ports::{kill_port_process, scan_dev_ports, DevPort};
 use crate::data::project::{Project, ProjectStatus};
 use crate::data::scanner::scan_all_projects;
 use crate::ui::branch_picker::BranchPickerModal;
-use crate::ui::dialogs::{ConfirmAction, ConfirmDialog};
+use crate::ui::command_palette::{CommandPalette, PaletteAction};
+use crate::ui::dialogs::{CommitDialog, ConfirmAction, ConfirmDialog};
 use crate::ui::env_vault::EnvVaultModal;
 use crate::ui::git_diff::GitDiffModal;
 use crate::ui::scaffold::{ScaffoldModal, ScaffoldStep};
+use crate::ui::toast::{ToastLevel, ToastQueue};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyModifiers};
 use std::process::Command;
@@ -76,6 +78,8 @@ pub struct App {
     maintenance_receiver: Option<Receiver<MaintenanceMessage>>,
 
     // Interactive Modals
+    pub command_palette: Option<CommandPalette>,
+    pub toast_queue: ToastQueue,
     pub readme_modal: Option<(String, String, usize)>,
     pub env_vault_modal: Option<EnvVaultModal>,
     pub git_diff_modal: Option<GitDiffModal>,
@@ -102,6 +106,7 @@ pub struct App {
     pub disk_stats: DiskStats,
     pub maintenance_state: MaintenanceState,
     pub confirm_dialog: Option<ConfirmDialog>,
+    pub commit_dialog: Option<CommitDialog>,
     pub project_filter: Option<ProjectStatus>,
 }
 
@@ -128,12 +133,33 @@ impl App {
 
         let initial_ports = scan_dev_ports();
 
+        // 2. Load Session State Memory
+        let session = SessionState::load();
+        let initial_tab = session.as_ref().map(|s| match s.active_tab {
+            0 => Tab::Dashboard,
+            1 => Tab::Projects,
+            2 => Tab::GitHealth,
+            3 => Tab::DepCleaner,
+            4 => Tab::Maintenance,
+            5 => Tab::DevPorts,
+            _ => Tab::Dashboard,
+        }).unwrap_or(Tab::Dashboard);
+
+        let mut initial_selected_index = 0;
+        if let Some(ref s) = session {
+            if let Some(ref name) = s.selected_project_name {
+                if let Some(pos) = cached_projects.iter().position(|p| &p.name == name) {
+                    initial_selected_index = pos;
+                }
+            }
+        }
+
         let mut app = App {
             config: config.clone(),
-            current_tab: Tab::Dashboard,
+            current_tab: initial_tab,
             dashboard_selected_index: 0,
             projects: cached_projects,
-            selected_index: 0,
+            selected_index: initial_selected_index,
             search_query: String::new(),
             search_active: false,
             should_quit: false,
@@ -144,6 +170,8 @@ impl App {
             loading_message: "Scanning D: Drive Projects & Git Health...",
             scan_receiver: None,
             maintenance_receiver: None,
+            command_palette: None,
+            toast_queue: ToastQueue::new(),
             readme_modal: None,
             env_vault_modal: None,
             git_diff_modal: None,
@@ -159,6 +187,7 @@ impl App {
             disk_stats: cached_disk,
             maintenance_state,
             confirm_dialog: None,
+            commit_dialog: None,
             project_filter: None,
         };
 
@@ -166,6 +195,16 @@ impl App {
         app.start_background_scan("Scanning D: Drive Projects & Git Health...");
 
         Ok(app)
+    }
+
+    pub fn show_toast(&mut self, message: impl Into<String>, level: ToastLevel) {
+        self.toast_queue.push(message, level, std::time::Duration::from_secs(3));
+    }
+
+    pub fn save_session_state(&self) {
+        let selected_project_name = self.selected_project().map(|p| p.name.clone());
+        let state = SessionState::new(self.current_tab as usize, selected_project_name);
+        let _ = state.save();
     }
 
     pub fn start_background_scan(&mut self, msg: &'static str) {
@@ -193,9 +232,23 @@ impl App {
         if self.is_loading && self.projects.is_empty() {
             if matches!(key, KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc) {
                 self.should_quit = true;
+                self.save_session_state();
                 return true;
             }
             return false;
+        }
+
+        // Global Command Palette Trigger (Ctrl+P or Ctrl+K)
+        let is_ctrl_p = modifiers.contains(KeyModifiers::CONTROL) && matches!(key, KeyCode::Char('p') | KeyCode::Char('P'));
+        let is_ctrl_k = modifiers.contains(KeyModifiers::CONTROL) && matches!(key, KeyCode::Char('k') | KeyCode::Char('K'));
+        if is_ctrl_p || is_ctrl_k {
+            self.command_palette = Some(CommandPalette::new());
+            return false;
+        }
+
+        // Command Palette modal handling
+        if self.command_palette.is_some() {
+            return self.handle_command_palette_key(key);
         }
 
         // Scaffold modal handling
@@ -223,6 +276,11 @@ impl App {
             return self.handle_readme_modal_key(key);
         }
 
+        // Commit dialog modal handling
+        if self.commit_dialog.is_some() {
+            return self.handle_commit_dialog_key(key, modifiers);
+        }
+
         // Confirmation dialog modal
         if self.confirm_dialog.is_some() {
             return self.handle_dialog_key(key);
@@ -237,6 +295,7 @@ impl App {
             KeyCode::Char('q') | KeyCode::Char('Q') => {
                 if modifiers == KeyModifiers::NONE || modifiers == KeyModifiers::SHIFT {
                     self.should_quit = true;
+                    self.save_session_state();
                     return true;
                 }
             }
@@ -246,17 +305,42 @@ impl App {
                 self.search_active = false;
                 self.search_query.clear();
             }
-            KeyCode::Tab => self.current_tab = self.current_tab.next(),
-            KeyCode::BackTab => self.current_tab = self.current_tab.prev(),
-            KeyCode::Char('1') => self.current_tab = Tab::Dashboard,
-            KeyCode::Char('2') => self.current_tab = Tab::Projects,
-            KeyCode::Char('3') => self.current_tab = Tab::GitHealth,
-            KeyCode::Char('4') => self.current_tab = Tab::DepCleaner,
-            KeyCode::Char('5') => self.current_tab = Tab::Maintenance,
-            KeyCode::Char('6') => self.current_tab = Tab::DevPorts,
+            KeyCode::Tab => {
+                self.current_tab = self.current_tab.next();
+                self.save_session_state();
+            }
+            KeyCode::BackTab => {
+                self.current_tab = self.current_tab.prev();
+                self.save_session_state();
+            }
+            KeyCode::Char('1') => {
+                self.current_tab = Tab::Dashboard;
+                self.save_session_state();
+            }
+            KeyCode::Char('2') => {
+                self.current_tab = Tab::Projects;
+                self.save_session_state();
+            }
+            KeyCode::Char('3') => {
+                self.current_tab = Tab::GitHealth;
+                self.save_session_state();
+            }
+            KeyCode::Char('4') => {
+                self.current_tab = Tab::DepCleaner;
+                self.save_session_state();
+            }
+            KeyCode::Char('5') => {
+                self.current_tab = Tab::Maintenance;
+                self.save_session_state();
+            }
+            KeyCode::Char('6') => {
+                self.current_tab = Tab::DevPorts;
+                self.save_session_state();
+            }
             KeyCode::Char('/') => {
                 self.search_active = true;
                 self.current_tab = Tab::Projects;
+                self.save_session_state();
             }
             KeyCode::Char('r') => {
                 self.active_ports = scan_dev_ports();
@@ -279,6 +363,8 @@ impl App {
                         }
                     } else if matches!(key, KeyCode::Up | KeyCode::Char('k')) {
                         self.dashboard_selected_index = self.dashboard_selected_index.saturating_sub(1);
+                    } else if matches!(key, KeyCode::Char('p')) {
+                        self.command_palette = Some(CommandPalette::new());
                     } else if matches!(key, KeyCode::Enter | KeyCode::Char('o')) {
                         if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
                             actions::open_in_editor(project);
@@ -311,6 +397,120 @@ impl App {
             },
         }
         false
+    }
+
+    fn handle_command_palette_key(&mut self, key: KeyCode) -> bool {
+        if let Some(ref mut palette) = self.command_palette {
+            match key {
+                KeyCode::Esc => {
+                    self.command_palette = None;
+                }
+                KeyCode::Up => {
+                    palette.selected_index = palette.selected_index.saturating_sub(1);
+                }
+                KeyCode::Down => {
+                    let count = palette.filtered_actions().len();
+                    if count > 0 {
+                        palette.selected_index = (palette.selected_index + 1).min(count - 1);
+                    }
+                }
+                KeyCode::Backspace => {
+                    palette.query.pop();
+                    palette.selected_index = 0;
+                }
+                KeyCode::Enter => {
+                    let actions = palette.filtered_actions();
+                    if let Some(&action) = actions.get(palette.selected_index) {
+                        self.command_palette = None;
+                        self.execute_palette_action(action);
+                    } else {
+                        self.command_palette = None;
+                    }
+                }
+                KeyCode::Char(c) => {
+                    palette.query.push(c);
+                    palette.selected_index = 0;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    pub fn execute_palette_action(&mut self, action: PaletteAction) {
+        match action {
+            PaletteAction::Dashboard => {
+                self.current_tab = Tab::Dashboard;
+                self.save_session_state();
+            }
+            PaletteAction::Projects => {
+                self.current_tab = Tab::Projects;
+                self.save_session_state();
+            }
+            PaletteAction::GitHealth => {
+                self.current_tab = Tab::GitHealth;
+                self.save_session_state();
+            }
+            PaletteAction::DepCleaner => {
+                self.current_tab = Tab::DepCleaner;
+                self.save_session_state();
+            }
+            PaletteAction::Maintenance => {
+                self.current_tab = Tab::Maintenance;
+                self.save_session_state();
+            }
+            PaletteAction::DevPorts => {
+                self.current_tab = Tab::DevPorts;
+                self.save_session_state();
+            }
+            PaletteAction::Scaffold => {
+                self.scaffold_modal = Some(ScaffoldModal::new());
+            }
+            PaletteAction::Search => {
+                self.search_active = true;
+                self.current_tab = Tab::Projects;
+                self.save_session_state();
+            }
+            PaletteAction::LaunchAgent => {
+                if let Some(project) = self.selected_project().cloned() {
+                    if let Some(agent) = agents::get_default_agent() {
+                        let agent_name = agent.name.clone();
+                        let proj_name = project.name.clone();
+                        if agents::launch_agent(&project, None) {
+                            self.show_toast(format!("Launched {} for {}", agent_name, proj_name), ToastLevel::Success);
+                        } else {
+                            self.show_toast("Failed to launch AI Agent", ToastLevel::Error);
+                        }
+                    } else {
+                        self.show_toast("No installed AI Agent found in PATH", ToastLevel::Warning);
+                    }
+                } else {
+                    self.show_toast("No project selected", ToastLevel::Warning);
+                }
+            }
+            PaletteAction::ReadmeViewer => {
+                if let Some(project) = self.selected_project().cloned() {
+                    let readme_path = project.path.join("README.md");
+                    let content = if readme_path.exists() {
+                        std::fs::read_to_string(&readme_path)
+                            .unwrap_or_else(|_| "Error: Unable to read README.md".into())
+                    } else {
+                        format!("# {}\n\nNo README.md file found in this project.", project.name)
+                    };
+                    self.readme_modal = Some((project.name.clone(), content, 0));
+                } else {
+                    self.show_toast("No project selected", ToastLevel::Warning);
+                }
+            }
+            PaletteAction::Refresh => {
+                self.active_ports = scan_dev_ports();
+                self.start_background_scan("Refreshing workspace...");
+                self.show_toast("Refreshing workspace cache...", ToastLevel::Info);
+            }
+            PaletteAction::Help => {
+                self.show_help = true;
+            }
+        }
     }
 
     fn handle_scaffold_key(&mut self, key: KeyCode) -> bool {
@@ -444,6 +644,51 @@ impl App {
 
     fn handle_branch_picker_key(&mut self, key: KeyCode) -> bool {
         if let Some(ref mut picker) = self.branch_picker_modal {
+            if picker.creating_branch {
+                match key {
+                    KeyCode::Esc => {
+                        picker.creating_branch = false;
+                        picker.new_branch_name.clear();
+                    }
+                    KeyCode::Enter => {
+                        let new_branch = picker.new_branch_name.trim().to_string();
+                        if !new_branch.is_empty() {
+                            let path = picker.repo_path.clone();
+                            let output = Command::new("git")
+                                .args(["checkout", "-b", &new_branch])
+                                .current_dir(&path)
+                                .output();
+                            match output {
+                                Ok(out) if out.status.success() => {
+                                    self.status_message = Some(format!("Created and switched to branch '{}'", new_branch));
+                                    self.branch_picker_modal = None;
+                                    self.start_background_scan("Refreshing Git state...");
+                                }
+                                Ok(out) => {
+                                    let err = String::from_utf8_lossy(&out.stderr);
+                                    self.status_message = Some(format!("Failed to create branch '{}': {}", new_branch, err.trim()));
+                                    picker.creating_branch = false;
+                                    picker.new_branch_name.clear();
+                                }
+                                Err(e) => {
+                                    self.status_message = Some(format!("Error creating branch: {}", e));
+                                    picker.creating_branch = false;
+                                    picker.new_branch_name.clear();
+                                }
+                            }
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        picker.new_branch_name.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        picker.new_branch_name.push(c);
+                    }
+                    _ => {}
+                }
+                return false;
+            }
+
             match key {
                 KeyCode::Esc | KeyCode::Char('b') | KeyCode::Char('q') => {
                     self.branch_picker_modal = None;
@@ -456,6 +701,22 @@ impl App {
                 KeyCode::Up | KeyCode::Char('k') => {
                     picker.selected_index = picker.selected_index.saturating_sub(1);
                 }
+                KeyCode::Char('c') => {
+                    picker.creating_branch = true;
+                    picker.new_branch_name.clear();
+                }
+                KeyCode::Char('d') => {
+                    if let Some(target_branch) = picker.branches.get(picker.selected_index).cloned() {
+                        let repo_name = picker.repo_name.clone();
+                        let repo_path = picker.repo_path.clone();
+                        self.branch_picker_modal = None;
+                        self.confirm_dialog = Some(ConfirmDialog {
+                            title: "Delete Branch".into(),
+                            message: format!("Delete branch '{}' in '{}'?", target_branch, repo_name),
+                            action: ConfirmAction::DeleteGitBranch(target_branch, repo_path),
+                        });
+                    }
+                }
                 KeyCode::Enter => {
                     if let Some(target_branch) = picker.branches.get(picker.selected_index).cloned() {
                         let path = picker.repo_path.clone();
@@ -467,6 +728,53 @@ impl App {
                         self.branch_picker_modal = None;
                         self.start_background_scan("Refreshing Git state...");
                     }
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    fn handle_commit_dialog_key(&mut self, key: KeyCode, modifiers: KeyModifiers) -> bool {
+        if let Some(ref mut dialog) = self.commit_dialog {
+            if modifiers.contains(KeyModifiers::ALT) && matches!(key, KeyCode::Char('a') | KeyCode::Char('A')) {
+                dialog.amend = !dialog.amend;
+                return false;
+            }
+
+            match key {
+                KeyCode::Esc => {
+                    self.commit_dialog = None;
+                }
+                KeyCode::Enter => {
+                    let repo_path = dialog.repo_path.clone();
+                    let repo_name = dialog.repo_name.clone();
+                    let msg = dialog.message.trim().to_string();
+                    let amend = dialog.amend;
+                    self.commit_dialog = None;
+
+                    self.status_message = Some(format!("Committing changes to {}...", repo_name));
+                    thread::spawn(move || {
+                        let _ = Command::new("git").args(["add", "."]).current_dir(&repo_path).output();
+                        let output = if amend {
+                            if msg.is_empty() {
+                                Command::new("git").args(["commit", "--amend", "--no-edit"]).current_dir(&repo_path).output()
+                            } else {
+                                Command::new("git").args(["commit", "--amend", "-m", &msg]).current_dir(&repo_path).output()
+                            }
+                        } else {
+                            let commit_msg = if msg.is_empty() { "update: sync workspace changes" } else { &msg };
+                            Command::new("git").args(["commit", "-m", commit_msg]).current_dir(&repo_path).output()
+                        };
+                        let _ = output;
+                    });
+                    self.start_background_scan("Refreshing Git state...");
+                }
+                KeyCode::Backspace => {
+                    dialog.message.pop();
+                }
+                KeyCode::Char(c) => {
+                    dialog.message.push(c);
                 }
                 _ => {}
             }
@@ -721,16 +1029,9 @@ impl App {
                     }
                 }
             }
-            KeyCode::Char('c') => {
+            KeyCode::Char('c') | KeyCode::Char('C') => {
                 if let Some(project) = git_projects.get(self.git_selected_index) {
-                    let path = project.path.clone();
-                    let name = project.name.clone();
-                    self.status_message = Some(format!("Committing & pushing {} in background...", name));
-                    thread::spawn(move || {
-                        let _ = Command::new("git").args(["add", "."]).current_dir(&path).output();
-                        let _ = Command::new("git").args(["commit", "-m", "update: sync workspace changes"]).current_dir(&path).output();
-                        let _ = Command::new("git").args(["push"]).current_dir(&path).output();
-                    });
+                    self.commit_dialog = Some(CommitDialog::new(project.name.clone(), project.path.clone()));
                 }
             }
             KeyCode::Char('P') => {
@@ -914,6 +1215,25 @@ impl App {
                     let _ = Command::new("git").args(["pull"]).current_dir(&path).output();
                 });
             }
+            ConfirmAction::DeleteGitBranch(branch, path) => {
+                let output = Command::new("git")
+                    .args(["branch", "-d", &branch])
+                    .current_dir(&path)
+                    .output();
+                match output {
+                    Ok(out) if out.status.success() => {
+                        self.status_message = Some(format!("Deleted branch '{}'", branch));
+                        self.start_background_scan("Refreshing Git state...");
+                    }
+                    Ok(out) => {
+                        let err_msg = String::from_utf8_lossy(&out.stderr);
+                        self.status_message = Some(format!("Failed to delete branch '{}': {}", branch, err_msg.trim()));
+                    }
+                    Err(e) => {
+                        self.status_message = Some(format!("Error deleting branch: {}", e));
+                    }
+                }
+            }
         }
     }
 
@@ -1030,6 +1350,9 @@ impl App {
     pub fn on_tick(&mut self) {
         self.tick_count += 1;
 
+        // Cleanup expired toast notifications
+        self.toast_queue.cleanup_expired();
+
         // Check if background worker finished workspace scanning
         if let Some(rx) = &self.scan_receiver {
             if let Ok((projects, dep_folders, disk_stats)) = rx.try_recv() {
@@ -1100,5 +1423,99 @@ impl App {
         sorted.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
         sorted.truncate(4);
         sorted
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_app_toast_system() {
+        let mut app = App::new().unwrap();
+        assert!(app.toast_queue.is_empty());
+
+        app.show_toast("Test Toast", ToastLevel::Info);
+        assert_eq!(app.toast_queue.len(), 1);
+
+        app.toast_queue.toasts[0].duration = Duration::from_millis(10);
+        std::thread::sleep(Duration::from_millis(20));
+
+        app.on_tick();
+        assert!(app.toast_queue.is_empty());
+    }
+
+    #[test]
+    fn test_app_palette_action_execution() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Dashboard;
+
+        app.execute_palette_action(PaletteAction::GitHealth);
+        assert_eq!(app.current_tab, Tab::GitHealth);
+
+        app.execute_palette_action(PaletteAction::DevPorts);
+        assert_eq!(app.current_tab, Tab::DevPorts);
+    }
+
+    #[test]
+    fn test_commit_dialog_key_handling() {
+        let mut app = App::new().unwrap();
+        app.commit_dialog = Some(CommitDialog::new("test-repo".into(), std::path::PathBuf::from("D:\\test")));
+
+        // Type characters
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('i'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('x'), KeyModifiers::NONE);
+        assert_eq!(app.commit_dialog.as_ref().unwrap().message, "fix");
+
+        // Toggle amend with Alt+A
+        app.handle_key(KeyCode::Char('a'), KeyModifiers::ALT);
+        assert!(app.commit_dialog.as_ref().unwrap().amend);
+
+        // Cancel with Esc
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.commit_dialog.is_none());
+    }
+
+    #[test]
+    fn test_branch_picker_key_handling() {
+        let mut app = App::new().unwrap();
+        app.branch_picker_modal = Some(BranchPickerModal {
+            repo_name: "test-repo".into(),
+            repo_path: std::path::PathBuf::from("D:\\test"),
+            branches: vec!["main".into(), "feature".into()],
+            current_branch: "main".into(),
+            selected_index: 0,
+            creating_branch: false,
+            new_branch_name: String::new(),
+        });
+
+        // Press 'c' to enter create branch mode
+        app.handle_key(KeyCode::Char('c'), KeyModifiers::NONE);
+        assert!(app.branch_picker_modal.as_ref().unwrap().creating_branch);
+
+        // Type branch name
+        app.handle_key(KeyCode::Char('n'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('e'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('w'), KeyModifiers::NONE);
+        assert_eq!(app.branch_picker_modal.as_ref().unwrap().new_branch_name, "new");
+
+        // Cancel branch creation with Esc
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(!app.branch_picker_modal.as_ref().unwrap().creating_branch);
+        assert!(app.branch_picker_modal.as_ref().unwrap().new_branch_name.is_empty());
+
+        // Press 'd' to open delete confirm dialog
+        app.handle_key(KeyCode::Char('d'), KeyModifiers::NONE);
+        assert!(app.branch_picker_modal.is_none());
+        assert!(app.confirm_dialog.is_some());
+        if let Some(ref dialog) = app.confirm_dialog {
+            if let ConfirmAction::DeleteGitBranch(ref branch, _) = dialog.action {
+                assert_eq!(branch, "main");
+            } else {
+                panic!("Expected DeleteGitBranch action");
+            }
+        }
     }
 }

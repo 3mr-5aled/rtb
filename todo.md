@@ -67,10 +67,10 @@
 - [x] Commit diff viewer
 - [x] Stage/unstage files
 - [x] Commit from TUI
-- [ ] Amend commit
+- [x] Amend commit
 - [x] Push/pull/fetch
 - [x] Branch switcher
-- [ ] Branch creation/deletion
+- [x] Branch creation/deletion
 
 ## 🤖 AI / Agents
 

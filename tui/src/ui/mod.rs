@@ -1,4 +1,5 @@
 pub mod branch_picker;
+pub mod command_palette;
 pub mod dashboard;
 pub mod dep_cleaner;
 pub mod dialogs;
@@ -14,6 +15,7 @@ pub mod readme_viewer;
 pub mod scaffold;
 pub mod search;
 pub mod status_bar;
+pub mod toast;
 
 use crate::app::{App, Tab};
 use ratatui::{
@@ -48,7 +50,9 @@ pub fn draw(f: &mut Frame, app: &App) {
     status_bar::draw(f, app, chunks[2]);
 
     // Render modals on top in priority order
-    if let Some(scaffold) = &app.scaffold_modal {
+    if let Some(cmd) = &app.command_palette {
+        command_palette::draw(f, cmd, size);
+    } else if let Some(scaffold) = &app.scaffold_modal {
         scaffold::draw(f, scaffold, size);
     } else if let Some(vault) = &app.env_vault_modal {
         env_vault::draw(f, vault, size);
@@ -58,6 +62,8 @@ pub fn draw(f: &mut Frame, app: &App) {
         branch_picker::draw(f, picker, size);
     } else if let Some((name, content, scroll)) = &app.readme_modal {
         readme_viewer::draw(f, name, content, *scroll, size);
+    } else if let Some(commit) = &app.commit_dialog {
+        dialogs::draw_commit_dialog(f, commit, size);
     } else if let Some(dialog) = &app.confirm_dialog {
         dialogs::draw(f, dialog, size);
     } else if app.search_active {
@@ -65,6 +71,9 @@ pub fn draw(f: &mut Frame, app: &App) {
     } else if app.show_help {
         help::draw(f, size);
     }
+
+    // Always render toasts on top of everything
+    toast::draw(f, &app.toast_queue, size);
 }
 
 fn draw_tabs(f: &mut Frame, app: &App, area: Rect) {
