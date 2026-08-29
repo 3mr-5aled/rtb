@@ -8,6 +8,6 @@
 
 ## Execution Progress
 - [x] Task 1: Extended Project Intelligence (.NET, Monorepo, CI/CD, Runtime Versions) & CLI `--json`
-- [ ] Task 2: AI Agent Discovery & CLI Launcher (`rtb agent`)
-- [ ] Task 3: TUI Command Palette (`Ctrl+P`), Toast Notifications & Tab Memory
-- [ ] Task 4: Git Operations Extensions (Commit Amend, Branch Creation & Deletion)
+- [x] Task 2: AI Agent Discovery & CLI Launcher (`rtb agent`)
+- [x] Task 3: TUI Command Palette (`Ctrl+P`), Toast Notifications & Tab Memory
+- [x] Task 4: Git Operations Extensions (Commit Amend, Branch Creation & Deletion)

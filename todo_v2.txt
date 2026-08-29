@@ -1,0 +1,14 @@
+1. WARNING: The names of some imported commands from the module 'rtb' include unapproved verbs that might make them less discoverable. To find the commands with unapproved verbs, run the Import-Module command again with the Verbose parameter. For a list of approved verbs, type Get-Verb.
+
+2. color stack technologies in projects tab
+
+3, loading/progress screen doesn't show
+
+4. in git health tab it doesn't show the all of the projects (make option to filter repos that needs attention or local ones)
+
+5. add option to run a program live (like running :npm run dev and make it customizable for every project (as some projects run with npm run start and so on))
+
+6. make a cli pop up to write and commit message
+
+7. in git health add loading state for re-scan
+
