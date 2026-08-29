@@ -2,7 +2,7 @@ use crate::app::App;
 use crate::data::deps::format_bytes;
 use crate::data::project::ProjectStatus;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -10,12 +10,17 @@ use ratatui::{
 };
 use std::collections::HashMap;
 
-const ASCII_LOGO_SMALL: &[&str] = &[
-    r" ____  _____ ____  ",
-    r"|  _ \|_   _| __ ) ",
-    r"| |_) | | | |  _ \ ",
-    r"|  _ <  | | | |_) |",
-    r"|_| \_\ |_| |____/ ",
+const ASCII_LOGO: &[&str] = &[
+    r"  &&&&&&&&&&&&&&&         &&&&&&&&&&&&&&&&&&X    X&&&&&&&&&&&&&&  ",
+    r"  &&&&&&&&&&&&&&&&&&     &&&&&&&&&&&&&&&&&&&&    &&&&&&&&&&&&&&&&&& ",
+    r"  &&&&&        &&&&&&&          &&&&&&           &&&&&&        &&&&&&",
+    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&        &&&&&&",
+    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&& ",
+    r"  &&&&&&&&&&&&&&&&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&  ",
+    r"  &&&&&&&&&&&&&&&&              &&&&&&           &&&&&&         &&&&&",
+    r"  &&&&&     &&&&&&&             &&&&&&           &&&&&&        &&&&&&",
+    r"  &&&&&        &&&&&&           &&&&&&           &&&&&&&&&&&&&&&&&&& ",
+    r"  &&&&&         &&&&&&          X&&&&X           X&&&&&&&&&&&&&&&    ",
 ];
 
 pub fn draw(f: &mut Frame, app: &App, area: Rect) {
@@ -23,40 +28,30 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(7),  // Top Header: Logo + Workspace Pulse
-            Constraint::Length(10), // Middle Row: Quick Jump + Action Items
+            Constraint::Length(11), // Centered Logo Banner (No border)
+            Constraint::Length(6),  // Workspace Pulse
+            Constraint::Min(10),    // Quick Jump + Action Items
             Constraint::Length(5),  // Tech Stack Ecosystem Bar
-            Constraint::Min(6),     // Disk Usage Bars
         ])
         .split(area);
 
-    let top_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(38), Constraint::Percentage(62)])
-        .split(chunks[0]);
-
-    draw_logo_banner(f, top_chunks[0]);
-    draw_workspace_pulse(f, app, top_chunks[1]);
-    draw_middle_row(f, app, chunks[1]);
-    draw_tech_stack_ecosystem(f, app, chunks[2]);
-    draw_disk_usage(f, app, chunks[3]);
+    draw_logo_banner(f, chunks[0]);
+    draw_workspace_pulse(f, app, chunks[1]);
+    draw_middle_row(f, app, chunks[2]);
+    draw_tech_stack_ecosystem(f, app, chunks[3]);
 }
 
 fn draw_logo_banner(f: &mut Frame, area: Rect) {
     let mut lines = Vec::new();
-    for line in ASCII_LOGO_SMALL {
+    for line in ASCII_LOGO {
         lines.push(Line::from(Span::styled(
-            format!(" {}", line),
+            *line,
             Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
         )));
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" RTB — ﺐﺘّﺭ (Repository & Tooling Base) ")
-        .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
-
-    let para = Paragraph::new(lines).block(block);
+    let block = Block::default(); // No border
+    let para = Paragraph::new(lines).block(block).alignment(Alignment::Center);
     f.render_widget(para, area);
 }
 
@@ -308,34 +303,6 @@ fn draw_tech_stack_ecosystem(f: &mut Frame, app: &App, area: Rect) {
         .title(" 📊 Tech Stack Ecosystem ")
         .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
 
-    let para = Paragraph::new(lines).block(block);
-    f.render_widget(para, area);
-}
-
-fn draw_disk_usage(f: &mut Frame, app: &App, area: Rect) {
-    let mut lines = vec![Line::from("")];
-
-    for cat in &app.disk_stats.categories {
-        let bar_len: usize = 16;
-        let filled = ((cat.percentage / 100.0) * bar_len as f64).round() as usize;
-        let empty = bar_len.saturating_sub(filled);
-
-        let bar_fill = "█".repeat(filled.min(bar_len));
-        let bar_empty = "░".repeat(empty);
-
-        lines.push(Line::from(vec![
-            Span::styled(format!("  {:<14}", cat.name), Style::default().fg(Color::White)),
-            Span::styled(bar_fill, Style::default().fg(Color::Cyan)),
-            Span::styled(bar_empty, Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("  {:>8}", cat.size_str()), Style::default().fg(Color::Yellow)),
-            Span::styled(format!(" ({:.1}%)", cat.percentage), Style::default().fg(Color::DarkGray)),
-        ]));
-    }
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Storage by Category (D: Drive) ")
-        .title_style(Style::default().fg(Color::Cyan));
     let para = Paragraph::new(lines).block(block);
     f.render_widget(para, area);
 }
