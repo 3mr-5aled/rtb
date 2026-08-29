@@ -1,7 +1,7 @@
 function Rtb-Help {
     Write-Host ''
-    Write-Host '  rtb (ﺐﺘّﺭ)' -ForegroundColor Cyan -NoNewline
-    Write-Host ' — Repository & Tooling Base Developer Project Operations CLI' -ForegroundColor White
+    Write-Host '  rtb' -ForegroundColor Cyan -NoNewline
+    Write-Host ' - Repository & Tooling Base Developer Project Operations CLI' -ForegroundColor White
     Write-Host ''
     Write-Host '  SETUP & CONFIG' -ForegroundColor Yellow
     Write-Host '    rtb init                             Initialize user configuration file'

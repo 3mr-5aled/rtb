@@ -102,7 +102,7 @@ mod tests {
     fn test_session_state_serialization() {
         let state = SessionState {
             active_tab: 2,
-            selected_project_name: Some("dev-tools".into()),
+            selected_project_name: Some("rtb-command-tool".into()),
         };
 
         let json = serde_json::to_string(&state).unwrap();

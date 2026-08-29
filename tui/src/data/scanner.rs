@@ -103,6 +103,7 @@ fn scan_project(path: &Path, status: ProjectStatus) -> Project {
         is_monorepo,
         ci_cd,
         runtime_version,
+        dev_command: None,
     }
 }
 

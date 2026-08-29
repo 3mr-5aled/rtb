@@ -7,7 +7,7 @@ Write-Host "  Installing & Configuring RTB (ﺐﺘّﺭ) Project Suite" -Foregro
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
 
 $scriptRoot = $PSScriptRoot
-if (-not $scriptRoot) { $scriptRoot = 'D:\02-Projects\01-Development\01-Active\dev-tools' }
+if (-not $scriptRoot) { $scriptRoot = 'D:\02-Projects\01-Development\01-Active\rtb-command-tool' }
 
 $cliPsdPath = Join-Path $scriptRoot "cli\rtb.psd1"
 $tuiDir     = Join-Path $scriptRoot "tui"
@@ -19,12 +19,19 @@ if (-not (Test-Path $scriptsDir)) {
     Write-Host "Created tools scripts folder: $scriptsDir" -ForegroundColor Gray
 }
 
+$userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
+if (-not (Test-Path $userConfigDir)) {
+    New-Item -ItemType Directory -Path $userConfigDir -Force | Out-Null
+}
+
 $legacyConfigDir = 'D:\02-Projects\01-Development\01-Active\dev-cli\config'
 if (-not (Test-Path $legacyConfigDir)) {
     New-Item -ItemType Directory -Path $legacyConfigDir -Force | Out-Null
 }
 $sourceConfig = Join-Path $scriptRoot 'config\rtb.config.json'
 if (Test-Path $sourceConfig) {
+    Copy-Item $sourceConfig (Join-Path $userConfigDir 'rtb.config.json') -Force -ErrorAction SilentlyContinue
+    Copy-Item $sourceConfig (Join-Path $userConfigDir 'dev.config.json') -Force -ErrorAction SilentlyContinue
     Copy-Item $sourceConfig (Join-Path $legacyConfigDir 'dev.config.json') -Force -ErrorAction SilentlyContinue
     Copy-Item $sourceConfig (Join-Path $legacyConfigDir 'rtb.config.json') -Force -ErrorAction SilentlyContinue
     Copy-Item $sourceConfig (Join-Path $scriptRoot 'config\dev.config.json') -Force -ErrorAction SilentlyContinue
@@ -67,37 +74,38 @@ if ($cargoCmd) {
     }
 }
 
-# 3. Configure PowerShell Profile
-if (-not (Test-Path $PROFILE)) {
-    New-Item -ItemType File -Path $PROFILE -Force | Out-Null
-    Write-Host "Created PowerShell profile at $PROFILE" -ForegroundColor Gray
-}
-
-$profileContent = Get-Content $PROFILE -Raw -ErrorAction SilentlyContinue
-if ($null -eq $profileContent) { $profileContent = "" }
+# 3. Configure PowerShell Profiles (both Windows PowerShell 5.1 & PowerShell 7)
+$docsDir = [Environment]::GetFolderPath('MyDocuments')
+$profilePaths = @(
+    $PROFILE,
+    (Join-Path $docsDir "WindowsPowerShell\Microsoft.PowerShell_profile.ps1"),
+    (Join-Path $docsDir "PowerShell\Microsoft.PowerShell_profile.ps1")
+) | Select-Object -Unique
 
 $moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
-$oldModuleLine1   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-tools\cli\dev.psd1' -Force"
-$oldModuleLine2   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-cli\dev.psd1' -Force"
-$oldModuleLine3   = "Import-Module 'D:\02-Projects\01-Development\01-Active\dev-tools\cli\rtb.psd1' -Force"
+$oldPattern = "(?m)^Import-Module\s+['\`"]D:\\02-Projects\\01-Development\\01-Active\\(dev-tools|dev-cli|rtb-command-tool)\\.*['\`"].*$"
 
-if ($profileContent -match [regex]::Escape($oldModuleLine3)) {
-    $profileContent = $profileContent.Replace($oldModuleLine3, $moduleImportLine)
-    Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
-    Write-Host "Updated profile entry to include -DisableNameChecking." -ForegroundColor Green
-} elseif ($profileContent -match [regex]::Escape($oldModuleLine1)) {
-    $profileContent = $profileContent.Replace($oldModuleLine1, $moduleImportLine)
-    Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
-    Write-Host "Updated profile entry to rtb.psd1." -ForegroundColor Green
-} elseif ($profileContent -match [regex]::Escape($oldModuleLine2)) {
-    $profileContent = $profileContent.Replace($oldModuleLine2, $moduleImportLine)
-    Set-Content -Path $PROFILE -Value $profileContent -Encoding UTF8
-    Write-Host "Updated profile entry to rtb.psd1." -ForegroundColor Green
-} elseif (-not ($profileContent -match [regex]::Escape($moduleImportLine))) {
-    Add-Content -Path $PROFILE -Value "`n# RTB (رتّب) CLI Module`n$moduleImportLine" -Encoding UTF8
-    Write-Host "Added RTB module import to PowerShell profile ($PROFILE)." -ForegroundColor Green
-} else {
-    Write-Host "PowerShell profile already contains RTB module import." -ForegroundColor Gray
+foreach ($pPath in $profilePaths) {
+    if (-not $pPath) { continue }
+    if (-not (Test-Path $pPath)) {
+        $parentDir = Split-Path $pPath -Parent
+        if (-not (Test-Path $parentDir)) { New-Item -ItemType Directory -Path $parentDir -Force | Out-Null }
+        New-Item -ItemType File -Path $pPath -Force | Out-Null
+    }
+
+    $pContent = Get-Content $pPath -Raw -ErrorAction SilentlyContinue
+    if ($null -eq $pContent) { $pContent = "" }
+
+    if ($pContent -match $oldPattern) {
+        $pContent = [regex]::Replace($pContent, $oldPattern, $moduleImportLine)
+        Set-Content -Path $pPath -Value $pContent -Encoding UTF8
+        Write-Host "Updated profile ($pPath) entry." -ForegroundColor Green
+    } elseif (-not ($pContent.Contains($moduleImportLine))) {
+        Add-Content -Path $pPath -Value "`n# RTB CLI Module`n$moduleImportLine" -Encoding UTF8
+        Write-Host "Added RTB module import to PowerShell profile ($pPath)." -ForegroundColor Green
+    } else {
+        Write-Host "PowerShell profile ($pPath) already up to date." -ForegroundColor Gray
+    }
 }
 
 # 4. Import module in current session

@@ -12,7 +12,7 @@ Describe "Outdated Dependency Auditor (Rtb-Deps)" {
     }
 
     It "Rtb-Workspace detects project workspace configuration" {
-        $ws = Rtb-Workspace -ProjectName 'dev-tools' -Json
+        $ws = Rtb-Workspace -ProjectName 'rtb-command-tool' -Json
         $ws | Should Not BeNullOrEmpty
     }
 }

@@ -105,3 +105,11 @@ pub fn open_in_explorer(project: &Project) {
         .arg(&project.path)
         .spawn();
 }
+
+pub fn run_live_program(project: &Project) {
+    let dev_cmd = project.get_dev_command();
+    let ps_cmd = format!("cd /d '{}'; {}; Read-Host 'Press Enter to close window...'", project.path.to_string_lossy(), dev_cmd);
+    let _ = Command::new("cmd")
+        .args(["/C", "start", "powershell", "-NoExit", "-Command", &ps_cmd])
+        .spawn();
+}

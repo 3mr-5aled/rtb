@@ -36,7 +36,8 @@ function Dev-Health {
             } finally { Pop-Location }
         }
     }
-    Write-Host "`n  Scanned: $scanned repos | Issues: $issues" -ForegroundColor $(if ($issues) {'Yellow'} else {'Green'})
+    $fgColor = if ($issues) { 'Yellow' } else { 'Green' }
+    Write-Host "`n  Scanned: $scanned repos | Issues: $issues" -ForegroundColor $fgColor
 }
 
 

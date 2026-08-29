@@ -139,10 +139,26 @@ fn draw_project_detail(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled("  Status:   ", Style::default().fg(Color::Gray)),
                 Span::styled(format!("{} {}", icon, p.status.label()), Style::default().fg(color)),
             ]),
-            Line::from(vec![
-                Span::styled("  Stack:    ", Style::default().fg(Color::Gray)),
-                Span::styled(p.stack.join(", "), Style::default().fg(Color::White)),
-            ]),
+        ];
+
+        let mut stack_spans = vec![Span::styled("  Stack:    ", Style::default().fg(Color::Gray))];
+        if p.stack.is_empty() {
+            stack_spans.push(Span::styled("None", Style::default().fg(Color::DarkGray)));
+        } else {
+            for (i, tech) in p.stack.iter().enumerate() {
+                if i > 0 {
+                    stack_spans.push(Span::styled(" ", Style::default()));
+                }
+                let color = tech_color(tech);
+                stack_spans.push(Span::styled(
+                    format!("[{}]", tech),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
+                ));
+            }
+        }
+        lines.push(Line::from(stack_spans));
+
+        lines.extend(vec![
             Line::from(vec![
                 Span::styled("  Modified: ", Style::default().fg(Color::Gray)),
                 Span::styled(p.last_modified_str(), Style::default().fg(Color::White)),
@@ -152,7 +168,7 @@ fn draw_project_detail(f: &mut Frame, app: &App, area: Rect) {
                 Span::styled(p.path.to_string_lossy().to_string(), Style::default().fg(Color::DarkGray)),
             ]),
             Line::from(""),
-        ];
+        ]);
 
         // Git section
         if let Some(git) = &p.git {
@@ -259,6 +275,8 @@ fn draw_action_bar(f: &mut Frame, area: Rect) {
     let line = Line::from(vec![
         Span::styled(" ✨ [N] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
         Span::styled("New  ", Style::default().fg(Color::White)),
+        Span::styled("⚡ [x] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+        Span::styled("Live Run  ", Style::default().fg(Color::White)),
         Span::styled("🤖 [a] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
         Span::styled("Agent  ", Style::default().fg(Color::White)),
         Span::styled("🔐 [E] ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
@@ -294,5 +312,41 @@ fn status_style(status: &ProjectStatus) -> (&'static str, Color) {
         ProjectStatus::Planning => ("📝", Color::Gray),
         ProjectStatus::Testing => ("🧪", Color::Gray),
         ProjectStatus::Abandoned => ("❌", Color::Red),
+    }
+}
+
+pub fn tech_color(tech: &str) -> Color {
+    let lower = tech.to_lowercase();
+    if lower.contains("next") || lower.contains("react") || lower.contains("typescript") || lower.contains("ts") {
+        Color::Cyan
+    } else if lower.contains("rust") || lower.contains("cargo") {
+        Color::LightRed
+    } else if lower.contains("vue") || lower.contains("node") || lower.contains("express") || lower.contains("pnpm") {
+        Color::Green
+    } else if lower.contains("python") || lower.contains("vite") || lower.contains("js") || lower.contains("javascript") {
+        Color::Yellow
+    } else if lower.contains("tailwind") || lower.contains("css") || lower.contains("go") {
+        Color::LightCyan
+    } else if lower.contains("docker") || lower.contains("prisma") || lower.contains("sql") {
+        Color::Blue
+    } else if lower.contains("bun") || lower.contains("vibe") {
+        Color::Magenta
+    } else {
+        Color::White
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tech_color_mappings() {
+        assert_eq!(tech_color("Next.js"), Color::Cyan);
+        assert_eq!(tech_color("Rust"), Color::LightRed);
+        assert_eq!(tech_color("Node.js"), Color::Green);
+        assert_eq!(tech_color("Python"), Color::Yellow);
+        assert_eq!(tech_color("Tailwind"), Color::LightCyan);
+        assert_eq!(tech_color("Docker"), Color::Blue);
     }
 }

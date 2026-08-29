@@ -11,30 +11,30 @@ Unified developer project manager CLI for D drive.
 Add the following line to your PowerShell `$PROFILE`:
 
 ```powershell
-Import-Module 'D:\02-Projects\01-Development\01-Active\dev-tools\cli\dev.psd1' -Force
+Import-Module 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\cli\dev.psd1' -Force
 ```
 
 ## Command Reference
 
 The `dev` command provides the following subcommands:
 
-| Command | Description |
-|---|---|
-| `dev goto <project>` | Tab-complete fuzzy project switcher |
-| `dev new <name> [--stack react\|nextjs\|node\|python\|generic]` | Scaffold new project |
-| `dev pause <name> [--prune]` | Pause project + optional dep pruning |
-| `dev resume <name> [--install]` | Resume paused project + optional npm install |
-| `dev deploy <name> [--prod\|--staging]` | Deploy project |
-| `dev archive <name>` | Compress to .tar.gz in 08-Backup |
-| `dev unarchive <name>` | Extract archive back to 01-Active |
-| `dev list [--active\|--paused\|--deployed\|--vibe\|--all]` | Project listing with status |
-| `dev health` | Git repo health scan |
-| `dev clean [--force] [--days N]` | Dependency pruning |
-| `dev index` | Generate PROJECT-INDEX.md |
-| `dev backup` | Full config backup |
-| `dev guard` | Root guardrail check |
-| `dev env` | Backup .env files |
-| `dev maintenance [--full]` | Run weekly maintenance |
+| Command                                                         | Description                                  |
+| --------------------------------------------------------------- | -------------------------------------------- |
+| `dev goto <project>`                                            | Tab-complete fuzzy project switcher          |
+| `dev new <name> [--stack react\|nextjs\|node\|python\|generic]` | Scaffold new project                         |
+| `dev pause <name> [--prune]`                                    | Pause project + optional dep pruning         |
+| `dev resume <name> [--install]`                                 | Resume paused project + optional npm install |
+| `dev deploy <name> [--prod\|--staging]`                         | Deploy project                               |
+| `dev archive <name>`                                            | Compress to .tar.gz in 08-Backup             |
+| `dev unarchive <name>`                                          | Extract archive back to 01-Active            |
+| `dev list [--active\|--paused\|--deployed\|--vibe\|--all]`      | Project listing with status                  |
+| `dev health`                                                    | Git repo health scan                         |
+| `dev clean [--force] [--days N]`                                | Dependency pruning                           |
+| `dev index`                                                     | Generate PROJECT-INDEX.md                    |
+| `dev backup`                                                    | Full config backup                           |
+| `dev guard`                                                     | Root guardrail check                         |
+| `dev env`                                                       | Backup .env files                            |
+| `dev maintenance [--full]`                                      | Run weekly maintenance                       |
 
 ## Tab Completion
 

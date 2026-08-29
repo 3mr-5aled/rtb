@@ -1,6 +1,7 @@
 # Task 2 Brief: AI Agent Discovery & CLI Launcher (`rtb agent`)
 
 ## Requirements
+
 1. **Agent Discovery Engine (`tui/src/data/agents.rs` & `cli/src/commands/agent.ps1`):**
    - Implement agent CLI discovery looking for executables in system PATH: `agy` (Google Antigravity), `claude` (Claude Code), `gemini` (Gemini CLI), `codex` (Codex CLI).
    - Return list of installed agents with status (`installed: bool`, `command: String`, `name: String`).
@@ -18,4 +19,4 @@
 
 4. **Testing & Report:**
    - Create Pester test suite `cli/tests/agent.tests.ps1` testing agent discovery and command dispatching.
-   - Write full task report to `D:\02-Projects\01-Development\01-Active\dev-tools\.superpowers\sdd\rtb_phase2_plan\task-2-report.md`.
+   - Write full task report to `D:\02-Projects\01-Development\01-Active\rtb-command-tool\.superpowers\sdd\rtb_phase2_plan\task-2-report.md`.

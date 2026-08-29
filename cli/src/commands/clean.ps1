@@ -37,12 +37,14 @@ function Rtb-Clean {
                 Write-Host " ($mb MB)" -ForegroundColor DarkGray
                 if (-not $isDryRun) {
                     Remove-Item $_.FullName -Recurse -Force -EA SilentlyContinue
-                    Write-Host '    → DELETED' -ForegroundColor Green
+                    Write-Host '    -> DELETED' -ForegroundColor Green
                 }
             }
     }
     $gb = [math]::Round($totalBytes / 1GB, 2)
-    Write-Host "`n  Flagged: $flagged folders | Space: $gb GB $(if($isDryRun){'(dry run)'}else{'recovered'})" -ForegroundColor $(if($isDryRun){'Yellow'}else{'Green'})
+    $suffix = if ($isDryRun) { '(dry run)' } else { 'recovered' }
+    $fgColor = if ($isDryRun) { 'Yellow' } else { 'Green' }
+    Write-Host "`n  Flagged: $flagged folders | Space: $gb GB $suffix" -ForegroundColor $fgColor
 }
 
 function Dev-Clean {

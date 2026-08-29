@@ -50,14 +50,17 @@ impl DevConfig {
 
         if let Some(config_dir) = dirs::config_dir() {
             candidate_paths.push(config_dir.join("rtb").join("rtb.config.json"));
+            candidate_paths.push(config_dir.join("rtb").join("dev.config.json"));
         }
-        candidate_paths.push(PathBuf::from("D:\\02-Projects\\01-Development\\01-Active\\dev-tools\\config\\rtb.config.json"));
+        candidate_paths.push(PathBuf::from("D:\\02-Projects\\01-Development\\01-Active\\rtb-command-tool\\config\\rtb.config.json"));
+        candidate_paths.push(PathBuf::from("D:\\02-Projects\\01-Development\\01-Active\\rtb-command-tool\\config\\dev.config.json"));
+        candidate_paths.push(PathBuf::from("D:\\02-Projects\\01-Development\\01-Active\\dev-cli\\config\\dev.config.json"));
         candidate_paths.push(PathBuf::from("..\\config\\rtb.config.json"));
         candidate_paths.push(PathBuf::from("config\\rtb.config.json"));
         candidate_paths.push(PathBuf::from("config\\dev.config.json"));
 
         for path in &candidate_paths {
-            if path.exists() {
+            if path.is_file() {
                 let content = std::fs::read_to_string(path)
                     .with_context(|| format!("Cannot read config from {}", path.display()))?;
                 return serde_json::from_str(&content)

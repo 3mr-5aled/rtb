@@ -2,7 +2,7 @@
 
 ## 🔴 Core
 
-- [x] Rename project from `dev-tools` → `RTB`
+- [x] Rename project from `rtb-command-tool` → `RTB`
 - [x] Rename CLI command from `dev` → `rtb`
 - [x] Rename TUI command from `devtui` → `rtb ui`
 - [x] Update repository structure and internal references

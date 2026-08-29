@@ -12,7 +12,7 @@
 ## 📁 Repository Structure
 
 ```
-dev-tools/
+rtb-command-tool/
 ├── config/
 │   └── rtb.config.json     # Default JSON configuration template
 ├── cli/                    # PowerShell CLI module source & commands
@@ -39,10 +39,11 @@ dev-tools/
 Run the installer script in PowerShell:
 
 ```powershell
-pwsh -File 'D:\02-Projects\01-Development\01-Active\dev-tools\install.ps1'
+pwsh -File 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\install.ps1'
 ```
 
 This will automatically:
+
 1. Verify/copy the built `rtbtui.exe` binary into `D:\06-Tools\scripts\` (in PATH).
 2. Configure `Import-Module '.../cli/rtb.psd1' -Force` in your PowerShell `$PROFILE`.
 3. Export `rtb` CLI commands and tab completion in your active terminal session.
@@ -51,24 +52,24 @@ This will automatically:
 
 ## 🛠️ CLI Reference (`rtb`)
 
-| Command | Description |
-|---|---|
-| `rtb init` | Initialize user configuration in `%APPDATA%\rtb\rtb.config.json` |
-| `rtb run [project]` | Auto-detect and run project dev/start scripts |
-| `rtb build [project]` | Auto-detect and run project build scripts |
-| `rtb test [project]` | Auto-detect and run project test suites |
-| `rtb goto <project>` | Tab-complete fuzzy project navigation |
-| `rtb ui` / `rtbtui` | Launch interactive Ratatui TUI operations center |
-| `rtb list [--active\|--paused\|--deployed\|--vibe]` | Filtered project status listing |
-| `rtb new <name>` | Scaffold a new project |
-| `rtb pause <name>` | Move project to `04-Paused` |
-| `rtb resume <name>` | Move project to `01-Active` |
-| `rtb deploy <name>` | Move project to `02-Deployed` |
-| `rtb archive <name>` | Compress project into `.tar.gz` backup archive |
-| `rtb unarchive <name>` | Restore archived project archive |
-| `rtb health` | Perform Git repository health overview scan |
-| `rtb clean [--dry-run\|--force]` | Dependency pruning with safety dry-run preview |
-| `rtb --version` / `rtb --help` | View version and available command details |
+| Command                                             | Description                                                      |
+| --------------------------------------------------- | ---------------------------------------------------------------- |
+| `rtb init`                                          | Initialize user configuration in `%APPDATA%\rtb\rtb.config.json` |
+| `rtb run [project]`                                 | Auto-detect and run project dev/start scripts                    |
+| `rtb build [project]`                               | Auto-detect and run project build scripts                        |
+| `rtb test [project]`                                | Auto-detect and run project test suites                          |
+| `rtb goto <project>`                                | Tab-complete fuzzy project navigation                            |
+| `rtb ui` / `rtbtui`                                 | Launch interactive Ratatui TUI operations center                 |
+| `rtb list [--active\|--paused\|--deployed\|--vibe]` | Filtered project status listing                                  |
+| `rtb new <name>`                                    | Scaffold a new project                                           |
+| `rtb pause <name>`                                  | Move project to `04-Paused`                                      |
+| `rtb resume <name>`                                 | Move project to `01-Active`                                      |
+| `rtb deploy <name>`                                 | Move project to `02-Deployed`                                    |
+| `rtb archive <name>`                                | Compress project into `.tar.gz` backup archive                   |
+| `rtb unarchive <name>`                              | Restore archived project archive                                 |
+| `rtb health`                                        | Perform Git repository health overview scan                      |
+| `rtb clean [--dry-run\|--force]`                    | Dependency pruning with safety dry-run preview                   |
+| `rtb --version` / `rtb --help`                      | View version and available command details                       |
 
 ---
 
@@ -88,10 +89,12 @@ Launch by running `rtb ui` or `rtbtui` directly in your terminal.
 ## ⚙️ Configuration Hierarchy
 
 RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority:
+
 1. User Profile Configuration (`%APPDATA%\rtb\rtb.config.json` or `~/.config/rtb/rtb.config.json`)
 2. Repository Fallback (`config/rtb.config.json`)
 
 To generate your personalized user configuration, run:
+
 ```bash
 rtb init
 ```

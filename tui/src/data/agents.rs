@@ -150,6 +150,7 @@ mod tests {
             is_monorepo: false,
             ci_cd: None,
             runtime_version: None,
+            dev_command: None,
         };
 
         let context_file = create_agent_context_file(&proj);

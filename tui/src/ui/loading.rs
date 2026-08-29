@@ -7,11 +7,11 @@ use ratatui::{
 };
 
 const ASCII_LOGO: &[&str] = &[
-    r"   ____  _______     _______ _   _ ___ ",
-    r"  |  _ \| ____\ \   / /_   _| | | |_ _|",
-    r"  | | | |  _|  \ \ / /  | | | | | || | ",
-    r"  | |_| | |___  \ V /   | | | |_| || | ",
-    r"  |____/|_____|  \_/    |_|  \___/|___|",
+    r" ____  _____ ____  ",
+    r"|  _ \|_   _| __ ) ",
+    r"| |_) | | | |  _ \ ",
+    r"|  _ <  | | | |_) |",
+    r"|_| \_\ |_| |____/ ",
 ];
 
 const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -42,12 +42,12 @@ pub fn draw(f: &mut Frame, tick_count: u64, message: &str, area: Rect) {
     ]));
     lines.push(Line::from(""));
     lines.push(Line::from(vec![
-        Span::styled("    Interactive Developer Project Manager for D: Drive", Style::default().fg(Color::DarkGray)),
+        Span::styled("    Interactive Developer Project Operations Engine", Style::default().fg(Color::DarkGray)),
     ]));
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .title(" devtui ")
+        .title(" RTB — ﺐﺘّﺭ (Repository & Tooling Base) ")
         .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
         .title_alignment(Alignment::Center);
 

@@ -1,6 +1,7 @@
 # Task 4 Brief: Git Operations Extensions (Commit Amend, Branch Creation & Deletion)
 
 ## Requirements
+
 1. **Branch Picker Modal Extensions (`tui/src/ui/branch_picker.rs`):**
    - Add `c` shortcut inside `BranchPickerModal` to create a new branch (`git checkout -b <name>`). Opens text input prompt for branch name.
    - Add `d` shortcut inside `BranchPickerModal` to delete selected branch (`git branch -d <name>`). Opens safety confirmation dialog before deletion.
@@ -14,4 +15,4 @@
 4. **Testing & Verification:**
    - Verify Rust TUI compilation (`cargo check`).
    - Run full Pester test suite (`pwsh -NoProfile -Command "rtb test"`).
-   - Write full task report to `D:\02-Projects\01-Development\01-Active\dev-tools\.superpowers\sdd\rtb_phase2_plan\task-4-report.md`.
+   - Write full task report to `D:\02-Projects\01-Development\01-Active\rtb-command-tool\.superpowers\sdd\rtb_phase2_plan\task-4-report.md`.

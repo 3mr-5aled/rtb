@@ -1,6 +1,7 @@
 # Task 3 Brief: TUI Command Palette (`Ctrl+P`), Toast Notifications & Tab Memory
 
 ## Requirements
+
 1. **Command Palette (`tui/src/ui/command_palette.rs`):**
    - Create `CommandPalette` struct and UI renderer.
    - Shortcut trigger: `Ctrl+P` or `Ctrl+K` (or `p` in Dashboard view).
@@ -33,4 +34,4 @@
 4. **Testing & Report:**
    - Add unit tests in Rust for Command Palette fuzzy filtering, Toast queue expiration, and SessionState serialization.
    - Verify build with `cargo test --manifest-path tui/Cargo.toml`.
-   - Write full task report to `D:\02-Projects\01-Development\01-Active\dev-tools\.superpowers\sdd\rtb_phase2_plan\task-3-report.md`.
+   - Write full task report to `D:\02-Projects\01-Development\01-Active\rtb-command-tool\.superpowers\sdd\rtb_phase2_plan\task-3-report.md`.

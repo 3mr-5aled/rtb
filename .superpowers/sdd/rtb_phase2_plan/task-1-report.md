@@ -3,7 +3,7 @@
 **Task Name:** Extended Project Intelligence & CLI Output Options  
 **Plan:** RTB Phase 2 Plan  
 **Status:** COMPLETED  
-**Date:** 2026-08-28  
+**Date:** 2026-08-28
 
 ---
 
@@ -16,6 +16,7 @@ Task 1 extends RTB's intelligence scanners and CLI tools to support additional t
 ## Work Accomplished
 
 ### 1. Extended Data Model & Detection Engines
+
 - **Rust TUI Data Model (`tui/src/data/project.rs`)**:
   - Extended `Project` struct with `is_monorepo: bool`, `ci_cd: Option<String>`, and `runtime_version: Option<String>`.
 - **Rust Project Scanner (`tui/src/data/scanner.rs`)**:
@@ -31,6 +32,7 @@ Task 1 extends RTB's intelligence scanners and CLI tools to support additional t
   - Added `Get-AllProjectsDetails` to inspect projects across all configured workspace categories (`active`, `paused`, `production`, `staging`, `vibe`, `sandbox`, `planning`, `testing`).
 
 ### 2. CLI `--json` Support & `rtb info` Command
+
 - **`rtb list --json` (`cli/src/commands/list.ps1`)**:
   - Added `-Json` switch / `--json` flag to `Rtb-List` / `Dev-List`. Formats array of project detail objects as clean JSON using `ConvertTo-Json -Depth 5`.
 - **`rtb info <project-name>` (`cli/src/commands/info.ps1`)**:
@@ -42,6 +44,7 @@ Task 1 extends RTB's intelligence scanners and CLI tools to support additional t
   - Added `info` subcommand and `--json` flag completions in `cli/src/completions/rtb.completion.ps1` and `dev.completion.ps1`.
 
 ### 3. Test Suites & Verification
+
 - **PowerShell Pester Suite (`cli/tests/info.tests.ps1`)**:
   - Created test suite verifying `Get-ProjectDetails`, `Rtb-List --json`, and `Rtb-Info --json`.
   - Clean execution with 5/5 passing tests in Pester.
@@ -50,18 +53,18 @@ Task 1 extends RTB's intelligence scanners and CLI tools to support additional t
 
 ## File Changes Summary
 
-| File | Status | Description |
-|---|---|---|
-| `tui/src/data/project.rs` | Modified | Added `is_monorepo`, `ci_cd`, `runtime_version` to `Project` struct |
-| `tui/src/data/scanner.rs` | Modified | Added `.NET`, monorepo, CI/CD, and runtime version detectors + unit tests |
-| `cli/src/utils/helpers.ps1` | Modified | Added `Get-ProjectDetails` and `Get-AllProjectsDetails` helpers |
-| `cli/src/commands/list.ps1` | Modified | Added `-Json` / `--json` support to `Rtb-List` |
-| `cli/src/commands/info.ps1` | Created | Implemented `Rtb-Info` command with human-readable and `--json` output |
-| `cli/rtb.psm1` | Modified | Registered `info` case and exported functions |
-| `cli/rtb.psd1` | Modified | Updated `FunctionsToExport = @('*')` |
-| `cli/src/completions/rtb.completion.ps1` | Modified | Added `info` subcommand and project completions |
-| `cli/src/completions/dev.completion.ps1` | Modified | Added `info` subcommand and `--json` flag completions |
-| `cli/tests/info.tests.ps1` | Created | Pester unit test suite for Task 1 functionality |
+| File                                     | Status   | Description                                                               |
+| ---------------------------------------- | -------- | ------------------------------------------------------------------------- |
+| `tui/src/data/project.rs`                | Modified | Added `is_monorepo`, `ci_cd`, `runtime_version` to `Project` struct       |
+| `tui/src/data/scanner.rs`                | Modified | Added `.NET`, monorepo, CI/CD, and runtime version detectors + unit tests |
+| `cli/src/utils/helpers.ps1`              | Modified | Added `Get-ProjectDetails` and `Get-AllProjectsDetails` helpers           |
+| `cli/src/commands/list.ps1`              | Modified | Added `-Json` / `--json` support to `Rtb-List`                            |
+| `cli/src/commands/info.ps1`              | Created  | Implemented `Rtb-Info` command with human-readable and `--json` output    |
+| `cli/rtb.psm1`                           | Modified | Registered `info` case and exported functions                             |
+| `cli/rtb.psd1`                           | Modified | Updated `FunctionsToExport = @('*')`                                      |
+| `cli/src/completions/rtb.completion.ps1` | Modified | Added `info` subcommand and project completions                           |
+| `cli/src/completions/dev.completion.ps1` | Modified | Added `info` subcommand and `--json` flag completions                     |
+| `cli/tests/info.tests.ps1`               | Created  | Pester unit test suite for Task 1 functionality                           |
 
 ---
 
@@ -85,4 +88,4 @@ Passed: 5 Failed: 0 Skipped: 0 Pending: 0 Inconclusive: 0
 
 ## Conclusion
 
-Task 1 is fully implemented, verified, and ready for integration into the dev-tools workspace.
+Task 1 is fully implemented, verified, and ready for integration into the rtb-command-tool workspace.

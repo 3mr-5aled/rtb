@@ -1,4 +1,4 @@
-1. WARNING: The names of some imported commands from the module 'rtb' include unapproved verbs that might make them less discoverable. To find the commands with unapproved verbs, run the Import-Module command again with the Verbose parameter. For a list of approved verbs, type Get-Verb.
+1. start screen still has old branding dev tools
 
 2. color stack technologies in projects tab
 

@@ -51,7 +51,7 @@ devtui
 
 ## Configuration
 
-Reads `D:\02-Projects\01-Development\01-Active\dev-tools\config\dev.config.json` — same config shared with the `dev` PowerShell CLI.
+Reads `D:\02-Projects\01-Development\01-Active\rtb-command-tool\config\dev.config.json` — same config shared with the `dev` PowerShell CLI.
 
 ## Tech Stack
 

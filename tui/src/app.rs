@@ -55,6 +55,37 @@ impl Tab {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitFilter {
+    All,
+    NeedsAttention,
+    LocalClean,
+    Synced,
+    NonGit,
+}
+
+impl GitFilter {
+    pub fn label(self) -> &'static str {
+        match self {
+            GitFilter::All => "ALL",
+            GitFilter::NeedsAttention => "Needs Attention",
+            GitFilter::LocalClean => "Local Clean",
+            GitFilter::Synced => "Synced",
+            GitFilter::NonGit => "Non-Git Projects",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            GitFilter::All => GitFilter::NeedsAttention,
+            GitFilter::NeedsAttention => GitFilter::LocalClean,
+            GitFilter::LocalClean => GitFilter::Synced,
+            GitFilter::Synced => GitFilter::NonGit,
+            GitFilter::NonGit => GitFilter::All,
+        }
+    }
+}
+
 type ScanResult = (Vec<Project>, Vec<DepFolder>, DiskStats);
 
 pub struct App {
@@ -101,6 +132,7 @@ pub struct App {
 
     // Git Health state
     pub git_selected_index: usize,
+    pub git_filter: GitFilter,
 
     // Disk & Maintenance state
     pub disk_stats: DiskStats,
@@ -184,6 +216,7 @@ impl App {
             cleaner_threshold_days: 60,
             cleaner_category_filter: None,
             git_selected_index: 0,
+            git_filter: GitFilter::All,
             disk_stats: cached_disk,
             maintenance_state,
             confirm_dialog: None,
@@ -208,10 +241,8 @@ impl App {
     }
 
     pub fn start_background_scan(&mut self, msg: &'static str) {
-        if self.projects.is_empty() {
-            self.is_loading = true;
-            self.loading_message = msg;
-        }
+        self.is_loading = true;
+        self.loading_message = msg;
 
         let (tx, rx): (Sender<ScanResult>, Receiver<ScanResult>) = channel();
         self.scan_receiver = Some(rx);
@@ -391,6 +422,12 @@ impl App {
                             if let Some(diff) = GitDiffModal::load(project.name.clone(), &project.path) {
                                 self.git_diff_modal = Some(diff);
                             }
+                        }
+                    } else if matches!(key, KeyCode::Char('x')) {
+                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
+                            let cmd = project.get_dev_command();
+                            actions::run_live_program(project);
+                            self.status_message = Some(format!("Launched live runner for {}: {}", project.name, cmd));
                         }
                     }
                 }
@@ -889,6 +926,13 @@ impl App {
             KeyCode::Char('N') => {
                 self.scaffold_modal = Some(ScaffoldModal::new());
             }
+            KeyCode::Char('x') => {
+                if let Some(project) = self.selected_project() {
+                    let cmd = project.get_dev_command();
+                    actions::run_live_program(project);
+                    self.status_message = Some(format!("Launched live runner for {}: {}", project.name, cmd));
+                }
+            }
             KeyCode::Char('E') => {
                 if let Some(project) = self.selected_project() {
                     if let Some(vault) = EnvVaultModal::load(project.name.clone(), &project.path) {
@@ -998,8 +1042,21 @@ impl App {
         }
     }
 
+    pub fn filtered_git_projects(&self) -> Vec<&Project> {
+        self.projects
+            .iter()
+            .filter(|p| match self.git_filter {
+                GitFilter::All => p.git.is_some(),
+                GitFilter::NeedsAttention => p.git.as_ref().map(|g| g.uncommitted > 0 || g.unpushed > 0).unwrap_or(false),
+                GitFilter::LocalClean => p.git.as_ref().map(|g| !g.has_remote && g.uncommitted == 0 && g.unpushed == 0).unwrap_or(false),
+                GitFilter::Synced => p.git.as_ref().map(|g| g.has_remote && g.uncommitted == 0 && g.unpushed == 0).unwrap_or(false),
+                GitFilter::NonGit => p.git.is_none(),
+            })
+            .collect()
+    }
+
     fn handle_git_health_key(&mut self, key: KeyCode) {
-        let git_projects: Vec<&Project> = self.projects.iter().filter(|p| p.git.is_some()).collect();
+        let git_projects = self.filtered_git_projects();
         match key {
             KeyCode::Down | KeyCode::Char('j') => {
                 if !git_projects.is_empty() {
@@ -1008,6 +1065,10 @@ impl App {
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.git_selected_index = self.git_selected_index.saturating_sub(1);
+            }
+            KeyCode::Char('f') => {
+                self.git_filter = self.git_filter.next();
+                self.git_selected_index = 0;
             }
             KeyCode::Char('o') | KeyCode::Enter => {
                 if let Some(project) = git_projects.get(self.git_selected_index) {
@@ -1430,6 +1491,14 @@ impl App {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn test_background_scan_sets_loading_state() {
+        let mut app = App::new().unwrap();
+        app.start_background_scan("Refreshing data...");
+        assert!(app.is_loading);
+        assert_eq!(app.loading_message, "Refreshing data...");
+    }
 
     #[test]
     fn test_app_toast_system() {

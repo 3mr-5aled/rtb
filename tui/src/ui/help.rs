@@ -7,11 +7,11 @@ use ratatui::{
 };
 
 const ASCII_LOGO_TINY: &[&str] = &[
-    r" ____  _______     _______ _   _ ___ ",
-    r"|  _ \| ____\ \   / /_   _| | | |_ _|",
-    r"| | | |  _|  \ \ / /  | | | | | || | ",
-    r"| |_| | |___  \ V /   | | | |_| || | ",
-    r"|____/|_____|  \_/    |_|  \___/|___|",
+    r" ____  _____ ____  ",
+    r"|  _ \|_   _| __ ) ",
+    r"| |_) | | | |  _ \ ",
+    r"|  _ <  | | | |_) |",
+    r"|_| \_\ |_| |____/ ",
 ];
 
 pub fn draw(f: &mut Frame, area: Rect) {
@@ -56,7 +56,7 @@ pub fn draw(f: &mut Frame, area: Rect) {
     ]));
     lines.push(Line::from(vec![
         Span::styled("  q", Style::default().fg(Color::Cyan)),
-        Span::styled("            Quit devtui", Style::default().fg(Color::White)),
+        Span::styled("            Quit RTB", Style::default().fg(Color::White)),
     ]));
     lines.push(Line::from(""));
 
