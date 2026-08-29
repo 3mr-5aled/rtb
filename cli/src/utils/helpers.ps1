@@ -132,10 +132,6 @@ function Get-ProjectDetails {
 
     # Detect stack
     $stack = @()
-    if (Test-Path (Join-Path $ProjectPath 'pnpm-lock.yaml')) { $stack += 'pnpm' }
-    elseif (Test-Path (Join-Path $ProjectPath 'yarn.lock')) { $stack += 'yarn' }
-    elseif (Test-Path (Join-Path $ProjectPath 'bun.lockb')) { $stack += 'bun' }
-    elseif (Test-Path (Join-Path $ProjectPath 'package-lock.json')) { $stack += 'npm' }
 
     $pkgPath = Join-Path $ProjectPath 'package.json'
     if (Test-Path $pkgPath) {
@@ -162,11 +158,11 @@ function Get-ProjectDetails {
         }
     }
 
-    if (Test-Path (Join-Path $ProjectPath 'uv.lock')) { $stack += 'uv'; $stack += 'Python' }
-    elseif (Test-Path (Join-Path $ProjectPath 'poetry.lock')) { $stack += 'poetry'; $stack += 'Python' }
-    elseif ((Test-Path (Join-Path $ProjectPath 'requirements.txt')) -or (Test-Path (Join-Path $ProjectPath 'pyproject.toml'))) { $stack += 'Python' }
+    if ((Test-Path (Join-Path $ProjectPath 'uv.lock')) -or (Test-Path (Join-Path $ProjectPath 'poetry.lock')) -or (Test-Path (Join-Path $ProjectPath 'requirements.txt')) -or (Test-Path (Join-Path $ProjectPath 'pyproject.toml'))) {
+        $stack += 'Python'
+    }
 
-    if (Test-Path (Join-Path $ProjectPath 'Cargo.toml')) { $stack += 'Cargo'; $stack += 'Rust' }
+    if (Test-Path (Join-Path $ProjectPath 'Cargo.toml')) { $stack += 'Rust' }
     if (Test-Path (Join-Path $ProjectPath 'go.mod')) { $stack += 'Go' }
     if ((Test-Path (Join-Path $ProjectPath 'pom.xml')) -or (Test-Path (Join-Path $ProjectPath 'build.gradle'))) { $stack += 'Java' }
     if (Test-Path (Join-Path $ProjectPath 'Dockerfile')) { $stack += 'Docker' }

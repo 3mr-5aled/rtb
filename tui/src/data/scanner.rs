@@ -110,17 +110,6 @@ fn scan_project(path: &Path, status: ProjectStatus) -> Project {
 fn detect_stack(path: &Path) -> Vec<String> {
     let mut stack = Vec::new();
 
-    // Package managers & Lockfiles
-    if path.join("pnpm-lock.yaml").exists() {
-        stack.push("pnpm".into());
-    } else if path.join("yarn.lock").exists() {
-        stack.push("yarn".into());
-    } else if path.join("bun.lockb").exists() || path.join("bun.lock").exists() {
-        stack.push("bun".into());
-    } else if path.join("package-lock.json").exists() {
-        stack.push("npm".into());
-    }
-
     let pkg_path = path.join("package.json");
     if pkg_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&pkg_path) {
@@ -165,19 +154,12 @@ fn detect_stack(path: &Path) -> Vec<String> {
         }
     }
 
-    // Python runtimes and package managers
-    if path.join("uv.lock").exists() {
-        stack.push("uv".into());
-        stack.push("Python".into());
-    } else if path.join("poetry.lock").exists() {
-        stack.push("poetry".into());
-        stack.push("Python".into());
-    } else if path.join("requirements.txt").exists() || path.join("pyproject.toml").exists() {
+    // Python runtimes
+    if path.join("uv.lock").exists() || path.join("poetry.lock").exists() || path.join("requirements.txt").exists() || path.join("pyproject.toml").exists() {
         stack.push("Python".into());
     }
 
     if path.join("Cargo.toml").exists() {
-        stack.push("Cargo".into());
         stack.push("Rust".into());
     }
 
