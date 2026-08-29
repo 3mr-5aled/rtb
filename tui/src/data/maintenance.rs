@@ -146,11 +146,12 @@ impl MaintenanceState {
                 let _ = tx.send(MaintenanceMessage::LogLine(format!("\n▶ Running: {}", task.name)));
 
                 let start = Instant::now();
+                let actual_script_path = resolve_script_path(task.script_path);
 
                 let mut cmd = Command::new("pwsh");
                 cmd.arg("-NoProfile")
                     .arg("-File")
-                    .arg(task.script_path);
+                    .arg(&actual_script_path);
 
                 for arg in &task.args {
                     cmd.arg(arg);
@@ -201,4 +202,25 @@ impl MaintenanceState {
             let _ = tx.send(MaintenanceMessage::AllCompleted);
         });
     }
+}
+
+fn resolve_script_path(configured_path: &str) -> std::path::PathBuf {
+    let p = std::path::Path::new(configured_path);
+    if p.exists() {
+        return p.to_path_buf();
+    }
+
+    if let Some(filename) = p.file_name() {
+        let repo_path = std::path::Path::new("cli").join("scripts").join(filename);
+        if repo_path.exists() {
+            return repo_path;
+        }
+
+        let root_repo_path = std::path::Path::new("scripts").join(filename);
+        if root_repo_path.exists() {
+            return root_repo_path;
+        }
+    }
+
+    p.to_path_buf()
 }
