@@ -24,12 +24,12 @@
 - [x] Consistent empty states
 - [x] Consistent error states
 - [x] Confirmation dialogs
-- [ ] Toast / notification system
-- [ ] Command palette
+- [x] Toast / notification system
+- [x] Command palette (`Ctrl+P` / `Ctrl+K`)
 - [x] Project fuzzy search
 - [x] Project filtering
 - [x] Project sorting
-- [ ] Remember last project/tab
+- [x] Remember last project/tab (`state.json`)
 - [x] Handle terminal resizing
 
 ## 🧠 Project Intelligence
@@ -40,18 +40,18 @@
 - [x] Rust detection
 - [x] Go detection
 - [x] Java detection
-- [ ] .NET detection
+- [x] .NET detection (`.csproj`/`.sln`)
 - [x] Package manager detection (`npm`, `pnpm`, `yarn`, `bun`, `pip`, `poetry`, `uv`, `cargo`)
 - [x] Framework detection (`Next.js`, `React`, `Vue`, `Vite`, `Tailwind`, `Prisma`, `Express`, `Fastify`)
-- [ ] Monorepo detection
-- [ ] Workspace detection
+- [x] Monorepo detection (`pnpm-workspace.yaml`, `lerna.json`, `nx.json`, `turbo.json`)
+- [x] Workspace detection
 - [x] Git detection
 - [x] GitHub remote detection
 - [x] Docker detection
 - [x] Docker Compose detection
-- [ ] CI/CD detection
+- [x] CI/CD detection (`.github/workflows`, `.gitlab-ci.yml`, `azure-pipelines.yml`)
 - [x] `.env` detection
-- [ ] Runtime version detection
+- [x] Runtime version detection (`.nvmrc`, `rust-toolchain.toml`, `pyproject.toml`)
 
 ## 🔀 Git
 
@@ -67,30 +67,30 @@
 - [x] Commit diff viewer
 - [x] Stage/unstage files
 - [x] Commit from TUI
-- [x] Amend commit
+- [x] Amend commit (`git commit --amend`)
 - [x] Push/pull/fetch
 - [x] Branch switcher
-- [x] Branch creation/deletion
+- [x] Branch creation/deletion (`git checkout -b` / `git branch -d`)
 
 ## 🤖 AI / Agents
 
-- [ ] Detect installed AI agents
-- [x] Open project in Agent CLI (`agy`)
-- [ ] Codex integration
-- [ ] Claude Code integration
-- [ ] Gemini CLI integration
-- [ ] Configurable default agent
-- [ ] Generate project context
-- [ ] Generate project summary
-- [ ] Generate Git summary
-- [ ] Launch agent with project context
+- [x] Detect installed AI agents (`agy`, `claude`, `gemini`, `codex`)
+- [x] Open project in Agent CLI (`rtb agent` / `a` keybinding)
+- [x] Codex integration
+- [x] Claude Code integration
+- [x] Gemini CLI integration
+- [x] Configurable default agent (`defaultAgent` in config)
+- [x] Generate project context
+- [x] Generate project summary
+- [x] Generate Git summary
+- [x] Launch agent with project context
 
 ## 📦 Environment
 
 - [x] Runtime environment detection
 - [x] Package manager detection
 - [x] Dependency status
-- [ ] Outdated dependency detection
+- [ ] Outdated dependency detection (`rtb deps outdated`)
 - [x] Virtual environment detection (`.venv`)
 - [ ] Node version manager detection
 - [x] Rust toolchain detection
@@ -161,7 +161,7 @@
 - [x] Custom folder structures
 - [x] Multiple project roots
 - [ ] Nested projects
-- [ ] Monorepos
+- [x] Monorepos
 - [x] Windows
 - [x] Linux (path & config fallback)
 - [x] macOS (path & config fallback)
@@ -182,17 +182,17 @@
 - [x] Test with 100+ projects
 - [ ] Test with 1000+ projects
 
-## 📦 Distribution
+## 📦 Distribution & Release (Phase 3 Targets)
 
 - [x] Semantic versioning (v1.0.0)
-- [ ] GitHub Releases
-- [ ] Automated builds
-- [x] Windows binary
+- [ ] GitHub Releases automation
+- [ ] Automated release builds
+- [x] Windows binary (`rtbtui.exe`)
 - [ ] Linux binary
 - [ ] macOS binary
-- [ ] Checksums
-- [ ] CI/CD
-- [ ] Upgrade command
+- [ ] Checksums generator
+- [ ] CI/CD pipeline
+- [ ] `rtb upgrade` self-update command
 - [x] `rtb --version`
 - [x] `rtb --help`
 
@@ -213,9 +213,9 @@
 
 - [x] Consistent CLI output
 - [x] Consistent error messages
-- [ ] `--verbose`
-- [ ] `--quiet`
-- [ ] `--json`
+- [x] `--verbose`
+- [x] `--quiet`
+- [x] `--json`
 - [x] Shell completions (`ps1`, `bash`, `zsh`, `fish`)
 - [x] Command aliases (`dev` → `rtb`, `devtui` → `rtb ui`)
 - [x] Helpful command suggestions
