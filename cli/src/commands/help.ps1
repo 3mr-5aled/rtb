@@ -5,6 +5,7 @@ function Rtb-Help {
     Write-Host ''
     Write-Host '  SETUP & CONFIG' -ForegroundColor Yellow
     Write-Host '    rtb init                             Initialize user configuration file'
+    Write-Host '    rtb upgrade [--check]                Check for updates and self-upgrade'
     Write-Host '    rtb --version                        Display RTB version'
     Write-Host '    rtb --help                           Display this help menu'
     Write-Host ''
@@ -12,6 +13,10 @@ function Rtb-Help {
     Write-Host '    rtb run [project]                    Auto-detect and run dev/start script'
     Write-Host '    rtb build [project]                  Auto-detect and run build script'
     Write-Host '    rtb test [project]                   Auto-detect and run test suite'
+    Write-Host '    rtb info [project] [--json]          Display deep project intelligence'
+    Write-Host '    rtb deps [outdated] [project]        Audit declared project dependencies'
+    Write-Host '    rtb workspace [project]              Inspect monorepo workspace packages'
+    Write-Host '    rtb agent [project] [--agent agy]    Launch project in targeted AI Agent CLI'
     Write-Host ''
     Write-Host '  LIFECYCLE' -ForegroundColor Yellow
     Write-Host '    rtb new <name> [--stack nextjs]     Create new project in 01-Active'

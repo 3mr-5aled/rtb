@@ -4,8 +4,9 @@ Register-ArgumentCompleter -CommandName 'rtb' -ParameterName 'Command' -ScriptBl
     param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
     
     $subCommands = @(
-        'init', 'run', 'build', 'test', 'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
-        'unarchive', 'list', 'info', 'agent', 'health', 'clean', 'index',
+        'init', 'run', 'build', 'test', 'info', 'agent', 'deps', 'workspace', 'upgrade',
+        'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
+        'unarchive', 'list', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
     )
     

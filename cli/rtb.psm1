@@ -53,6 +53,9 @@ function rtb {
         'env'         { if ($Arguments) { Dev-Env @Arguments } else { Dev-Env } }
         'maintenance' { if ($Arguments) { Dev-Maintenance @Arguments } else { Dev-Maintenance } }
         'agent'       { if ($Arguments) { Rtb-Agent @Arguments } else { Rtb-Agent } }
+        'deps'        { if ($Arguments) { Rtb-Deps @Arguments } else { Rtb-Deps } }
+        'workspace'   { if ($Arguments) { Rtb-Workspace @Arguments } else { Rtb-Workspace } }
+        'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
         'ui'          { Dev-Ui }
         'help'        { Dev-Help }
         default {

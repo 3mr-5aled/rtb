@@ -1,0 +1,58 @@
+name: RTB Release & CI/CD Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    name: Build Binary (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact_name: rtbtui.exe
+            asset_name: rtbtui-windows-amd64.exe
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: rtbtui
+            asset_name: rtbtui-linux-amd64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: rtbtui
+            asset_name: rtbtui-macos-amd64
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build TUI Release Binary
+        run: cargo build --manifest-path tui/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: tui/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  pester-tests:
+    name: Run PowerShell CLI Tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Pester Unit Tests
+        shell: pwsh
+        run: |
+          Import-Module './cli/rtb.psd1' -Force
+          Invoke-Pester ./cli/tests/ -Passthru
