@@ -21,10 +21,13 @@ Describe "Extended Project Intelligence & CLI --json" {
         $workflows = Join-Path $projDir ".github\workflows"
         New-Item -ItemType Directory -Path $workflows -Force | Out-Null
         Set-Content -Path (Join-Path $projDir ".nvmrc") -Value "v20.10.0"
+        @{ name = "test-app"; dependencies = @{ next = "14.0.0"; tailwindcss = "3.0.0" } } | ConvertTo-Json | Set-Content (Join-Path $projDir "package.json")
 
         $details = Get-ProjectDetails -ProjectPath $projDir -Status "Active"
         $details.name | Should Be "TestProject"
         ($details.stack -contains ".NET") | Should Be $true
+        ($details.stack -contains "Next.js") | Should Be $true
+        ($details.stack -contains "Tailwind") | Should Be $true
         $details.is_monorepo | Should Be $true
         $details.ci_cd | Should Be "GitHub Actions"
         $details.runtime_version | Should Be "v20.10.0"
@@ -38,11 +41,11 @@ Describe "Extended Project Intelligence & CLI --json" {
     }
 
     It "Rtb-Info returns detailed metadata object when --json flag is passed" {
-        # Test info against existing 'dev-tools' project
-        $jsonStr = Rtb-Info dev-tools --json | Out-String
+        # Test info against existing 'rtb-command-tool' project
+        $jsonStr = Rtb-Info rtb-command-tool --json | Out-String
         $jsonStr | Should Not BeNullOrEmpty
         $parsed = $jsonStr | ConvertFrom-Json
-        $parsed.name | Should Be "dev-tools"
+        $parsed.name | Should Be "rtb-command-tool"
         ($parsed.is_monorepo -ne $null) | Should Be $true
     }
 }

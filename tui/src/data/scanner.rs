@@ -375,6 +375,24 @@ mod tests {
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
+
+    #[test]
+    fn test_project_inspector_detects_nextjs_and_monorepo() {
+        let temp_dir = std::env::temp_dir().join("rtb_rust_inspector_test");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let pkg_json = r#"{"name":"my-app","dependencies":{"next":"14.0.0","tailwindcss":"3.0.0"}}"#;
+        fs::write(temp_dir.join("package.json"), pkg_json).unwrap();
+        fs::write(temp_dir.join("pnpm-workspace.yaml"), "packages: ['*']").unwrap();
+
+        let project = scan_project(&temp_dir, ProjectStatus::Active);
+        assert!(project.stack.contains(&"Next.js".to_string()));
+        assert!(project.stack.contains(&"Tailwind".to_string()));
+        assert!(project.is_monorepo);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
 }
 
 fn get_last_modified(path: &Path) -> Option<chrono::DateTime<chrono::Local>> {
