@@ -34,4 +34,17 @@ Describe "AI Agent Discovery & CLI Launcher (Rtb-Agent)" {
         $output = (Rtb-Agent -Agent "unknown_agent_xyz" *>&1) | Out-String
         $output | Should Match "Specified agent 'unknown_agent_xyz' is not recognized"
     }
+
+    It "Generates transient .rtb_context.md file in project folder before launch" {
+        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_agent_context_test_$([Guid]::NewGuid().ToString('N'))"
+        New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+
+        $contextFile = Join-Path $tempDir ".rtb_context.md"
+        New-RtbAgentContextFile -ProjectPath $tempDir -ProjectName "test-proj" -Stack @("Rust", "Ratatui") -Status "Active"
+
+        Test-Path $contextFile | Should Be $true
+        (Get-Content $contextFile -Raw) | Should Match "Rust, Ratatui"
+
+        Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

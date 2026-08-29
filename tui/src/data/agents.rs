@@ -59,7 +59,32 @@ pub fn get_default_agent() -> Option<AgentInfo> {
     all.into_iter().find(|a| a.installed)
 }
 
+pub fn create_agent_context_file(project: &Project) -> Option<std::path::PathBuf> {
+    let context_path = project.path.join(".rtb_context.md");
+    let stack_str = if project.stack.is_empty() { "-".into() } else { project.stack.join(", ") };
+    let branch_str = project.git.as_ref().map(|g| g.branch.as_str()).unwrap_or("-");
+    let readme_str = project.readme_preview.as_ref().and_then(|r| r.lines().next()).unwrap_or("-");
+
+    let content = format!(
+        "# RTB Agent Workspace Context: {}\n\n- **Project Path**: {}\n- **Status**: {:?}\n- **Detected Stack**: {}\n- **Git Branch**: {}\n- **README**: {}\n",
+        project.name,
+        project.path.display(),
+        project.status,
+        stack_str,
+        branch_str,
+        readme_str
+    );
+
+    if std::fs::write(&context_path, content).is_ok() {
+        Some(context_path)
+    } else {
+        None
+    }
+}
+
 pub fn launch_agent(project: &Project, agent_cmd: Option<&str>) -> bool {
+    let _ = create_agent_context_file(project);
+
     let cmd_to_run = match agent_cmd {
         Some(cmd) => cmd.to_string(),
         None => match get_default_agent() {
@@ -103,5 +128,37 @@ mod tests {
     #[test]
     fn test_is_command_installed_non_existent() {
         assert!(!is_command_installed("non_existent_command_12345"));
+    }
+
+    #[test]
+    fn test_create_agent_context_file() {
+        use crate::data::project::ProjectStatus;
+        let temp_dir = std::env::temp_dir().join("rtb_agent_context_rust_test");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let proj = Project {
+            name: "test_proj".into(),
+            path: temp_dir.clone(),
+            status: ProjectStatus::Active,
+            stack: vec!["Rust".into(), "Ratatui".into()],
+            last_modified: None,
+            total_size_bytes: 0,
+            dep_size_bytes: 0,
+            git: None,
+            readme_preview: Some("Test README Header".into()),
+            is_monorepo: false,
+            ci_cd: None,
+            runtime_version: None,
+        };
+
+        let context_file = create_agent_context_file(&proj);
+        assert!(context_file.is_some());
+        let path = context_file.unwrap();
+        assert!(path.exists());
+        let content = std::fs::read_to_string(path).unwrap();
+        assert!(content.contains("Rust, Ratatui"));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

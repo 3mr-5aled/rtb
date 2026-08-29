@@ -31,6 +31,39 @@ function Get-InstalledAgents {
     return $result
 }
 
+function New-RtbAgentContextFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectPath,
+        [string]$ProjectName = "",
+        [string[]]$Stack = @(),
+        [string]$Status = "Active",
+        [string]$GitBranch = "",
+        [string]$ReadmePreview = ""
+    )
+
+    if (-not (Test-Path $ProjectPath)) { return $null }
+    $name = if ($ProjectName) { $ProjectName } else { Split-Path $ProjectPath -Leaf }
+    $contextPath = Join-Path $ProjectPath ".rtb_context.md"
+
+    $stackStr = if ($Stack) { $Stack -join ', ' } else { '-' }
+    $branchStr = if ($GitBranch) { $GitBranch } else { '-' }
+    $readmeStr = if ($ReadmePreview) { $ReadmePreview.Split("`n")[0] } else { '-' }
+
+    $content = @"
+# RTB Agent Workspace Context: $name
+
+- **Project Path**: $ProjectPath
+- **Status**: $Status
+- **Detected Stack**: $stackStr
+- **Git Branch**: $branchStr
+- **README**: $readmeStr
+- **Generated At**: $(Get-Date -Format 'o')
+"@
+
+    Set-Content -Path $contextPath -Value $content -Force
+    return $contextPath
+}
+
 function Rtb-Agent {
     [CmdletBinding()]
     param(
@@ -105,6 +138,8 @@ function Rtb-Agent {
 
     # Generate project context summary
     $details = Get-ProjectDetails -ProjectPath $targetPath -Status 'Active'
+    $gitBranch = if ($details.git) { $details.git.branch } else { "" }
+    New-RtbAgentContextFile -ProjectPath $targetPath -ProjectName $targetName -Stack $details.stack -Status $details.status -GitBranch $gitBranch -ReadmePreview $details.readme_preview | Out-Null
 
     Write-RtbHeader -Title "Launching AI Agent: $($selectedAgent.name) ($($selectedAgent.command))"
     Write-Host ""
@@ -120,6 +155,7 @@ function Rtb-Agent {
     if ($details.readme_preview) {
         Write-Host "  README:        $($details.readme_preview.Split("`n")[0])" -ForegroundColor DarkGray
     }
+    Write-Host "  Context File:  .rtb_context.md" -ForegroundColor DarkCyan
     Write-Host ""
     Write-Host "Launching process '$($selectedAgent.command)' in $targetPath..." -ForegroundColor Green
 

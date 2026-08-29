@@ -77,5 +77,5 @@ if (Test-Path (Join-Path $PSScriptRoot 'src\completions\rtb.completion.ps1')) {
 }
 
 # Export functions
-Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Agent', 'Dev-Agent', 'Get-InstalledAgents', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
+Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Agent', 'Dev-Agent', 'Get-InstalledAgents', 'New-RtbAgentContextFile', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
 
