@@ -54,6 +54,15 @@ function rtb {
         'env'         { if ($Arguments) { Dev-Env @Arguments } else { Dev-Env } }
         'maintenance' { if ($Arguments) { Dev-Maintenance @Arguments } else { Dev-Maintenance } }
         'agent'       { if ($Arguments) { Rtb-Agent @Arguments } else { Rtb-Agent } }
+        'agy'         { Rtb-Agent -Agent 'agy' @Arguments }
+        'claude'      { Rtb-Agent -Agent 'claude' @Arguments }
+        'gemini'      { Rtb-Agent -Agent 'gemini' @Arguments }
+        'codex'       { Rtb-Agent -Agent 'codex' @Arguments }
+        'cursor'      { Rtb-Agent -Agent 'cursor' @Arguments }
+        'windsurf'    { Rtb-Agent -Agent 'windsurf' @Arguments }
+        'aider'       { Rtb-Agent -Agent 'aider' @Arguments }
+        'openhands'   { Rtb-Agent -Agent 'openhands' @Arguments }
+        'open'        { if ($Arguments) { Dev-Open @Arguments } else { Dev-Open } }
         'deps'        { if ($Arguments) { Rtb-Deps @Arguments } else { Rtb-Deps } }
         'workspace'   { if ($Arguments) { Rtb-Workspace @Arguments } else { Rtb-Workspace } }
         'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
@@ -91,5 +100,5 @@ if (Test-Path (Join-Path $PSScriptRoot 'src\completions\rtb.completion.ps1')) {
 }
 
 # Export functions
-Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Agent', 'Dev-Agent', 'Rtb-Commit', 'Dev-Commit', 'Get-InstalledAgents', 'New-RtbAgentContextFile', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
+Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Open', 'Dev-Open', 'Rtb-Agent', 'Dev-Agent', 'Rtb-Agy', 'Dev-Agy', 'Rtb-Claude', 'Dev-Claude', 'Rtb-Gemini', 'Dev-Gemini', 'Rtb-Codex', 'Dev-Codex', 'Rtb-Cursor', 'Dev-Cursor', 'Rtb-Windsurf', 'Dev-Windsurf', 'Rtb-Aider', 'Dev-Aider', 'Rtb-OpenHands', 'Dev-OpenHands', 'Rtb-Commit', 'Dev-Commit', 'Get-InstalledAgents', 'New-RtbAgentContextFile', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
 

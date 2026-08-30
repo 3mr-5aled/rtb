@@ -16,7 +16,13 @@ function Rtb-Help {
     Write-Host '    rtb info [project] [--json]          Display deep project intelligence'
     Write-Host '    rtb deps [outdated] [project]        Audit declared project dependencies'
     Write-Host '    rtb workspace [project]              Inspect monorepo workspace packages'
-    Write-Host '    rtb agent [project] [--agent agy]    Launch project in targeted AI Agent CLI'
+    Write-Host ''
+    Write-Host '  AI AGENT LAUNCHERS' -ForegroundColor Yellow
+    Write-Host '    rtb agy [project]                    Launch Google Antigravity CLI'
+    Write-Host '    rtb claude|gemini|codex [project]    Launch Claude / Gemini / Codex CLI'
+    Write-Host '    rtb cursor|windsurf|aider [project]  Launch Cursor / Windsurf / Aider'
+    Write-Host '    rtb agent [project] [--agy|--claude] Launch targeted agent (or rtb agent -List)'
+    Write-Host '    rtb goto <name> [--agy|--claude]     cd into project and launch agent CLI'
     Write-Host ''
     Write-Host '  LIFECYCLE' -ForegroundColor Yellow
     Write-Host '    rtb new <name> [--stack nextjs]     Create new project in 01-Active'
@@ -28,6 +34,7 @@ function Rtb-Help {
     Write-Host ''
     Write-Host '  NAVIGATION' -ForegroundColor Yellow
     Write-Host '    rtb goto <name>                      cd into any project (TAB to search)'
+    Write-Host '    rtb open <name>                      Open project folder in File Explorer'
     Write-Host '    rtb list [--active|--paused|--all]   List projects with status'
     Write-Host ''
     Write-Host '  MAINTENANCE & SAFETY' -ForegroundColor Yellow

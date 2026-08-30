@@ -23,5 +23,5 @@ Centralized execution and safety engine for system operations.
 
 ### 4. Agent Orchestrator (`AgentOrchestrator`)
 AI agent discovery, context generation, and process execution engine.
-- **Interface**: `AgentOrchestrator::launch(agent_id, project_path)`.
-- **Responsibilities**: Discovers installed AI agent CLIs (`agy`, `claude`, `gemini`, `codex`) in `PATH`, auto-generates transient project context payloads (`.rtb_context.md`), maps agent-specific execution flags, and manages cross-platform process spawning.
+- **Interface**: `AgentOrchestrator::launch(agent_id, project_path)` / `Rtb-Agent`, `rtb <agent-shorthand>`, `rtb goto --<agent>`.
+- **Responsibilities**: Discovers installed AI agent CLIs (`agy`, `claude`, `gemini`, `codex`, `cursor`, `windsurf`, `aider`, `openhands`) in `PATH`, auto-generates transient project context payloads (`.rtb_context.md`), maps agent shorthand commands and `--<agent>` flags, and manages cross-platform process spawning.

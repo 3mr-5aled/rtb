@@ -2,7 +2,7 @@ use crate::app::App;
 use crate::data::deps::format_bytes;
 use crate::data::project::ProjectStatus;
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -10,50 +10,35 @@ use ratatui::{
 };
 use std::collections::HashMap;
 
-const ASCII_LOGO: &[&str] = &[
-    r"  &&&&&&&&&&&&&&&         &&&&&&&&&&&&&&&&&&X    X&&&&&&&&&&&&&&  ",
-    r"  &&&&&&&&&&&&&&&&&&     &&&&&&&&&&&&&&&&&&&&    &&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&        &&&&&&&          &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&&&&&&&&&&&&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&  ",
-    r"  &&&&&&&&&&&&&&&&              &&&&&&           &&&&&&         &&&&&",
-    r"  &&&&&     &&&&&&&             &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&        &&&&&&           &&&&&&           &&&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&         &&&&&&          X&&&&X           X&&&&&&&&&&&&&&&    ",
-];
-
 pub fn draw(f: &mut Frame, app: &App, area: Rect) {
+    let logo_lines = super::get_logo_lines();
+    let logo_line_count = logo_lines.len() as u16;
+    let max_logo_height = if area.height < 32 {
+        logo_line_count.min(6)
+    } else {
+        logo_line_count.min(12)
+    };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(11), // Centered Logo Banner (No border)
+            Constraint::Length(max_logo_height), // Responsive Logo Banner (No border)
             Constraint::Length(6),  // Workspace Pulse
-            Constraint::Min(10),    // Quick Jump + Action Items
+            Constraint::Min(8),     // Quick Jump + Action Items
             Constraint::Length(5),  // Tech Stack Ecosystem Bar
         ])
         .split(area);
 
-    draw_logo_banner(f, chunks[0]);
+    draw_logo_banner(f, chunks[0], logo_lines);
     draw_workspace_pulse(f, app, chunks[1]);
     draw_middle_row(f, app, chunks[2]);
     draw_tech_stack_ecosystem(f, app, chunks[3]);
 }
 
-fn draw_logo_banner(f: &mut Frame, area: Rect) {
-    let mut lines = Vec::new();
-    for line in ASCII_LOGO {
-        lines.push(Line::from(Span::styled(
-            *line,
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        )));
-    }
-
-    let block = Block::default(); // No border
-    let para = Paragraph::new(lines).block(block).alignment(Alignment::Center);
-    f.render_widget(para, area);
+fn draw_logo_banner(f: &mut Frame, area: Rect, lines: Vec<Line>) {
+    super::render_logo_block(f, area, &lines);
 }
+
 
 fn draw_workspace_pulse(f: &mut Frame, app: &App, area: Rect) {
     let total = app.projects.len();

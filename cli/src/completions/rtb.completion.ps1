@@ -8,9 +8,10 @@ $rtbCompleter = {
 
     $subCommands = @(
         'init', 'run', 'build', 'test', 'commit', 'info', 'agent', 'deps', 'workspace', 'upgrade',
-        'goto', 'new', 'pause', 'resume', 'deploy', 'archive',
+        'goto', 'open', 'new', 'pause', 'resume', 'deploy', 'archive',
         'unarchive', 'list', 'health', 'clean', 'index',
-        'backup', 'guard', 'env', 'maintenance', 'ui', 'help'
+        'backup', 'guard', 'env', 'maintenance', 'ui', 'help',
+        'agy', 'claude', 'gemini', 'codex', 'cursor', 'windsurf', 'aider', 'openhands'
     )
 
     # 1. Complete subcommand (first argument after binary/function name)
@@ -26,10 +27,27 @@ $rtbCompleter = {
     # 2. Complete subsequent arguments based on active subcommand
     $sub = $elements[1].Extent.Text.ToLower()
 
+    $agentFlags = @('--agy', '--claude', '--gemini', '--codex', '--cursor', '--windsurf', '--aider', '--openhands')
+    $agentNames = @('agy', 'claude', 'gemini', 'codex', 'cursor', 'windsurf', 'aider', 'openhands')
+
     switch ($sub) {
-        { $_ -in 'goto', 'run', 'build', 'test', 'info', 'agent' } {
-            if ($sub -eq 'agent' -and $count -gt 2) {
-                @('agy', 'claude', 'gemini', 'codex', '--list') |
+        { $_ -in 'goto', 'open', 'run', 'build', 'test', 'info', 'agent', 'agy', 'claude', 'gemini', 'codex', 'cursor', 'windsurf', 'aider', 'openhands' } {
+            if ($sub -eq 'agent') {
+                if ($wordToComplete -like '--*') {
+                    ($agentFlags + '--list') |
+                        Where-Object { $_ -like "$wordToComplete*" } |
+                        ForEach-Object {
+                            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                        }
+                } else {
+                    ($agentNames + '--list' + (Get-AllProjectNames)) |
+                        Where-Object { $_ -like "$wordToComplete*" } |
+                        ForEach-Object {
+                            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                        }
+                }
+            } elseif ($sub -eq 'goto' -and $wordToComplete -like '--*') {
+                $agentFlags |
                     Where-Object { $_ -like "$wordToComplete*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)

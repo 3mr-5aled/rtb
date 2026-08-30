@@ -6,36 +6,34 @@ use ratatui::{
     Frame,
 };
 
-const ASCII_LOGO_TINY: &[&str] = &[
-    r"  &&&&&&&&&&&&&&&         &&&&&&&&&&&&&&&&&&X    X&&&&&&&&&&&&&&  ",
-    r"  &&&&&&&&&&&&&&&&&&     &&&&&&&&&&&&&&&&&&&&    &&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&        &&&&&&&          &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&         &&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&&&&&&&&&&&&&&&&          &&&&&&           &&&&&&&&&&&&&&&&&&  ",
-    r"  &&&&&&&&&&&&&&&&              &&&&&&           &&&&&&         &&&&&",
-    r"  &&&&&     &&&&&&&             &&&&&&           &&&&&&        &&&&&&",
-    r"  &&&&&        &&&&&&           &&&&&&           &&&&&&&&&&&&&&&&&&& ",
-    r"  &&&&&         &&&&&&          X&&&&X           X&&&&&&&&&&&&&&&    ",
-];
-
 pub fn draw(f: &mut Frame, area: Rect) {
     let popup_area = centered_rect(68, 88, area);
 
     f.render_widget(Clear, popup_area);
 
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" RTB (ﺐﺘّﺭ) Help & Keybindings ([Esc] or [?] to close) ")
+        .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .title_alignment(Alignment::Center);
+
+    let inner_area = block.inner(popup_area);
+    f.render_widget(block, popup_area);
+
+    let logo_lines = super::get_logo_lines();
+    let logo_height = logo_lines.len() as u16;
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(logo_height),
+            Constraint::Min(10),
+        ])
+        .split(inner_area);
+
+    super::render_logo_block(f, chunks[0], &logo_lines);
+
     let mut lines = Vec::new();
-    lines.push(Line::from(""));
-
-    // ASCII Art Logo
-    for line in ASCII_LOGO_TINY {
-        lines.push(Line::from(Span::styled(
-            format!("  {}", line),
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        )));
-    }
-
-    lines.push(Line::from(""));
     lines.push(Line::from(vec![
         Span::styled("  GLOBAL KEYS", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
     ]));
@@ -131,14 +129,8 @@ pub fn draw(f: &mut Frame, area: Rect) {
         Span::styled("        Prune selected dependency folders", Style::default().fg(Color::White)),
     ]));
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" RTB (ﺐﺘّﺭ) Help & Keybindings ([Esc] or [?] to close) ")
-        .title_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
-        .title_alignment(Alignment::Center);
-
-    let para = Paragraph::new(lines).block(block);
-    f.render_widget(para, popup_area);
+    let para = Paragraph::new(lines);
+    f.render_widget(para, chunks[1]);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {

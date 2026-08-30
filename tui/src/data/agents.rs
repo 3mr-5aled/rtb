@@ -39,6 +39,10 @@ pub fn get_installed_agents() -> Vec<AgentInfo> {
         ("Claude Code", "claude"),
         ("Gemini CLI", "gemini"),
         ("Codex CLI", "codex"),
+        ("Cursor", "cursor"),
+        ("Windsurf", "windsurf"),
+        ("Aider", "aider"),
+        ("OpenHands", "openhands"),
     ];
 
     agents
@@ -116,13 +120,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_installed_agents_returns_four_agents() {
+    fn test_get_installed_agents_returns_eight_agents() {
         let agents = get_installed_agents();
-        assert_eq!(agents.len(), 4);
+        assert_eq!(agents.len(), 8);
         assert_eq!(agents[0].command, "agy");
         assert_eq!(agents[1].command, "claude");
         assert_eq!(agents[2].command, "gemini");
         assert_eq!(agents[3].command, "codex");
+        assert_eq!(agents[4].command, "cursor");
+        assert_eq!(agents[5].command, "windsurf");
+        assert_eq!(agents[6].command, "aider");
+        assert_eq!(agents[7].command, "openhands");
     }
 
     #[test]

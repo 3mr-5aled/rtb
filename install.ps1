@@ -11,9 +11,17 @@ if (-not $scriptRoot) { $scriptRoot = 'D:\02-Projects\01-Development\01-Active\r
 
 $cliPsdPath = Join-Path $scriptRoot "cli\rtb.psd1"
 $tuiDir     = Join-Path $scriptRoot "tui"
-$scriptsDir = "D:\06-Tools\scripts"
+$scriptsDir = if ($env:RTB_BIN_DIR) {
+    $env:RTB_BIN_DIR
+} elseif (Test-Path "D:\06-Tools\scripts") {
+    "D:\06-Tools\scripts"
+} else {
+    $defaultBin = Join-Path ([Environment]::GetFolderPath('UserProfile')) ".rtb\bin"
+    if (-not (Test-Path $defaultBin)) { New-Item -ItemType Directory -Path $defaultBin -Force | Out-Null }
+    $defaultBin
+}
 
-# 1. Ensure scripts directory & legacy config compatibility paths exist
+# 1. Ensure scripts directory & user config paths exist
 if (-not (Test-Path $scriptsDir)) {
     New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
     Write-Host "Created tools scripts folder: $scriptsDir" -ForegroundColor Gray
@@ -72,6 +80,13 @@ if ($cargoCmd) {
     } else {
         Write-Host "Warning: TUI binary not built yet. Run 'cargo build --release' inside tui/ when Rust is available." -ForegroundColor Yellow
     }
+}
+
+# Always deploy logo.txt next to the binary so rtbtui picks it up at runtime
+$logoSrc = Join-Path $scriptRoot "logo.txt"
+if (Test-Path $logoSrc) {
+    Copy-Item $logoSrc "$scriptsDir\logo.txt" -Force
+    Write-Host "Deployed logo.txt to $scriptsDir" -ForegroundColor Green
 }
 
 # 3. Configure PowerShell Profiles (both Windows PowerShell 5.1 & PowerShell 7)

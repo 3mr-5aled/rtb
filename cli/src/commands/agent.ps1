@@ -2,7 +2,7 @@
 .SYNOPSIS
     Rtb-Agent — AI Agent Discovery & Launcher for RTB projects.
 .DESCRIPTION
-    Discovers installed AI agent CLIs (agy, claude, gemini, codex) in system PATH,
+    Discovers installed AI agent CLIs (agy, claude, gemini, codex, cursor, windsurf, aider, openhands) in system PATH,
     generates project context summary, and launches the target agent in the project directory.
 #>
 
@@ -14,7 +14,11 @@ function Get-InstalledAgents {
         @{ Name = 'Google Antigravity'; Command = 'agy' },
         @{ Name = 'Claude Code';        Command = 'claude' },
         @{ Name = 'Gemini CLI';         Command = 'gemini' },
-        @{ Name = 'Codex CLI';          Command = 'codex' }
+        @{ Name = 'Codex CLI';          Command = 'codex' },
+        @{ Name = 'Cursor';             Command = 'cursor' },
+        @{ Name = 'Windsurf';           Command = 'windsurf' },
+        @{ Name = 'Aider';              Command = 'aider' },
+        @{ Name = 'OpenHands';          Command = 'openhands' }
     )
 
     $result = @()
@@ -73,8 +77,29 @@ function Rtb-Agent {
         [Parameter(Position = 1)]
         [string]$Agent,
 
-        [Switch]$List
+        [Switch]$List,
+
+        [Switch]$Agy,
+        [Switch]$Claude,
+        [Switch]$Gemini,
+        [Switch]$Codex,
+        [Switch]$Cursor,
+        [Switch]$Windsurf,
+        [Switch]$Aider,
+        [Switch]$OpenHands
     )
+
+    # Flag parsing precedence if -Agent not explicitly passed
+    if (-not $Agent) {
+        if ($Agy)       { $Agent = 'agy' }
+        elseif ($Claude)    { $Agent = 'claude' }
+        elseif ($Gemini)    { $Agent = 'gemini' }
+        elseif ($Codex)     { $Agent = 'codex' }
+        elseif ($Cursor)    { $Agent = 'cursor' }
+        elseif ($Windsurf)  { $Agent = 'windsurf' }
+        elseif ($Aider)     { $Agent = 'aider' }
+        elseif ($OpenHands) { $Agent = 'openhands' }
+    }
 
     $installedAgents = Get-InstalledAgents
 
@@ -84,7 +109,7 @@ function Rtb-Agent {
         foreach ($a in $installedAgents) {
             $statusStr = if ($a.installed) { "[Installed]" } else { "[Not Found]" }
             $color = if ($a.installed) { "Green" } else { "DarkGray" }
-            Write-Host ("  {0,-20} ({1,-8}) {2}" -f $a.name, $a.command, $statusStr) -ForegroundColor $color
+            Write-Host ("  {0,-20} ({1,-10}) {2}" -f $a.name, $a.command, $statusStr) -ForegroundColor $color
         }
         Write-Host ""
         return $installedAgents
@@ -131,7 +156,7 @@ function Rtb-Agent {
     }
 
     if (-not $selectedAgent -or -not $selectedAgent.installed) {
-        Write-Host "No installed AI agent found in PATH (agy, claude, gemini, codex)." -ForegroundColor Red
+        Write-Host "No installed AI agent found in PATH (agy, claude, gemini, codex, cursor, windsurf, aider, openhands)." -ForegroundColor Red
         Write-Host "Run 'rtb agent -List' to check agent status." -ForegroundColor Gray
         return
     }
@@ -171,5 +196,30 @@ function Dev-Agent {
     Rtb-Agent @args
 }
 
-
 function Invoke-RtbAgent { Rtb-Agent @args }
+
+# Shorthand Agent Launchers
+function Rtb-Agy { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'agy' }
+function Dev-Agy { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'agy' }
+
+function Rtb-Claude { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'claude' }
+function Dev-Claude { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'claude' }
+
+function Rtb-Gemini { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'gemini' }
+function Dev-Gemini { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'gemini' }
+
+function Rtb-Codex { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'codex' }
+function Dev-Codex { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'codex' }
+
+function Rtb-Cursor { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'cursor' }
+function Dev-Cursor { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'cursor' }
+
+function Rtb-Windsurf { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'windsurf' }
+function Dev-Windsurf { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'windsurf' }
+
+function Rtb-Aider { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'aider' }
+function Dev-Aider { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'aider' }
+
+function Rtb-OpenHands { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'openhands' }
+function Dev-OpenHands { param([string]$ProjectName) Rtb-Agent -ProjectName $ProjectName -Agent 'openhands' }
+

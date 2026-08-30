@@ -1,18 +1,22 @@
 # RTB — رتّب (Repository & Tooling Base)
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)
-![Rust](https://img.shields.io/badge/Rust-1.93+-orange.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![Version](https://img.shields.io/badge/version-v0.2.0--beta-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
+[![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)](https://microsoft.com/powershell)
+[![Rust](https://img.shields.io/badge/Rust-1.80+-orange.svg)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**RTB — رتّب** is a professional, cross-platform Developer Project Operations Tool featuring a robust PowerShell CLI (`rtb` / `dev`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, customizable live execution, and safety-first operations.
+> [!NOTE]
+> **Beta Pre-Release**: RTB is currently in active beta testing. We welcome feedback, bug reports, and suggestions via [GitHub Issues](https://github.com/3mr-5aled/rtb/issues) and [Discussions](https://github.com/3mr-5aled/rtb/discussions)!
+
+**RTB — رتّب** is a fast, cross-platform Developer Project Operations Tool featuring a PowerShell CLI (`rtb`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, customizable live execution, and safe workspace management.
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-rtb-command-tool/
+rtb/
 ├── config/
 │   └── rtb.config.json     # Default JSON configuration template
 ├── cli/                    # PowerShell CLI module source & commands
@@ -27,39 +31,60 @@ rtb-command-tool/
 │   ├── Cargo.toml
 │   ├── Cargo.lock
 │   └── src/
-├── install.ps1             # Installer & profile integrator script
+├── .github/                # Workflows & Issue templates
+│   ├── workflows/release.yml
+│   └── ISSUE_TEMPLATE/
+├── install.ps1             # Automated installer & profile integrator
 ├── PROJECT.md              # Project metadata
+├── LICENSE                 # MIT License
 └── README.md
 ```
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Quick Start & Installation
 
-Run the installer script in PowerShell:
+### Option 1: Automatic Installer (Recommended)
 
-```powershell
-pwsh -File 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\install.ps1'
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/3mr-5aled/rtb.git
+   cd rtb
+   ```
 
-This will automatically:
+2. Run the PowerShell setup script:
+   ```powershell
+   pwsh -File ./install.ps1
+   ```
 
-1. Build release binaries and install `rtbtui.exe` into `D:\06-Tools\scripts\` (in your `PATH`).
-2. Configure `Import-Module '.../cli/rtb.psd1' -Force` in your PowerShell `$PROFILE`.
-3. Export `rtb` and `dev` CLI commands with dynamic tab completion into your terminal sessions.
+   This will:
+   - Build `rtbtui` binary via Cargo (if Rust is installed) or configure existing binaries.
+   - Set up the PowerShell module autoload in your `$PROFILE`.
+   - Register dynamic tab completions for `rtb` commands.
+
+3. Initialize your workspace roots:
+   ```powershell
+   rtb init
+   ```
 
 ---
 
-## 🛠️ CLI Reference (`rtb` / `dev`)
+### Option 2: Pre-compiled Binaries
+
+Download pre-built standalone binaries directly from [GitHub Releases](https://github.com/3mr-5aled/rtb/releases).
+
+---
+
+## 🛠️ CLI Command Reference (`rtb`)
 
 | Command                                             | Description                                                       |
 | --------------------------------------------------- | ----------------------------------------------------------------- |
 | `rtb init`                                          | Initialize user configuration in `%APPDATA%\rtb\rtb.config.json`  |
 | `rtb run [project]`                                 | Auto-detect and run project dev/start scripts                     |
-| `rtb commit [-Message <str>] [-Amend] [-Push]`      | Interactive CLI pop up & prompt to write and commit git changes   |
+| `rtb commit [-Message <str>] [-Amend] [-Push]`      | Interactive CLI prompt to stage, commit, and push git changes     |
 | `rtb build [project]`                               | Auto-detect and run project build scripts                         |
 | `rtb test [project]`                                | Auto-detect and run project test suites                           |
-| `rtb goto <project>`                                | Tab-complete fuzzy project navigation                             |
+| `rtb goto <project>`                                | Tab-complete fuzzy project directory navigation                   |
 | `rtb ui` / `rtbtui`                                 | Launch interactive Ratatui TUI operations center                  |
 | `rtb list [--active\|--paused\|--deployed\|--vibe]` | Filtered project status listing                                   |
 | `rtb new <name>`                                    | Scaffold a new project                                            |
@@ -69,26 +94,31 @@ This will automatically:
 | `rtb archive <name>`                                | Compress project into `.tar.gz` backup archive                    |
 | `rtb unarchive <name>`                              | Restore archived project archive                                  |
 | `rtb health`                                        | Perform Git repository health overview scan                       |
-| `rtb clean [--dry-run\|--force]`                    | Dependency pruning with safety dry-run preview                    |
+| `rtb clean [--dry-run\|--force]`                    | Safe dependency pruning (`node_modules`, `target`, `.venv`)       |
 | `rtb --version` / `rtb --help`                      | View version and available command details                        |
 
 ---
 
 ## 💻 Interactive TUI (`rtbtui` / `rtb ui`)
 
-Launch by running `rtb ui` or `rtbtui` directly in your terminal.
+Launch the interactive dashboard with:
+```bash
+rtb ui
+# or
+rtbtui
+```
 
 ### Key Features & Shortcuts
 - **`1-6` / `Tab`**: Switch views (1: Dashboard, 2: Projects, 3: Git Health, 4: Dep Cleaner, 5: Maintenance, 6: Dev Ports)
-- **`↑/↓` or `j/k`**: Navigate list precision
+- **`↑/↓` or `j/k`**: List navigation
 - **`x`**: **Run Live Program** — Spawns project dev server (`npm run dev`, `cargo run`, `python main.py`) in an interactive terminal window
-- **`f` in Git Health**: Cycle Git repository filters (`ALL`, `Needs Attention`, `Local Clean`, `Synced`, `Non-Git`)
-- **`c` in Git Health**: Trigger commit dialog popup
+- **`f` (Git Health)**: Cycle Git repository filters (`ALL`, `Needs Attention`, `Local Clean`, `Synced`, `Non-Git`)
+- **`c` (Git Health)**: Open quick commit dialog
 - **`R`**: Multi-threaded workspace refresh with live spinner indicator
 - **`/`**: Global fuzzy search modal
 - **`?`**: Toggle help and keyboard shortcuts overlay
 - **`v`**: Open interactive Markdown viewer (`README.md`)
-- **`q`**: Gracefully exit without terminal state corruption
+- **`q`**: Gracefully exit
 
 ---
 
@@ -96,17 +126,25 @@ Launch by running `rtb ui` or `rtbtui` directly in your terminal.
 
 RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority:
 
-1. User Profile Configuration (`%APPDATA%\rtb\rtb.config.json` or `~/.config/rtb/rtb.config.json`)
-2. Repository Fallback (`config/rtb.config.json`)
+1. **User Profile**: `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Linux/macOS)
+2. **Repository Fallback**: `config/rtb.config.json`
 
-To generate your personalized user configuration, run:
+To generate your personalized user configuration:
 
-```bash
+```powershell
 rtb init
 ```
 
 ---
 
+## 🧪 Beta Feedback & Bug Reports
+
+Found a bug or have a suggestion?
+- **Bug Reports**: Open an issue using the [Beta Bug Report Template](https://github.com/3mr-5aled/rtb/issues/new?template=bug_report.md).
+- **Discussions & Ideas**: Join our [GitHub Discussions](https://github.com/3mr-5aled/rtb/discussions).
+
+---
+
 ## 📄 License
 
-[MIT License](LICENSE) © 2026 devamr
+Distributed under the [MIT License](LICENSE). © 2026 Amr Khaled ([@3mr-5aled](https://github.com/3mr-5aled)).

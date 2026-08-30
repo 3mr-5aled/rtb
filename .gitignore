@@ -1,0 +1,29 @@
+# Rust build artifacts
+target/
+**/target/
+**/*.rs.bk
+*.pdb
+
+# PowerShell temporary and cache files
+*.log
+*.tmp
+pester-results.xml
+
+# IDE and Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment and sensitive keys
+.env
+.env.*
+!.env.example
+
+# Scratch and personal dev notes
+.scratch/
+.rtb_context.md
