@@ -24,17 +24,24 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
             $badConfigFile = Join-Path $badConfigDir "rtb.config.json"
             Set-Content -Path $badConfigFile -Value '{"projectRoots": { INVALID_JSON_SYNTAX ' -Force
 
-            # Backup original APPDATA/HOME config if any
-            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
-            $backupFile = Join-Path $appDataDir "rtb.config.json.m6bak"
-            $targetFile = Join-Path $appDataDir "rtb.config.json"
-            $hadOriginal = Test-Path $targetFile
-            if ($hadOriginal) { Move-Item -Path $targetFile -Destination $backupFile -Force }
+            # Backup original user profile and APPDATA configs if any
+            $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+            $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
+            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+
+            $dotFile = Join-Path $dotConfigDir 'rtb.config.json'
+            $appFile = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json' } else { $null }
+
+            $dotBak = Join-Path $dotConfigDir 'rtb.config.json.m6bak'
+            $appBak = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json.m6bak' } else { $null }
+
+            if (Test-Path $dotFile) { Move-Item -Path $dotFile -Destination $dotBak -Force }
+            if ($appFile -and (Test-Path $appFile)) { Move-Item -Path $appFile -Destination $appBak -Force }
 
             try {
-                # Place corrupted file in AppData
-                if (-not (Test-Path $appDataDir)) { New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null }
-                Copy-Item -Path $badConfigFile -Destination $targetFile -Force
+                # Place corrupted file in dotConfigDir
+                if (-not (Test-Path $dotConfigDir)) { New-Item -ItemType Directory -Path $dotConfigDir -Force | Out-Null }
+                Copy-Item -Path $badConfigFile -Destination $dotFile -Force
 
                 # 1. Get-RtbConfig
                 $cfg = try { Get-RtbConfig -ErrorAction SilentlyContinue } catch { $null }
@@ -57,8 +64,10 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 $parsed.stack | Should Not BeNullOrEmpty
             }
             finally {
-                if (Test-Path $targetFile) { Remove-Item -Path $targetFile -Force -ErrorAction SilentlyContinue }
-                if ($hadOriginal -and (Test-Path $backupFile)) { Move-Item -Path $backupFile -Destination $targetFile -Force }
+                if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
+                if ($appFile -and (Test-Path $appFile)) { Remove-Item -Path $appFile -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $dotBak) { Move-Item -Path $dotBak -Destination $dotFile -Force }
+                if ($appBak -and (Test-Path $appBak)) { Move-Item -Path $appBak -Destination $appFile -Force }
             }
         }
 

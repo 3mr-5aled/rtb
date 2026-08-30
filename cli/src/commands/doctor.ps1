@@ -96,18 +96,18 @@ function Rtb-Doctor {
     Write-Host ''
     Write-Host '  TUI Binary' -ForegroundColor Cyan
     $tuiCmd = Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue
-    $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtbtui.exe' } else { $null }
-    $userConfigBinary = Join-Path (if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }) '.config\rtb\bin\rtbtui.exe'
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $userConfigBinary = Join-Path $userHomeDir '.config\rtb\bin\rtbtui.exe'
 
     $localTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtbtui.exe'
     $localDebugTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtbtui.exe'
     $localBuilt = (Test-Path $localTarget) -or (Test-Path $localDebugTarget)
 
-    $installedBinaryPath = if ($tuiCmd) {
-        $tuiCmd.Source
+    $installedBinaryPath = if ($tuiCmd -and ($tuiCmd.Source -or $tuiCmd.Name)) {
+        if ($tuiCmd.Source) { $tuiCmd.Source } else { $tuiCmd.Name }
     } elseif ($appDataBinary -and (Test-Path $appDataBinary)) {
         $appDataBinary
-    } elseif (Test-Path $userConfigBinary) {
+    } elseif ($userConfigBinary -and (Test-Path $userConfigBinary)) {
         $userConfigBinary
     } else {
         $null

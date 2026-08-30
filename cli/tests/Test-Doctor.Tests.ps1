@@ -116,6 +116,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
         Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'rtbtui' }
+        Mock Test-Path { return $false } -ParameterFilter { $Path -like '*rtbtui.exe*' }
         $res = Rtb-Doctor
         $res | Should Be $false
     }
@@ -133,7 +134,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
             abandoned  = $script:tempBase
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
-        Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
+        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
         Mock Get-Command { return $null } -ParameterFilter { $Name -in @('node', 'cargo', 'python', 'tar') }
         $res = Rtb-Doctor
         $res | Should Be $true
@@ -152,7 +153,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
             abandoned  = $script:tempBase
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
-        Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
+        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
         Mock Get-Command { return $null } -ParameterFilter { $Name -in @('agy','claude','gemini','codex','cursor','windsurf','aider','openhands') }
         $res = Rtb-Doctor
         $res | Should Be $true
