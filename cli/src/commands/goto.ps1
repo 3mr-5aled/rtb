@@ -98,4 +98,5 @@ function Dev-Goto {
     }
 }
 
+function Rtb-Goto { Dev-Goto @args }
 function Set-RtbLocation { Dev-Goto @args }
