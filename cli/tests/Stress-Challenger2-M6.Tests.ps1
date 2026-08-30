@@ -72,15 +72,22 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
         }
 
         It "handles zero-byte empty config file gracefully" {
-            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
-            $backupFile = Join-Path $appDataDir "rtb.config.json.m6bak2"
-            $targetFile = Join-Path $appDataDir "rtb.config.json"
-            $hadOriginal = Test-Path $targetFile
-            if ($hadOriginal) { Move-Item -Path $targetFile -Destination $backupFile -Force }
+            $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+            $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
+            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+
+            $dotFile = Join-Path $dotConfigDir 'rtb.config.json'
+            $appFile = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json' } else { $null }
+
+            $dotBak = Join-Path $dotConfigDir 'rtb.config.json.m6bak2'
+            $appBak = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json.m6bak2' } else { $null }
+
+            if (Test-Path $dotFile) { Move-Item -Path $dotFile -Destination $dotBak -Force }
+            if ($appFile -and (Test-Path $appFile)) { Move-Item -Path $appFile -Destination $appBak -Force }
 
             try {
-                if (-not (Test-Path $appDataDir)) { New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null }
-                Set-Content -Path $targetFile -Value "" -Force
+                if (-not (Test-Path $dotConfigDir)) { New-Item -ItemType Directory -Path $dotConfigDir -Force | Out-Null }
+                Set-Content -Path $dotFile -Value "" -Force
 
                 $cfg = Get-RtbConfig -ErrorAction SilentlyContinue
                 $cfg | Should BeNullOrEmpty
@@ -93,20 +100,29 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 $parsed.stack | Should Not BeNullOrEmpty
             }
             finally {
-                if (Test-Path $targetFile) { Remove-Item -Path $targetFile -Force -ErrorAction SilentlyContinue }
-                if ($hadOriginal -and (Test-Path $backupFile)) { Move-Item -Path $backupFile -Destination $targetFile -Force }
+                if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
+                if ($appFile -and (Test-Path $appFile)) { Remove-Item -Path $appFile -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $dotBak) { Move-Item -Path $dotBak -Destination $dotFile -Force }
+                if ($appBak -and (Test-Path $appBak)) { Move-Item -Path $appBak -Destination $appFile -Force }
             }
         }
 
         It "handles config with null or missing project roots gracefully" {
-            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
-            $backupFile = Join-Path $appDataDir "rtb.config.json.m6bak3"
-            $targetFile = Join-Path $appDataDir "rtb.config.json"
-            $hadOriginal = Test-Path $targetFile
-            if ($hadOriginal) { Move-Item -Path $targetFile -Destination $backupFile -Force }
+            $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+            $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
+            $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+
+            $dotFile = Join-Path $dotConfigDir 'rtb.config.json'
+            $appFile = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json' } else { $null }
+
+            $dotBak = Join-Path $dotConfigDir 'rtb.config.json.m6bak3'
+            $appBak = if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json.m6bak3' } else { $null }
+
+            if (Test-Path $dotFile) { Move-Item -Path $dotFile -Destination $dotBak -Force }
+            if ($appFile -and (Test-Path $appFile)) { Move-Item -Path $appFile -Destination $appBak -Force }
 
             try {
-                if (-not (Test-Path $appDataDir)) { New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null }
+                if (-not (Test-Path $dotConfigDir)) { New-Item -ItemType Directory -Path $dotConfigDir -Force | Out-Null }
                 $partialConfig = @{
                     version = "0.2.0-beta"
                     projectRoots = @{
@@ -114,7 +130,7 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                         paused = $null
                     }
                 } | ConvertTo-Json
-                Set-Content -Path $targetFile -Value $partialConfig -Force
+                Set-Content -Path $dotFile -Value $partialConfig -Force
 
                 $names = Get-AllProjectNames
                 $names.Count | Should Be 0
@@ -126,8 +142,10 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 $fuzzy.Count | Should Be 0
             }
             finally {
-                if (Test-Path $targetFile) { Remove-Item -Path $targetFile -Force -ErrorAction SilentlyContinue }
-                if ($hadOriginal -and (Test-Path $backupFile)) { Move-Item -Path $backupFile -Destination $targetFile -Force }
+                if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
+                if ($appFile -and (Test-Path $appFile)) { Remove-Item -Path $appFile -Force -ErrorAction SilentlyContinue }
+                if (Test-Path $dotBak) { Move-Item -Path $dotBak -Destination $dotFile -Force }
+                if ($appBak -and (Test-Path $appBak)) { Move-Item -Path $appBak -Destination $appFile -Force }
             }
         }
     }
