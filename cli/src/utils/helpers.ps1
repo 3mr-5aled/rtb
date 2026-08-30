@@ -3,11 +3,11 @@
 function Get-RtbConfig {
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
     $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
-    $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+    $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb/rtb.config.json' } else { $null }
 
     $paths = @(
         (Join-Path $dotConfigDir 'rtb.config.json'),
-        (if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json' } else { $null }),
+        $appDataPath,
         (Join-Path $PSScriptRoot '..\..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\..\config\dev.config.json')
