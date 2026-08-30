@@ -6,7 +6,8 @@ function Rtb-Init {
     
     Write-RtbHeader -Title "Initialize Configuration"
     
-    $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $userConfigDir = Join-Path $userHomeDir '.config/rtb'
     $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
     
     if (-not (Test-Path $userConfigDir)) {

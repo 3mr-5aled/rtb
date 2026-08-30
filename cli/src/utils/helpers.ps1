@@ -1,11 +1,13 @@
 # Shared utility functions for RTB CLI
 
 function Get-RtbConfig {
-    $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
-    $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
-    
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
+    $appDataDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+
     $paths = @(
-        $userConfigFile,
+        (Join-Path $dotConfigDir 'rtb.config.json'),
+        (if ($appDataDir) { Join-Path $appDataDir 'rtb.config.json' } else { $null }),
         (Join-Path $PSScriptRoot '..\..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\..\config\dev.config.json')
@@ -15,7 +17,7 @@ function Get-RtbConfig {
             return Get-Content $p -Raw | ConvertFrom-Json
         }
     }
-    Write-Error 'rtb config not found. Expected at rtb.config.json or user config directory'
+    Write-Error 'rtb config not found. Expected at %USERPROFILE%\.config\rtb\rtb.config.json or %APPDATA%\rtb\rtb.config.json'
     return $null
 }
 
