@@ -13,12 +13,10 @@ $cliPsdPath = Join-Path $scriptRoot "cli\rtb.psd1"
 $tuiDir     = Join-Path $scriptRoot "tui"
 $scriptsDir = if ($env:RTB_BIN_DIR) {
     $env:RTB_BIN_DIR
-} elseif (Test-Path "D:\06-Tools\scripts") {
-    "D:\06-Tools\scripts"
+} elseif ($env:APPDATA) {
+    Join-Path $env:APPDATA 'rtb\bin'
 } else {
-    $defaultBin = Join-Path ([Environment]::GetFolderPath('UserProfile')) ".rtb\bin"
-    if (-not (Test-Path $defaultBin)) { New-Item -ItemType Directory -Path $defaultBin -Force | Out-Null }
-    $defaultBin
+    Join-Path ([Environment]::GetFolderPath('UserProfile')) '.config\rtb\bin'
 }
 
 # 1. Ensure scripts directory & user config paths exist

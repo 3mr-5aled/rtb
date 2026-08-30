@@ -97,7 +97,7 @@ function Rtb-Doctor {
     Write-Host '  TUI Binary' -ForegroundColor Cyan
     $tuiCmd = Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue
     $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtbtui.exe' } else { $null }
-    $customScriptsBinary = 'D:\06-Tools\scripts\rtbtui.exe'
+    $userConfigBinary = Join-Path (if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }) '.config\rtb\bin\rtbtui.exe'
 
     $localTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtbtui.exe'
     $localDebugTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtbtui.exe'
@@ -107,8 +107,8 @@ function Rtb-Doctor {
         $tuiCmd.Source
     } elseif ($appDataBinary -and (Test-Path $appDataBinary)) {
         $appDataBinary
-    } elseif (Test-Path $customScriptsBinary) {
-        $customScriptsBinary
+    } elseif (Test-Path $userConfigBinary) {
+        $userConfigBinary
     } else {
         $null
     }
