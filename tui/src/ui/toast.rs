@@ -76,6 +76,7 @@ impl ToastQueue {
         self.toasts.retain(|t| !t.is_expired());
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.toasts.len()
     }

@@ -8,6 +8,7 @@ use ratatui::{
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ConfirmAction {
     PauseProject(String),
     ResumeProject(String),

@@ -19,14 +19,12 @@ Built with Rust + Ratatui. Companion to the [`rtb` CLI](../cli).
 
 Run the installer script:
 ```powershell
-pwsh -File 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\install.ps1'
+pwsh -File install.ps1
 ```
 
 Or build manually with Cargo:
 ```powershell
-cd D:\02-Projects\01-Development\01-Active\rtb-command-tool\tui
-cargo build --release
-Copy-Item target\release\rtbtui.exe D:\06-Tools\scripts\rtbtui.exe
+cargo build --release -p rtbtui
 ```
 
 Run directly from any terminal:

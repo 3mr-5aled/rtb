@@ -81,10 +81,12 @@ impl Project {
         }
     }
 
+    #[allow(dead_code)]
     pub fn total_size_str(&self) -> String {
         format_bytes(self.total_size_bytes)
     }
 
+    #[allow(dead_code)]
     pub fn dep_size_str(&self) -> String {
         format_bytes(self.dep_size_bytes)
     }
@@ -116,6 +118,7 @@ impl Project {
     }
 }
 
+#[allow(dead_code)]
 fn format_bytes(bytes: u64) -> String {
     if bytes == 0 {
         return "-".into();

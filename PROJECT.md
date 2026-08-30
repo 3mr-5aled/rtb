@@ -25,8 +25,8 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 | M2 | CLI Safety Guardrails | `cli/src/utils/helpers.ps1`, `cli/src/commands/{archive,pause,clean}.ps1`, `cli/tests/Test-SafetyGuardrails.Tests.ps1` | None | DONE |
 | M3 | Navigation & AI Agent Context Enrichment | `cli/src/commands/goto.ps1`, `cli/src/commands/agent.ps1`, `tui/src/data/agents.rs`, `cli/tests/Test-Goto.Tests.ps1`, `cli/tests/Test-AgentContext.Tests.ps1` | M1, M2 | DONE |
 | M4 | Diagnostic & Utility Commands | `cli/src/commands/doctor.ps1`, `cli/src/commands/status.ps1`, `cli/rtb.psm1`, `cli/tests/Test-Doctor.Tests.ps1`, `cli/tests/Test-Status.Tests.ps1` | M2, M3 | DONE |
-| M5 | TUI Architecture Refactoring | `tui/src/handlers/*.rs`, `tui/src/app.rs`, `tui/src/main.rs` | M1 | IN_PROGRESS |
-| M6 | Full Verification & E2E Acceptance | All tests in `cli/tests/`, `cargo test -p rtbtui`, `cargo build -p rtbtui`, forensic integrity audit | M1..M5 | PLANNED |
+| M5 | TUI Architecture Refactoring | `tui/src/handlers/*.rs`, `tui/src/app.rs`, `tui/src/main.rs` | M1 | DONE |
+| M6 | Full Verification & E2E Acceptance | All tests in `cli/tests/`, `cargo test -p rtbtui`, `cargo build -p rtbtui`, forensic integrity audit | M1..M5 | DONE |
 
 ## Code Layout
 - `cli/src/utils/helpers.ps1` — Common CLI helper functions

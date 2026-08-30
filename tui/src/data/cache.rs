@@ -3,9 +3,21 @@ use crate::data::project::Project;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-const CACHE_PATH: &str = "D:\\05-Config\\dev.cache.json";
+pub fn cache_path() -> PathBuf {
+    if let Some(home_dir) = dirs::home_dir() {
+        let rtb_dir = home_dir.join(".config").join("rtb");
+        let _ = fs::create_dir_all(&rtb_dir);
+        rtb_dir.join("dev.cache.json")
+    } else if let Some(config_dir) = dirs::config_dir() {
+        let rtb_dir = config_dir.join("rtb");
+        let _ = fs::create_dir_all(&rtb_dir);
+        rtb_dir.join("dev.cache.json")
+    } else {
+        PathBuf::from("config/dev.cache.json")
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WorkspaceCache {
@@ -15,17 +27,23 @@ pub struct WorkspaceCache {
 }
 
 pub fn load_cache() -> Option<(Vec<Project>, DiskStats)> {
-    let path = Path::new(CACHE_PATH);
-    if !path.exists() {
-        return None;
-    }
+    #[cfg(test)]
+    return None;
 
-    if let Ok(content) = fs::read_to_string(path) {
-        if let Ok(cache) = serde_json::from_str::<WorkspaceCache>(&content) {
-            return Some((cache.projects, cache.disk_stats));
+    #[cfg(not(test))]
+    {
+        let path = cache_path();
+        if !path.exists() {
+            return None;
         }
+
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(cache) = serde_json::from_str::<WorkspaceCache>(&content) {
+                return Some((cache.projects, cache.disk_stats));
+            }
+        }
+        None
     }
-    None
 }
 
 pub fn save_cache(projects: &[Project], disk_stats: &DiskStats) -> Result<()> {
@@ -36,9 +54,11 @@ pub fn save_cache(projects: &[Project], disk_stats: &DiskStats) -> Result<()> {
     };
 
     if let Ok(json) = serde_json::to_string_pretty(&cache) {
-        let parent = Path::new(CACHE_PATH).parent().unwrap_or_else(|| Path::new("D:\\05-Config"));
-        let _ = fs::create_dir_all(parent);
-        let _ = fs::write(CACHE_PATH, json);
+        let path = cache_path();
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let _ = fs::write(path, json);
     }
     Ok(())
 }
@@ -58,11 +78,24 @@ impl SessionState {
     }
 
     pub fn session_state_path() -> PathBuf {
-        if let Some(config_dir) = dirs::config_dir() {
-            let rtb_dir = config_dir.join("rtb");
-            let _ = fs::create_dir_all(&rtb_dir);
-            rtb_dir.join("state.json")
-        } else {
+        #[cfg(test)]
+        {
+            return std::env::temp_dir().join("rtb_unit_test_state.json");
+        }
+
+        #[cfg(not(test))]
+        {
+            if let Some(home_dir) = dirs::home_dir() {
+                let rtb_dir = home_dir.join(".config").join("rtb");
+                let _ = fs::create_dir_all(&rtb_dir);
+                return rtb_dir.join("state.json");
+            }
+            if let Some(config_dir) = dirs::config_dir() {
+                let rtb_dir = config_dir.join("rtb");
+                let _ = fs::create_dir_all(&rtb_dir);
+                return rtb_dir.join("state.json");
+            }
+
             let fallback = PathBuf::from("config/.rtb_state.json");
             if let Some(parent) = fallback.parent() {
                 let _ = fs::create_dir_all(parent);

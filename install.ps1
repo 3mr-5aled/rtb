@@ -7,7 +7,7 @@ Write-Host "  Installing & Configuring RTB (ﺐﺘّﺭ) Project Suite" -Foregro
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
 
 $scriptRoot = $PSScriptRoot
-if (-not $scriptRoot) { $scriptRoot = 'D:\02-Projects\01-Development\01-Active\rtb-command-tool' }
+if (-not $scriptRoot) { $scriptRoot = (Get-Location).Path }
 
 $cliPsdPath = Join-Path $scriptRoot "cli\rtb.psd1"
 $tuiDir     = Join-Path $scriptRoot "tui"
@@ -32,7 +32,7 @@ if (-not (Test-Path $userConfigDir)) {
     New-Item -ItemType Directory -Path $userConfigDir -Force | Out-Null
 }
 
-$legacyConfigDir = 'D:\02-Projects\01-Development\01-Active\dev-cli\config'
+$legacyConfigDir = Join-Path (Split-Path $scriptRoot -Parent) 'dev-cli\config'
 if (-not (Test-Path $legacyConfigDir)) {
     New-Item -ItemType Directory -Path $legacyConfigDir -Force | Out-Null
 }
@@ -98,7 +98,7 @@ $profilePaths = @(
 ) | Select-Object -Unique
 
 $moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
-$oldPattern = "(?m)^Import-Module\s+['\`"]D:\\02-Projects\\01-Development\\01-Active\\(dev-tools|dev-cli|rtb-command-tool)\\.*['\`"].*$"
+$oldPattern = "(?m)^Import-Module\s+['\`"].*?(dev-tools|dev-cli|rtb-command-tool)[\\/].*?['\`"].*$"
 
 foreach ($pPath in $profilePaths) {
     if (-not $pPath) { continue }

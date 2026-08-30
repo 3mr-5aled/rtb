@@ -11,5 +11,5 @@ Unified developer project manager CLI for D drive. Consolidates project lifecycl
 
 ## Local Setup
 
-- **Install**: Add `Import-Module 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\cli\dev.psd1' -Force` to `$PROFILE`
-- **Usage**: Type `dev` in any terminal
+- **Install**: Run `install.ps1` or add `Import-Module '<path-to-repo>\cli\rtb.psd1' -Force` to `$PROFILE`
+- **Usage**: Type `rtb` or `dev` in any terminal

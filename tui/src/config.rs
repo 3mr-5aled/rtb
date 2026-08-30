@@ -50,12 +50,14 @@ impl DevConfig {
         let mut paths: Vec<std::path::PathBuf> = Vec::new();
 
         // 1. Home dot-config dir: %USERPROFILE%\.config\rtb\rtb.config.json (or ~/.config/rtb/rtb.config.json)
+        #[cfg(not(test))]
         if let Some(home_dir) = dirs::home_dir() {
             paths.push(home_dir.join(".config").join("rtb").join("rtb.config.json"));
             paths.push(home_dir.join(".config").join("rtb").join("dev.config.json"));
         }
 
         // 2. User AppData config dir: %APPDATA%\rtb\rtb.config.json (Windows fallback)
+        #[cfg(not(test))]
         if let Some(config_dir) = dirs::config_dir() {
             paths.push(config_dir.join("rtb").join("rtb.config.json"));
             paths.push(config_dir.join("rtb").join("dev.config.json"));

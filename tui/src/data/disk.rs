@@ -12,6 +12,7 @@ pub struct DiskCategory {
     pub percentage: f64,
 }
 
+#[allow(dead_code)]
 impl DiskCategory {
     pub fn size_str(&self) -> String {
         format_bytes(self.size_bytes)
@@ -28,24 +29,35 @@ pub struct DiskStats {
 }
 
 pub fn calculate_disk_stats() -> DiskStats {
+    let base_root = if let Ok(cfg) = crate::config::DevConfig::load() {
+        if let Some(parent) = Path::new(&cfg.project_roots.active).parent().and_then(|p| p.parent()) {
+            parent.to_path_buf()
+        } else {
+            Path::new(".").to_path_buf()
+        }
+    } else {
+        Path::new(".").to_path_buf()
+    };
+
     let category_defs = [
-        ("01-SandBox", "D:\\01-SandBox"),
-        ("02-Projects", "D:\\02-Projects"),
-        ("03-Career", "D:\\03-Career"),
-        ("04-Docs", "D:\\04-Docs"),
-        ("05-Config", "D:\\05-Config"),
-        ("06-Tools", "D:\\06-Tools"),
-        ("07-Resources", "D:\\07-Resources"),
-        ("08-Backup", "D:\\08-Backup"),
+        "01-SandBox",
+        "02-Projects",
+        "03-Career",
+        "04-Docs",
+        "05-Config",
+        "06-Tools",
+        "07-Resources",
+        "08-Backup",
     ];
 
     let mut categories = Vec::new();
     let mut total_categorized: u64 = 0;
 
-    for (name, path_str) in &category_defs {
-        let path = Path::new(path_str);
+    for name in &category_defs {
+        let path = base_root.join(name);
+        let path_str = path.to_string_lossy().to_string();
         let size = if path.exists() {
-            calculate_shallow_dir_size(path)
+            calculate_shallow_dir_size(&path)
         } else {
             0
         };
@@ -54,7 +66,7 @@ pub fn calculate_disk_stats() -> DiskStats {
 
         categories.push(DiskCategory {
             name: name.to_string(),
-            path_str: path_str.to_string(),
+            path_str,
             size_bytes: size,
             percentage: 0.0,
         });

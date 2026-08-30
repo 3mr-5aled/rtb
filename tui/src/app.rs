@@ -167,6 +167,7 @@ impl App {
 
         // 2. Load Session State Memory
         let session = SessionState::load();
+
         let initial_tab = session.as_ref().map(|s| match s.active_tab {
             0 => Tab::Dashboard,
             1 => Tab::Projects,
@@ -198,6 +199,9 @@ impl App {
             show_help: false,
             status_message: None,
             tick_count: 0,
+            #[cfg(test)]
+            is_loading: false,
+            #[cfg(not(test))]
             is_loading: !had_cache,
             loading_message: "Scanning D: Drive Projects & Git Health...",
             scan_receiver: None,
@@ -224,7 +228,8 @@ impl App {
             project_filter: None,
         };
 
-        // Start background scanner to verify state silently
+        // Start background scanner to verify state silently (skip thread spawn during unit tests)
+        #[cfg(not(test))]
         app.start_background_scan("Scanning D: Drive Projects & Git Health...");
 
         Ok(app)

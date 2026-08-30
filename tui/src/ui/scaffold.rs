@@ -39,10 +39,10 @@ impl ScaffoldModal {
 
     pub fn categories() -> &'static [(&'static str, &'static str)] {
         &[
-            ("01-Active", "D:\\02-Projects\\01-Development\\01-Active"),
-            ("03-Vibe", "D:\\02-Projects\\03-Vibe-Coding"),
-            ("01-SandBox", "D:\\01-SandBox\\01-Quick-Tests"),
-            ("02-Planning", "D:\\02-Projects\\01-Development\\02-Planning"),
+            ("01-Active", "Active"),
+            ("03-Vibe", "Vibe-Coding"),
+            ("01-SandBox", "SandBox/Quick-Tests"),
+            ("02-Planning", "Planning"),
         ]
     }
 
@@ -63,7 +63,18 @@ impl ScaffoldModal {
         }
 
         let cat_path = Self::categories()[self.category_index].1;
-        let target_dir = PathBuf::from(cat_path).join(&clean_name);
+        let base_dir = if let Ok(cfg) = crate::config::DevConfig::load() {
+            match self.category_index {
+                0 => PathBuf::from(cfg.project_roots.active),
+                1 => PathBuf::from(cfg.project_roots.vibe),
+                2 => PathBuf::from(cfg.project_roots.sandbox),
+                3 => PathBuf::from(cfg.project_roots.planning),
+                _ => PathBuf::from(cat_path),
+            }
+        } else {
+            PathBuf::from(cat_path)
+        };
+        let target_dir = base_dir.join(&clean_name);
 
         if target_dir.exists() {
             return Err(format!("Directory already exists: {:?}", target_dir));

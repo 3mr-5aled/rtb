@@ -11,7 +11,7 @@ Unified developer project operations CLI (`rtb` / `dev`) for multi-runtime proje
 Add the following line to your PowerShell `$PROFILE` (or run `install.ps1` to configure automatically):
 
 ```powershell
-Import-Module 'D:\02-Projects\01-Development\01-Active\rtb-command-tool\cli\rtb.psd1' -Force
+Import-Module '<path-to-repo>\cli\rtb.psd1' -Force
 ```
 
 ## Command Reference

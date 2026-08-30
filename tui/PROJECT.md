@@ -10,9 +10,7 @@ Interactive terminal UI project manager built with Rust + Ratatui. Visual comman
 
 ## Local Setup
 ```powershell
-cd D:\02-Projects\01-Development\01-Active\devtui
-cargo build --release
-# Binary at: target\release\devtui.exe
+cargo build --release -p rtbtui
 ```
 
 ## Usage

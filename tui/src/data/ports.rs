@@ -1,6 +1,7 @@
 use std::process::Command;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DevPort {
     pub port: u16,
     pub pid: u32,
