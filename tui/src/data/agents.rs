@@ -65,18 +65,178 @@ pub fn get_default_agent() -> Option<AgentInfo> {
 
 pub fn create_agent_context_file(project: &Project) -> Option<std::path::PathBuf> {
     let context_path = project.path.join(".rtb_context.md");
-    let stack_str = if project.stack.is_empty() { "-".into() } else { project.stack.join(", ") };
-    let branch_str = project.git.as_ref().map(|g| g.branch.as_str()).unwrap_or("-");
-    let readme_str = project.readme_preview.as_ref().and_then(|r| r.lines().next()).unwrap_or("-");
+    let stack_str = if project.stack.is_empty() || (project.stack.len() == 1 && project.stack[0] == "-") {
+        "Unknown".into()
+    } else {
+        project.stack.join(", ")
+    };
+    let branch_str = project
+        .git
+        .as_ref()
+        .map(|g| g.branch.as_str())
+        .filter(|b| !b.is_empty() && *b != "-")
+        .unwrap_or("unknown");
+    let readme_str = project
+        .readme_preview
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or("(no README)");
+
+    let path_str = project.path.to_string_lossy();
+    let is_git_repo = project.path.join(".git").exists();
+
+    let (git_log_indented, git_diff_stat) = if is_git_repo {
+        let git_log_output = std::process::Command::new("git")
+            .args(["-C", &path_str, "log", "--oneline", "-10"])
+            .output()
+            .ok()
+            .and_then(|o| if o.status.success() { String::from_utf8(o.stdout).ok() } else { None });
+
+        let log_lines = match git_log_output {
+            Some(ref s) if !s.trim().is_empty() => s
+                .lines()
+                .map(|l| format!("  {}", l))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Some(_) => "  (no commits)".into(),
+            None => "  (no commits)".into(),
+        };
+
+        let git_diff_output = std::process::Command::new("git")
+            .args(["-C", &path_str, "diff", "--stat", "HEAD"])
+            .output()
+            .ok()
+            .and_then(|o| if o.status.success() { String::from_utf8(o.stdout).ok() } else { None });
+
+        let diff_lines = match git_diff_output {
+            Some(ref s) if !s.trim().is_empty() => s
+                .lines()
+                .map(|l| format!("  {}", l))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Some(_) => "  (working tree clean)".into(),
+            None => "  (working tree clean)".into(),
+        };
+
+        (log_lines, diff_lines)
+    } else {
+        (
+            "  (not a git repository)".into(),
+            "  (not a git repository)".into(),
+        )
+    };
+
+    let mut deps_section = String::new();
+
+    // 1. package.json
+    let pkg_path = project.path.join("package.json");
+    if pkg_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(deps) = json.get("dependencies").and_then(|d| d.as_object()) {
+                    let names: Vec<&str> = deps.keys().take(20).map(|k| k.as_str()).collect();
+                    if !names.is_empty() {
+                        deps_section.push_str(&format!("**package.json deps:** {}\n", names.join(", ")));
+                    }
+                }
+                if let Some(dev_deps) = json.get("devDependencies").and_then(|d| d.as_object()) {
+                    let dev_names: Vec<&str> = dev_deps.keys().take(10).map(|k| k.as_str()).collect();
+                    if !dev_names.is_empty() {
+                        deps_section.push_str(&format!("**devDependencies:** {}\n", dev_names.join(", ")));
+                    }
+                }
+            } else {
+                deps_section.push_str("(could not parse package.json)\n");
+            }
+        }
+    }
+
+    // 2. Cargo.toml
+    let cargo_path = project.path.join("Cargo.toml");
+    if cargo_path.exists() {
+        if let Ok(cargo_content) = std::fs::read_to_string(&cargo_path) {
+            let mut crates = Vec::new();
+            for line in cargo_content.lines() {
+                let trimmed = line.trim();
+                if let Some(eq_pos) = trimmed.find('=') {
+                    let key = trimmed[..eq_pos].trim();
+                    if !key.is_empty()
+                        && key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+                        && key.chars().next().map(|c| c.is_alphabetic() || c == '_').unwrap_or(false)
+                    {
+                        crates.push(key.to_string());
+                        if crates.len() >= 20 {
+                            break;
+                        }
+                    }
+                }
+            }
+            if !crates.is_empty() {
+                deps_section.push_str(&format!("**Cargo.toml crates:** {}\n", crates.join(", ")));
+            }
+        }
+    }
+
+    // 3. requirements.txt
+    let req_path = project.path.join("requirements.txt");
+    if req_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&req_path) {
+            let reqs: Vec<&str> = content
+                .lines()
+                .map(|l| l.trim())
+                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                .take(20)
+                .collect();
+            if !reqs.is_empty() {
+                deps_section.push_str(&format!("**requirements.txt:** {}\n", reqs.join(", ")));
+            }
+        }
+    }
+
+    // 4. go.mod
+    let gomod_path = project.path.join("go.mod");
+    if gomod_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&gomod_path) {
+            let go_mods: Vec<&str> = content
+                .lines()
+                .filter(|l| l.starts_with("    ") || l.starts_with('\t'))
+                .map(|l| l.trim())
+                .filter(|l| l.contains(' ') && l.contains('v'))
+                .take(20)
+                .collect();
+            if !go_mods.is_empty() {
+                deps_section.push_str(&format!("**go.mod requires:** {}\n", go_mods.join(", ")));
+            }
+        }
+    }
+
+    if deps_section.is_empty() {
+        deps_section.push_str("(no recognised dependency manifest found)\n");
+    }
+
+    let generated_at = chrono::Local::now().to_rfc3339();
 
     let content = format!(
-        "# RTB Agent Workspace Context: {}\n\n- **Project Path**: {}\n- **Status**: {:?}\n- **Detected Stack**: {}\n- **Git Branch**: {}\n- **README**: {}\n",
-        project.name,
-        project.path.display(),
-        project.status,
-        stack_str,
-        branch_str,
-        readme_str
+        "# RTB Agent Workspace Context: {name}\n\n\
+         ## Project Info\n\
+         - **Project Path**: {path}\n\
+         - **Status**: {status}\n\
+         - **Detected Stack**: {stack}\n\
+         - **Git Branch**: {branch}\n\
+         - **Generated At**: {generated_at}\n\n\
+         ## README Preview\n{readme}\n\n\
+         ## Git Context\n\n### Last 10 Commits\n{log}\n\n### Current Diff (--stat HEAD)\n{diff}\n\n\
+         ## Dependencies\n{deps}",
+        name = project.name,
+        path = project.path.display(),
+        status = project.status.label(),
+        stack = stack_str,
+        branch = branch_str,
+        generated_at = generated_at,
+        readme = readme_str,
+        log = git_log_indented,
+        diff = git_diff_stat,
+        deps = deps_section
     );
 
     if std::fs::write(&context_path, content).is_ok() {
@@ -139,9 +299,9 @@ mod tests {
     }
 
     #[test]
-    fn test_create_agent_context_file() {
+    fn test_create_agent_context_file_basic() {
         use crate::data::project::ProjectStatus;
-        let temp_dir = std::env::temp_dir().join("rtb_agent_context_rust_test");
+        let temp_dir = std::env::temp_dir().join("rtb_agent_context_rust_test_basic");
         let _ = std::fs::remove_dir_all(&temp_dir);
         std::fs::create_dir_all(&temp_dir).unwrap();
 
@@ -166,7 +326,118 @@ mod tests {
         let path = context_file.unwrap();
         assert!(path.exists());
         let content = std::fs::read_to_string(path).unwrap();
-        assert!(content.contains("Rust, Ratatui"));
+        assert!(content.contains("# RTB Agent Workspace Context: test_proj"));
+        assert!(content.contains("## Project Info"));
+        assert!(content.contains("- **Status**: Active"));
+        assert!(content.contains("- **Detected Stack**: Rust, Ratatui"));
+        assert!(content.contains("- **Git Branch**: unknown"));
+        assert!(content.contains("- **Generated At**:"));
+        assert!(content.contains("## README Preview"));
+        assert!(content.contains("Test README Header"));
+        assert!(content.contains("## Git Context"));
+        assert!(content.contains("### Last 10 Commits"));
+        assert!(content.contains("  (not a git repository)"));
+        assert!(content.contains("### Current Diff (--stat HEAD)"));
+        assert!(content.contains("## Dependencies"));
+        assert!(content.contains("(no recognised dependency manifest found)"));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_create_agent_context_file_with_deps() {
+        use crate::data::project::ProjectStatus;
+        let temp_dir = std::env::temp_dir().join("rtb_agent_context_rust_test_deps");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Write package.json
+        let pkg_content = r#"{"dependencies": {"react": "^18.0.0"}, "devDependencies": {"typescript": "^5.0.0"}}"#;
+        std::fs::write(temp_dir.join("package.json"), pkg_content).unwrap();
+
+        // Write Cargo.toml
+        let cargo_content = "ratatui = \"0.29\"\ncrossterm = \"0.28\"\n";
+        std::fs::write(temp_dir.join("Cargo.toml"), cargo_content).unwrap();
+
+        // Write requirements.txt
+        let req_content = "flask>=2.0.0\n# comment\nrequests==2.28.1\n";
+        std::fs::write(temp_dir.join("requirements.txt"), req_content).unwrap();
+
+        // Write go.mod
+        let gomod_content = "module example.com/app\n\ngo 1.20\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.1\n)\n";
+        std::fs::write(temp_dir.join("go.mod"), gomod_content).unwrap();
+
+        let proj = Project {
+            name: "multi_dep_proj".into(),
+            path: temp_dir.clone(),
+            status: ProjectStatus::Paused,
+            stack: vec![],
+            last_modified: None,
+            total_size_bytes: 0,
+            dep_size_bytes: 0,
+            git: None,
+            readme_preview: None,
+            is_monorepo: false,
+            ci_cd: None,
+            runtime_version: None,
+            dev_command: None,
+        };
+
+        let context_file = create_agent_context_file(&proj);
+        assert!(context_file.is_some());
+        let path = context_file.unwrap();
+        let content = std::fs::read_to_string(path).unwrap();
+
+        assert!(content.contains("- **Status**: Paused"));
+        assert!(content.contains("- **Detected Stack**: Unknown"));
+        assert!(content.contains("(no README)"));
+        assert!(content.contains("**package.json deps:** react"));
+        assert!(content.contains("**devDependencies:** typescript"));
+        assert!(content.contains("**Cargo.toml crates:** ratatui, crossterm"));
+        assert!(content.contains("**requirements.txt:** flask>=2.0.0, requests==2.28.1"));
+        assert!(content.contains("**go.mod requires:** github.com/gin-gonic/gin v1.9.1"));
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_create_agent_context_file_zero_commits() {
+        use crate::data::project::ProjectStatus;
+        let temp_dir = std::env::temp_dir().join("rtb_agent_context_rust_test_zero_commits");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        // Initialize a clean 0-commit git repository
+        let _ = std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&temp_dir)
+            .output();
+
+        let proj = Project {
+            name: "zero_commit_proj".into(),
+            path: temp_dir.clone(),
+            status: ProjectStatus::Active,
+            stack: vec![],
+            last_modified: None,
+            total_size_bytes: 0,
+            dep_size_bytes: 0,
+            git: None,
+            readme_preview: None,
+            is_monorepo: false,
+            ci_cd: None,
+            runtime_version: None,
+            dev_command: None,
+        };
+
+        let context_file = create_agent_context_file(&proj);
+        assert!(context_file.is_some());
+        let path = context_file.unwrap();
+        let content = std::fs::read_to_string(path).unwrap();
+
+        assert!(content.contains("### Last 10 Commits"));
+        assert!(content.contains("  (no commits)"));
+        assert!(content.contains("### Current Diff (--stat HEAD)"));
+        assert!(content.contains("  (working tree clean)"));
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }

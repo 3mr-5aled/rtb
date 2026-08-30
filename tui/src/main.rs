@@ -1,6 +1,7 @@
 mod app;
 mod config;
 mod data;
+mod handlers;
 mod ui;
 
 use anyhow::Result;

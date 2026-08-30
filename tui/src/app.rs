@@ -5,7 +5,7 @@ use crate::data::cache::{load_cache, save_cache, SessionState};
 use crate::data::deps::{format_bytes, prune_selected_folders, scan_dependencies, DepFolder};
 use crate::data::disk::{calculate_disk_stats, DiskStats};
 use crate::data::maintenance::{MaintenanceMessage, MaintenanceState, TaskStatus};
-use crate::data::ports::{kill_port_process, scan_dev_ports, DevPort};
+use crate::data::ports::{scan_dev_ports, DevPort};
 use crate::data::project::{Project, ProjectStatus};
 use crate::data::scanner::scan_all_projects;
 use crate::ui::branch_picker::BranchPickerModal;
@@ -103,10 +103,10 @@ pub struct App {
     // Loading indicator & background scanning channel
     pub is_loading: bool,
     pub loading_message: &'static str,
-    scan_receiver: Option<Receiver<ScanResult>>,
+    pub(crate) scan_receiver: Option<Receiver<ScanResult>>,
 
     // Maintenance background channel
-    maintenance_receiver: Option<Receiver<MaintenanceMessage>>,
+    pub(crate) maintenance_receiver: Option<Receiver<MaintenanceMessage>>,
 
     // Interactive Modals
     pub command_palette: Option<CommandPalette>,
@@ -643,11 +643,11 @@ impl App {
                     }
                 }
                 KeyCode::Char('b') => {
-                    let backup_dir = std::path::Path::new("D:\\08-Backup\\env-secrets");
-                    let _ = std::fs::create_dir_all(backup_dir);
+                    let backup_dir = std::path::PathBuf::from(&self.config.backup_root).join("env-secrets");
+                    let _ = std::fs::create_dir_all(&backup_dir);
                     let target_name = format!("{}-{}", vault.project_name, vault.file_name);
                     let _ = std::fs::copy(&vault.file_path, backup_dir.join(target_name));
-                    self.status_message = Some("Backed up .env to D:\\08-Backup\\env-secrets\\".into());
+                    self.status_message = Some(format!("Backed up .env to {}\\", backup_dir.display()));
                 }
                 _ => {}
             }
@@ -819,42 +819,6 @@ impl App {
         false
     }
 
-    fn handle_ports_key(&mut self, key: KeyCode) {
-        match key {
-            KeyCode::Down | KeyCode::Char('j') => {
-                if !self.active_ports.is_empty() {
-                    self.ports_selected_index = (self.ports_selected_index + 1).min(self.active_ports.len() - 1);
-                }
-            }
-            KeyCode::Up => {
-                self.ports_selected_index = self.ports_selected_index.saturating_sub(1);
-            }
-            KeyCode::Char('k') => {
-                if let Some(port) = self.active_ports.get(self.ports_selected_index) {
-                    let pid = port.pid;
-                    if kill_port_process(pid) {
-                        self.status_message = Some(format!("Terminated process PID {} on port :{}", pid, port.port));
-                    } else {
-                        self.status_message = Some(format!("Failed to kill PID {}", pid));
-                    }
-                    self.active_ports = scan_dev_ports();
-                }
-            }
-            KeyCode::Char('o') => {
-                if let Some(port) = self.active_ports.get(self.ports_selected_index) {
-                    let url = format!("http://localhost:{}", port.port);
-                    let _ = Command::new("cmd").args(["/C", "start", &url]).spawn();
-                    self.status_message = Some(format!("Opening {}", url));
-                }
-            }
-            KeyCode::Char('r') => {
-                self.active_ports = scan_dev_ports();
-                self.status_message = Some("Dev ports rescanned".into());
-            }
-            _ => {}
-        }
-    }
-
     fn handle_readme_modal_key(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('v') => {
@@ -901,147 +865,6 @@ impl App {
         false
     }
 
-    fn handle_projects_key(&mut self, key: KeyCode) {
-        match key {
-            KeyCode::Down | KeyCode::Char('j') => self.move_selection(1),
-            KeyCode::Up | KeyCode::Char('k') => self.move_selection(-1),
-            KeyCode::Char('o') | KeyCode::Enter => {
-                if let Some(project) = self.selected_project() {
-                    actions::open_in_editor(project);
-                    self.status_message = Some(format!("Opened {} in VS Code", project.name));
-                }
-            }
-            KeyCode::Char('v') => {
-                if let Some(project) = self.selected_project() {
-                    let readme_path = project.path.join("README.md");
-                    let content = if readme_path.exists() {
-                        std::fs::read_to_string(&readme_path)
-                            .unwrap_or_else(|_| "Error: Unable to read README.md".into())
-                    } else {
-                        format!("# {}\n\nNo README.md file found in this project.", project.name)
-                    };
-                    self.readme_modal = Some((project.name.clone(), content, 0));
-                }
-            }
-            KeyCode::Char('N') => {
-                self.scaffold_modal = Some(ScaffoldModal::new());
-            }
-            KeyCode::Char('x') => {
-                if let Some(project) = self.selected_project() {
-                    let cmd = project.get_dev_command();
-                    actions::run_live_program(project);
-                    self.status_message = Some(format!("Launched live runner for {}: {}", project.name, cmd));
-                }
-            }
-            KeyCode::Char('E') => {
-                if let Some(project) = self.selected_project() {
-                    if let Some(vault) = EnvVaultModal::load(project.name.clone(), &project.path) {
-                        self.env_vault_modal = Some(vault);
-                    } else {
-                        self.status_message = Some(format!("No .env file found in {}", project.name));
-                    }
-                }
-            }
-            KeyCode::Char('d') => {
-                if let Some(project) = self.selected_project() {
-                    if let Some(diff) = GitDiffModal::load(project.name.clone(), &project.path) {
-                        self.git_diff_modal = Some(diff);
-                    }
-                }
-            }
-            KeyCode::Char('e') => {
-                if let Some(project) = self.selected_project() {
-                    actions::open_in_explorer(project);
-                    self.status_message = Some(format!("Opened {} in Explorer", project.name));
-                }
-            }
-            KeyCode::Char('p') => {
-                if let Some(project) = self.selected_project() {
-                    if project.status == ProjectStatus::Active {
-                        self.confirm_dialog = Some(ConfirmDialog {
-                            title: "Pause Project".into(),
-                            message: format!(
-                                "Move '{}' to 04-Paused and prune dependencies?",
-                                project.name
-                            ),
-                            action: ConfirmAction::PauseProject(project.name.clone()),
-                        });
-                    } else {
-                        self.status_message = Some("Only active projects can be paused".into());
-                    }
-                }
-            }
-            KeyCode::Char('r') => {
-                if let Some(project) = self.selected_project() {
-                    if project.status == ProjectStatus::Paused {
-                        self.confirm_dialog = Some(ConfirmDialog {
-                            title: "Resume Project".into(),
-                            message: format!(
-                                "Move '{}' back to 01-Active?",
-                                project.name
-                            ),
-                            action: ConfirmAction::ResumeProject(project.name.clone()),
-                        });
-                    }
-                }
-            }
-            KeyCode::Char('D') => {
-                if let Some(project) = self.selected_project() {
-                    if project.status == ProjectStatus::Active {
-                        self.confirm_dialog = Some(ConfirmDialog {
-                            title: "Deploy Project".into(),
-                            message: format!(
-                                "Move '{}' to 02-Deployed/01-Production?",
-                                project.name
-                            ),
-                            action: ConfirmAction::DeployProject(project.name.clone(), true),
-                        });
-                    }
-                }
-            }
-            KeyCode::Char('a') => {
-                if let Some(project) = self.selected_project() {
-                    if let Some(agent) = agents::get_default_agent() {
-                        let agent_name = agent.name.clone();
-                        let proj_name = project.name.clone();
-                        if agents::launch_agent(project, None) {
-                            self.status_message = Some(format!("Launched {} for {}", agent_name, proj_name));
-                        } else {
-                            self.status_message = Some("Failed to launch AI Agent".into());
-                        }
-                    } else {
-                        self.status_message = Some("No installed AI Agent found in PATH (agy, claude, gemini, codex)".into());
-                    }
-                }
-            }
-            KeyCode::Char('A') => {
-                if let Some(project) = self.selected_project() {
-                    self.confirm_dialog = Some(ConfirmDialog {
-                        title: "Archive Project".into(),
-                        message: format!(
-                            "Compress '{}' to 08-Backup/project-archives/?",
-                            project.name
-                        ),
-                        action: ConfirmAction::ArchiveProject(project.name.clone()),
-                    });
-                }
-            }
-            KeyCode::Char('f') => {
-                self.project_filter = match self.project_filter {
-                    None => Some(ProjectStatus::Active),
-                    Some(ProjectStatus::Active) => Some(ProjectStatus::Paused),
-                    Some(ProjectStatus::Paused) => Some(ProjectStatus::Production),
-                    Some(ProjectStatus::Production) => Some(ProjectStatus::Vibe),
-                    Some(ProjectStatus::Vibe) => Some(ProjectStatus::Sandbox),
-                    Some(ProjectStatus::Sandbox) => None,
-                    _ => None,
-                };
-                self.selected_index = 0;
-            }
-            _ => {}
-        }
-    }
-
     pub fn filtered_git_projects(&self) -> Vec<&Project> {
         self.projects
             .iter()
@@ -1053,156 +876,6 @@ impl App {
                 GitFilter::NonGit => p.git.is_none(),
             })
             .collect()
-    }
-
-    fn handle_git_health_key(&mut self, key: KeyCode) {
-        let git_projects = self.filtered_git_projects();
-        match key {
-            KeyCode::Down | KeyCode::Char('j') => {
-                if !git_projects.is_empty() {
-                    self.git_selected_index = (self.git_selected_index + 1).min(git_projects.len() - 1);
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.git_selected_index = self.git_selected_index.saturating_sub(1);
-            }
-            KeyCode::Char('f') => {
-                self.git_filter = self.git_filter.next();
-                self.git_selected_index = 0;
-            }
-            KeyCode::Char('o') | KeyCode::Enter => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    actions::open_in_editor(project);
-                    self.status_message = Some(format!("Opened {} in VS Code", project.name));
-                }
-            }
-            KeyCode::Char('d') => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    if let Some(diff) = GitDiffModal::load(project.name.clone(), &project.path) {
-                        self.git_diff_modal = Some(diff);
-                    }
-                }
-            }
-            KeyCode::Char('b') => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    if let Some(picker) = BranchPickerModal::load(project.name.clone(), &project.path) {
-                        self.branch_picker_modal = Some(picker);
-                    }
-                }
-            }
-            KeyCode::Char('c') | KeyCode::Char('C') => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    self.commit_dialog = Some(CommitDialog::new(project.name.clone(), project.path.clone()));
-                }
-            }
-            KeyCode::Char('P') => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    let path = project.path.clone();
-                    let name = project.name.clone();
-                    self.status_message = Some(format!("Pushing {}...", name));
-                    thread::spawn(move || {
-                        let _ = Command::new("git").args(["push"]).current_dir(&path).output();
-                    });
-                }
-            }
-            KeyCode::Char('p') => {
-                if let Some(project) = git_projects.get(self.git_selected_index) {
-                    let path = project.path.clone();
-                    let name = project.name.clone();
-                    self.status_message = Some(format!("Pulling {}...", name));
-                    thread::spawn(move || {
-                        let _ = Command::new("git").args(["pull"]).current_dir(&path).output();
-                    });
-                }
-            }
-            KeyCode::Char('r') => {
-                self.start_background_scan("Re-scanning Git health...");
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_cleaner_key(&mut self, key: KeyCode) {
-        let count = self.filtered_dep_folders().len();
-        match key {
-            KeyCode::Down | KeyCode::Char('j') => {
-                if count > 0 {
-                    self.cleaner_selected_index = (self.cleaner_selected_index + 1).min(count - 1);
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.cleaner_selected_index = self.cleaner_selected_index.saturating_sub(1);
-            }
-            KeyCode::Char(' ') => {
-                let filtered_indices: Vec<usize> = self.dep_folders
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, d)| {
-                        if let Some(cat) = &self.cleaner_category_filter {
-                            &d.project_status == cat
-                        } else {
-                            true
-                        }
-                    })
-                    .map(|(i, _)| i)
-                    .collect();
-
-                if let Some(&actual_idx) = filtered_indices.get(self.cleaner_selected_index) {
-                    if let Some(folder) = self.dep_folders.get_mut(actual_idx) {
-                        folder.is_selected = !folder.is_selected;
-                    }
-                }
-            }
-            KeyCode::Char('c') => {
-                self.cleaner_category_filter = match self.cleaner_category_filter {
-                    None => Some(ProjectStatus::Paused),
-                    Some(ProjectStatus::Paused) => Some(ProjectStatus::Abandoned),
-                    Some(ProjectStatus::Abandoned) => Some(ProjectStatus::Active),
-                    Some(ProjectStatus::Active) => Some(ProjectStatus::Vibe),
-                    Some(ProjectStatus::Vibe) => Some(ProjectStatus::Sandbox),
-                    Some(ProjectStatus::Sandbox) => None,
-                    _ => None,
-                };
-                self.cleaner_selected_index = 0;
-            }
-            KeyCode::Char('a') => {
-                for folder in &mut self.dep_folders {
-                    if let Some(cat) = &self.cleaner_category_filter {
-                        if &folder.project_status == cat {
-                            folder.is_selected = true;
-                        }
-                    } else {
-                        folder.is_selected = true;
-                    }
-                }
-            }
-            KeyCode::Char('n') => {
-                for folder in &mut self.dep_folders {
-                    folder.is_selected = false;
-                }
-            }
-            KeyCode::Enter => {
-                let selected_count = self.dep_folders.iter().filter(|f| f.is_selected).count();
-                let selected_bytes: u64 = self.dep_folders.iter().filter(|f| f.is_selected).map(|f| f.size_bytes).sum();
-                if selected_count > 0 {
-                    self.confirm_dialog = Some(ConfirmDialog {
-                        title: "Prune Selected Dependencies".into(),
-                        message: format!(
-                            "Permanently delete {} dependency folder(s) reclaiming {}?",
-                            selected_count,
-                            format_bytes(selected_bytes)
-                        ),
-                        action: ConfirmAction::PruneDependencies,
-                    });
-                } else {
-                    self.status_message = Some("No folders selected for pruning".into());
-                }
-            }
-            KeyCode::Char('r') => {
-                self.start_background_scan("Re-scanning dependencies...");
-            }
-            _ => {}
-        }
     }
 
     fn execute_confirmed_action(&mut self, action: ConfirmAction) {
@@ -1298,54 +971,6 @@ impl App {
         }
     }
 
-    fn handle_maintenance_key(&mut self, key: KeyCode) {
-        match key {
-            KeyCode::Down | KeyCode::Char('j') => {
-                if !self.maintenance_state.tasks.is_empty() {
-                    self.maintenance_state.selected_task = (self.maintenance_state.selected_task + 1).min(self.maintenance_state.tasks.len() - 1);
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.maintenance_state.selected_task = self.maintenance_state.selected_task.saturating_sub(1);
-            }
-            KeyCode::Enter => {
-                if self.maintenance_state.is_running {
-                    self.status_message = Some("Maintenance tasks are already running in background".into());
-                    return;
-                }
-                self.maintenance_state.is_running = true;
-                self.maintenance_state.logs.clear();
-
-                let (tx, rx) = channel();
-                self.maintenance_receiver = Some(rx);
-
-                let all_tasks = self.maintenance_state.tasks.clone();
-                let indices: Vec<usize> = (0..all_tasks.len()).collect();
-                MaintenanceState::start_background_tasks(all_tasks, indices, tx);
-                self.status_message = Some("Running all maintenance tasks in background...".into());
-            }
-            KeyCode::Char('s') => {
-                if self.maintenance_state.is_running {
-                    self.status_message = Some("Maintenance task already running in background".into());
-                    return;
-                }
-                let idx = self.maintenance_state.selected_task;
-                if let Some(task) = self.maintenance_state.tasks.get(idx).cloned() {
-                    self.maintenance_state.is_running = true;
-                    let (tx, rx) = channel();
-                    self.maintenance_receiver = Some(rx);
-
-                    MaintenanceState::start_background_tasks(vec![task], vec![idx], tx);
-                    self.status_message = Some(format!("Running task #{} in background...", idx + 1));
-                }
-            }
-            KeyCode::Char('c') => {
-                self.maintenance_state.logs.clear();
-            }
-            _ => {}
-        }
-    }
-
     fn handle_search_key(&mut self, key: KeyCode) -> bool {
         match key {
             KeyCode::Esc => {
@@ -1368,7 +993,7 @@ impl App {
         false
     }
 
-    fn move_selection(&mut self, delta: i32) {
+    pub(crate) fn move_selection(&mut self, delta: i32) {
         let filtered = self.filtered_projects();
         if filtered.is_empty() {
             return;
@@ -1587,4 +1212,450 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_handle_projects_key_filter_cycling() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Projects;
+        app.project_filter = None;
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, Some(ProjectStatus::Active));
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, Some(ProjectStatus::Paused));
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, Some(ProjectStatus::Production));
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, Some(ProjectStatus::Vibe));
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, Some(ProjectStatus::Sandbox));
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.project_filter, None);
+    }
+
+    #[test]
+    fn test_handle_git_health_key_filter_cycling() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::GitHealth;
+        app.git_filter = GitFilter::All;
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.git_filter, GitFilter::NeedsAttention);
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.git_filter, GitFilter::LocalClean);
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.git_filter, GitFilter::Synced);
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.git_filter, GitFilter::NonGit);
+
+        app.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
+        assert_eq!(app.git_filter, GitFilter::All);
+    }
+
+    #[test]
+    fn test_handle_cleaner_key_selection() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::DepCleaner;
+        app.dep_folders = vec![
+            DepFolder {
+                project_name: "p1".into(),
+                project_status: ProjectStatus::Active,
+                path: std::path::PathBuf::from("D:\\p1\\node_modules"),
+                rel_path: "node_modules".into(),
+                size_bytes: 1024,
+                last_modified: None,
+                is_selected: false,
+            },
+            DepFolder {
+                project_name: "p2".into(),
+                project_status: ProjectStatus::Paused,
+                path: std::path::PathBuf::from("D:\\p2\\target"),
+                rel_path: "target".into(),
+                size_bytes: 2048,
+                last_modified: None,
+                is_selected: false,
+            },
+        ];
+
+        // Select all with 'a'
+        app.handle_key(KeyCode::Char('a'), KeyModifiers::NONE);
+        assert!(app.dep_folders[0].is_selected);
+        assert!(app.dep_folders[1].is_selected);
+
+        // Deselect all with 'n'
+        app.handle_key(KeyCode::Char('n'), KeyModifiers::NONE);
+        assert!(!app.dep_folders[0].is_selected);
+        assert!(!app.dep_folders[1].is_selected);
+
+        // Toggle first with Space
+        app.cleaner_selected_index = 0;
+        app.handle_key(KeyCode::Char(' '), KeyModifiers::NONE);
+        assert!(app.dep_folders[0].is_selected);
+        assert!(!app.dep_folders[1].is_selected);
+    }
+
+    #[test]
+    fn test_handle_maintenance_key_clear() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Maintenance;
+        app.maintenance_state.logs.clear();
+        app.maintenance_state.logs.push("Log entry 1".into());
+        app.maintenance_state.logs.push("Log entry 2".into());
+        assert_eq!(app.maintenance_state.logs.len(), 2);
+
+        app.handle_key(KeyCode::Char('c'), KeyModifiers::NONE);
+        assert!(app.maintenance_state.logs.is_empty());
+    }
+
+    #[test]
+    fn test_handle_ports_key_navigation() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::DevPorts;
+        app.active_ports = vec![
+            DevPort {
+                port: 3000,
+                pid: 1234,
+                process_name: "node.exe".into(),
+                memory_str: "10 MB".into(),
+                project_name: Some("my-web".into()),
+            },
+            DevPort {
+                port: 8080,
+                pid: 5678,
+                process_name: "cargo.exe".into(),
+                memory_str: "20 MB".into(),
+                project_name: Some("my-api".into()),
+            },
+        ];
+        app.ports_selected_index = 0;
+
+        app.handle_key(KeyCode::Char('j'), KeyModifiers::NONE);
+        assert_eq!(app.ports_selected_index, 1);
+
+        app.handle_key(KeyCode::Up, KeyModifiers::NONE);
+        assert_eq!(app.ports_selected_index, 0);
+    }
+
+    #[test]
+    fn test_app_tab_cycling_forward_and_backward() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Dashboard;
+
+        // Forward cycling with Tab key
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::GitHealth);
+
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DepCleaner);
+
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Maintenance);
+
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DevPorts);
+
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Dashboard);
+
+        // Backward cycling with BackTab key
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DevPorts);
+
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Maintenance);
+
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DepCleaner);
+
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::GitHealth);
+
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Dashboard);
+    }
+
+    #[test]
+    fn test_app_direct_tab_numbers() {
+        let mut app = App::new().unwrap();
+
+        app.handle_key(KeyCode::Char('1'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Dashboard);
+
+        app.handle_key(KeyCode::Char('2'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+
+        app.handle_key(KeyCode::Char('3'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::GitHealth);
+
+        app.handle_key(KeyCode::Char('4'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DepCleaner);
+
+        app.handle_key(KeyCode::Char('5'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Maintenance);
+
+        app.handle_key(KeyCode::Char('6'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DevPorts);
+    }
+
+    #[test]
+    fn test_app_search_and_palette_and_help() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Dashboard;
+
+        // Search trigger '/'
+        app.handle_key(KeyCode::Char('/'), KeyModifiers::NONE);
+        assert!(app.search_active);
+        assert_eq!(app.current_tab, Tab::Projects);
+
+        // Escape cancels search
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(!app.search_active);
+
+        // '?' toggles help
+        app.show_help = false;
+        app.handle_key(KeyCode::Char('?'), KeyModifiers::NONE);
+        assert!(app.show_help);
+        app.handle_key(KeyCode::Char('?'), KeyModifiers::NONE);
+        assert!(!app.show_help);
+
+        // Ctrl+P opens command palette
+        app.command_palette = None;
+        app.handle_key(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        assert!(app.command_palette.is_some());
+
+        // Ctrl+K opens command palette
+        app.command_palette = None;
+        app.handle_key(KeyCode::Char('k'), KeyModifiers::CONTROL);
+        assert!(app.command_palette.is_some());
+
+        // 'q' sets should_quit
+        app.command_palette = None;
+        app.should_quit = false;
+        let quit = app.handle_key(KeyCode::Char('q'), KeyModifiers::NONE);
+        assert!(quit);
+        assert!(app.should_quit);
+    }
+
+    #[test]
+    fn test_tab_handlers_unexpected_keys_and_boundaries() {
+        let mut app = App::new().unwrap();
+
+        let unexpected_keys = vec![
+            KeyCode::Esc,
+            KeyCode::Tab,
+            KeyCode::BackTab,
+            KeyCode::Backspace,
+            KeyCode::Enter,
+            KeyCode::Left,
+            KeyCode::Right,
+            KeyCode::Home,
+            KeyCode::End,
+            KeyCode::PageUp,
+            KeyCode::PageDown,
+            KeyCode::Delete,
+            KeyCode::Insert,
+            KeyCode::F(1),
+            KeyCode::F(5),
+            KeyCode::F(12),
+            KeyCode::Char('\0'),
+            KeyCode::Char('~'),
+            KeyCode::Char('🚀'),
+            KeyCode::Null,
+            KeyCode::CapsLock,
+            KeyCode::ScrollLock,
+            KeyCode::NumLock,
+            KeyCode::PrintScreen,
+            KeyCode::Pause,
+            KeyCode::Menu,
+            KeyCode::KeypadBegin,
+        ];
+
+        // 1. Projects tab: empty list
+        app.current_tab = Tab::Projects;
+        app.projects.clear();
+        app.selected_index = 0;
+        for &key in &unexpected_keys {
+            app.handle_projects_key(key);
+            assert_eq!(app.selected_index, 0);
+        }
+
+        // Projects tab: non-empty list
+        app.projects.push(Project {
+            name: "sample-proj".into(),
+            path: std::path::PathBuf::from("D:\\sample"),
+            status: ProjectStatus::Active,
+            stack: vec!["Rust".into()],
+            last_modified: None,
+            total_size_bytes: 100,
+            dep_size_bytes: 50,
+            git: None,
+            readme_preview: None,
+            is_monorepo: false,
+            ci_cd: None,
+            runtime_version: None,
+            dev_command: None,
+        });
+        for &key in &unexpected_keys {
+            app.handle_projects_key(key);
+            assert!(app.selected_index < app.projects.len());
+        }
+
+        // 2. Git Health tab: empty list
+        app.current_tab = Tab::GitHealth;
+        app.git_selected_index = 0;
+        for &key in &unexpected_keys {
+            app.handle_git_health_key(key);
+            assert_eq!(app.git_selected_index, 0);
+        }
+
+        // 3. Dep Cleaner tab: empty list
+        app.current_tab = Tab::DepCleaner;
+        app.dep_folders.clear();
+        app.cleaner_selected_index = 0;
+        for &key in &unexpected_keys {
+            app.handle_cleaner_key(key);
+            assert_eq!(app.cleaner_selected_index, 0);
+        }
+
+        // 4. Maintenance tab: empty tasks list
+        app.current_tab = Tab::Maintenance;
+        app.maintenance_state.tasks.clear();
+        app.maintenance_state.selected_task = 0;
+        for &key in &unexpected_keys {
+            app.handle_maintenance_key(key);
+            assert_eq!(app.maintenance_state.selected_task, 0);
+        }
+
+        // 5. Dev Ports tab: empty ports list
+        app.current_tab = Tab::DevPorts;
+        app.active_ports.clear();
+        app.ports_selected_index = 0;
+        for &key in &unexpected_keys {
+            app.handle_ports_key(key);
+            assert_eq!(app.ports_selected_index, 0);
+        }
+    }
+
+    #[test]
+    fn test_modal_overlay_and_dialog_precedence() {
+        let mut app = App::new().unwrap();
+        app.current_tab = Tab::Projects;
+
+        // --- 1. Global Ctrl+P / Ctrl+K Command Palette Trigger ---
+        assert!(app.command_palette.is_none());
+        let quit = app.handle_key(KeyCode::Char('p'), KeyModifiers::CONTROL);
+        assert!(!quit);
+        assert!(app.command_palette.is_some());
+
+        // While Command Palette is open, keys route to palette
+        app.handle_key(KeyCode::Char('2'), KeyModifiers::NONE);
+        assert!(app.command_palette.is_some());
+        // Esc dismisses Command Palette
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.command_palette.is_none());
+
+        // --- 2. Scaffold Modal Precedence ---
+        app.scaffold_modal = Some(crate::ui::scaffold::ScaffoldModal::new());
+        // Tab key in scaffold modal changes field, does not switch app tab
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+        assert!(app.scaffold_modal.is_some());
+        // Esc dismisses Scaffold Modal
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.scaffold_modal.is_none());
+
+        // --- 3. Env Vault Modal Precedence ---
+        app.env_vault_modal = Some(crate::ui::env_vault::EnvVaultModal {
+            project_name: "test".into(),
+            file_name: ".env".into(),
+            file_path: std::path::PathBuf::from("D:\\test\\.env"),
+            vars: vec![],
+            selected_index: 0,
+        });
+        // 'q' in Env Vault modal does not quit app (it dismisses modal)
+        let quit = app.handle_key(KeyCode::Char('q'), KeyModifiers::NONE);
+        assert!(!quit);
+        assert!(app.env_vault_modal.is_none());
+
+        // --- 4. Git Diff Modal Precedence ---
+        app.git_diff_modal = Some(crate::ui::git_diff::GitDiffModal {
+            repo_name: "test".into(),
+            diff_content: "diff text".into(),
+            scroll_offset: 0,
+        });
+        // '1' in Git Diff modal does not change tab
+        app.handle_key(KeyCode::Char('1'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+        // Esc dismisses Git Diff Modal
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.git_diff_modal.is_none());
+
+        // --- 5. README Viewer Modal Precedence ---
+        app.readme_modal = Some(("test".into(), "README content".into(), 0));
+        // Esc dismisses Readme modal
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.readme_modal.is_none());
+
+        // --- 6. Commit Dialog Precedence ---
+        app.commit_dialog = Some(CommitDialog::new("test".into(), std::path::PathBuf::from("D:\\test")));
+        // Typing characters goes to message, does not trigger global actions
+        app.handle_key(KeyCode::Char('q'), KeyModifiers::NONE);
+        assert!(!app.should_quit);
+        assert!(app.commit_dialog.is_some());
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(app.commit_dialog.is_none());
+
+        // --- 7. Confirm Dialog Precedence ---
+        app.confirm_dialog = Some(ConfirmDialog {
+            title: "Confirm".into(),
+            message: "Sure?".into(),
+            action: ConfirmAction::PruneDependencies,
+        });
+        // 'n' cancels dialog
+        app.handle_key(KeyCode::Char('n'), KeyModifiers::NONE);
+        assert!(app.confirm_dialog.is_none());
+
+        // --- 8. Search Mode Precedence ---
+        app.search_active = true;
+        app.search_query.clear();
+        app.handle_key(KeyCode::Char('a'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('b'), KeyModifiers::NONE);
+        app.handle_key(KeyCode::Char('c'), KeyModifiers::NONE);
+        assert_eq!(app.search_query, "abc");
+        // Esc cancels search mode
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(!app.search_active);
+
+        // --- 9. Help Modal Toggle ---
+        assert!(!app.show_help);
+        app.handle_key(KeyCode::Char('?'), KeyModifiers::NONE);
+        assert!(app.show_help);
+        app.handle_key(KeyCode::Esc, KeyModifiers::NONE);
+        assert!(!app.show_help);
+
+        // --- 10. Normal Tab Navigation (when no modals) ---
+        assert_eq!(app.current_tab, Tab::Projects);
+        app.handle_key(KeyCode::Tab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::GitHealth);
+        app.handle_key(KeyCode::BackTab, KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::Projects);
+        app.handle_key(KeyCode::Char('4'), KeyModifiers::NONE);
+        assert_eq!(app.current_tab, Tab::DepCleaner);
+    }
 }
+
+

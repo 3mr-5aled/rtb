@@ -8,6 +8,7 @@ $rtbCompleter = {
 
     $subCommands = @(
         'init', 'run', 'build', 'test', 'commit', 'info', 'agent', 'deps', 'workspace', 'upgrade',
+        'doctor', 'status',
         'goto', 'open', 'new', 'pause', 'resume', 'deploy', 'archive',
         'unarchive', 'list', 'health', 'clean', 'index',
         'backup', 'guard', 'env', 'maintenance', 'ui', 'help',
@@ -122,7 +123,15 @@ $rtbCompleter = {
         }
 
         'clean' {
-            @('--force', '--dry-run', '--days') |
+            @('--commit', '--dry-run', '--days') |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+        }
+
+        'status' {
+            @('--json') |
                 Where-Object { $_ -like "$wordToComplete*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)

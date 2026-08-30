@@ -7,7 +7,7 @@ use ratatui::{
 };
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConfirmAction {
     PauseProject(String),
     ResumeProject(String),
@@ -20,7 +20,7 @@ pub enum ConfirmAction {
     DeleteGitBranch(String, PathBuf),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConfirmDialog {
     pub title: String,
     pub message: String,

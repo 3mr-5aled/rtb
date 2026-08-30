@@ -66,6 +66,8 @@ function rtb {
         'deps'        { if ($Arguments) { Rtb-Deps @Arguments } else { Rtb-Deps } }
         'workspace'   { if ($Arguments) { Rtb-Workspace @Arguments } else { Rtb-Workspace } }
         'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
+        'doctor'      { if ($Arguments) { Rtb-Doctor @Arguments } else { Rtb-Doctor } }
+        'status'      { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } }
         'ui'          { Dev-Ui }
         'help'        { Dev-Help }
         default {
@@ -100,5 +102,6 @@ if (Test-Path (Join-Path $PSScriptRoot 'src\completions\rtb.completion.ps1')) {
 }
 
 # Export functions
-Export-ModuleMember -Function 'rtb', 'dev', 'Rtb-Open', 'Dev-Open', 'Rtb-Agent', 'Dev-Agent', 'Rtb-Agy', 'Dev-Agy', 'Rtb-Claude', 'Dev-Claude', 'Rtb-Gemini', 'Dev-Gemini', 'Rtb-Codex', 'Dev-Codex', 'Rtb-Cursor', 'Dev-Cursor', 'Rtb-Windsurf', 'Dev-Windsurf', 'Rtb-Aider', 'Dev-Aider', 'Rtb-OpenHands', 'Dev-OpenHands', 'Rtb-Commit', 'Dev-Commit', 'Get-InstalledAgents', 'New-RtbAgentContextFile', 'Rtb-Info', 'Dev-Info', 'Rtb-List', 'Dev-List', 'Get-ProjectDetails', 'Get-AllProjectsDetails', 'Get-AllProjectNames', 'Get-ProjectsByStatus', 'Find-ProjectPath', 'Get-RtbConfig', 'Get-DevConfig'
+Export-ModuleMember -Function *
+
 

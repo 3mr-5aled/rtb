@@ -5,6 +5,7 @@ function Rtb-Help {
     Write-Host ''
     Write-Host '  SETUP & CONFIG' -ForegroundColor Yellow
     Write-Host '    rtb init                             Initialize user configuration file'
+    Write-Host '    rtb doctor                           System health & dependency diagnostic'
     Write-Host '    rtb upgrade [--check]                Check for updates and self-upgrade'
     Write-Host '    rtb --version                        Display RTB version'
     Write-Host '    rtb --help                           Display this help menu'
@@ -34,12 +35,13 @@ function Rtb-Help {
     Write-Host ''
     Write-Host '  NAVIGATION' -ForegroundColor Yellow
     Write-Host '    rtb goto <name>                      cd into any project (TAB to search)'
+    Write-Host '    rtb status [--json]                  Single-line project & git prompt segment'
     Write-Host '    rtb open <name>                      Open project folder in File Explorer'
     Write-Host '    rtb list [--active|--paused|--all]   List projects with status'
     Write-Host ''
     Write-Host '  MAINTENANCE & SAFETY' -ForegroundColor Yellow
     Write-Host '    rtb health                           Git repo health scan'
-    Write-Host '    rtb clean [--dry-run|--force]        Prune inactive dependencies (dry-run default)'
+    Write-Host '    rtb clean [--commit] [--dry-run]     Prune inactive dependencies (dry-run default)'
     Write-Host '    rtb index                            Generate PROJECT-INDEX.md'
     Write-Host '    rtb guard                            D drive root guardrail'
     Write-Host '    rtb maintenance [--full]             Run all maintenance tasks'

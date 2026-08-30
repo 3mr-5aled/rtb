@@ -31,7 +31,7 @@ fn get_logo() -> String {
             }
         }
     }
-    // 2. User config dir (%APPDATA%\rtb\logo.txt)
+    // 2. User config dir (%APPDATA%\rtb\logo.txt or ~/.config/rtb/logo.txt)
     if let Some(config_dir) = dirs::config_dir() {
         if let Ok(content) = std::fs::read_to_string(config_dir.join("rtb").join("logo.txt")) {
             if !content.trim().is_empty() {
@@ -39,10 +39,8 @@ fn get_logo() -> String {
             }
         }
     }
-    // 3. Hardcoded repo path (dev convenience)
-    if let Ok(content) = std::fs::read_to_string(
-        "D:\\02-Projects\\01-Development\\01-Active\\rtb-command-tool\\logo.txt",
-    ) {
+    // 3. Relative repo path for OSS contributors running from source
+    if let Ok(content) = std::fs::read_to_string("logo.txt") {
         if !content.trim().is_empty() {
             return content;
         }

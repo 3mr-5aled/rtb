@@ -108,6 +108,48 @@ function Find-ProjectPath {
     return $null
 }
 
+function Find-ProjectPathFuzzy {
+    param([Parameter(Mandatory = $true)][string]$Query)
+    $config = Get-RtbConfig
+    if (-not $config) { return @() }
+
+    $roots = @(
+        @{ Path = $config.projectRoots.active;     Status = 'Active' },
+        @{ Path = $config.projectRoots.paused;     Status = 'Paused' },
+        @{ Path = $config.projectRoots.production; Status = 'Production' },
+        @{ Path = $config.projectRoots.staging;    Status = 'Staging' },
+        @{ Path = $config.projectRoots.vibe;       Status = 'Vibe' },
+        @{ Path = $config.projectRoots.sandbox;    Status = 'Sandbox' },
+        @{ Path = $config.projectRoots.planning;   Status = 'Planning' },
+        @{ Path = $config.projectRoots.testing;    Status = 'Testing' },
+        @{ Path = $config.projectRoots.abandoned;  Status = 'Abandoned' }
+    )
+
+    $q = $Query.ToLower()
+    $results = @()
+
+    foreach ($entry in $roots) {
+        if (-not $entry.Path -or -not (Test-Path $entry.Path)) { continue }
+        Get-ChildItem -Path $entry.Path -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            $n = $_.Name.ToLower()
+            $score = if ($n -eq $q)                                    { 100 }
+                     elseif ($n.StartsWith($q))                        { 75  }
+                     elseif ($n.Contains($q))                          { 50  }
+                     elseif ($_.FullName.ToLower().Contains($q))       { 25  }
+                     else { 0 }
+            if ($score -gt 0) {
+                $results += [PSCustomObject]@{
+                    Name   = $_.Name
+                    Path   = $_.FullName
+                    Status = $entry.Status
+                    Score  = $score
+                }
+            }
+        }
+    }
+    return $results | Sort-Object Score -Descending
+}
+
 function Write-RtbHeader {
     param([string]$Title)
     Write-Host '══════════════════════════════════════════' -ForegroundColor Cyan
@@ -316,4 +358,36 @@ function Get-AllProjectsDetails {
         }
     }
     return $results.ToArray()
+}
+
+# ── Safety Guard Functions ──────────────────────────────────────────────────
+
+function Confirm-RtbAction {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true, Position = 0)][string]$Message,
+        [Parameter(ValueFromPipeline = $true)][string]$Answer
+    )
+    process {
+        if (-not $PSBoundParameters.ContainsKey('Answer') -and [string]::IsNullOrEmpty($Answer)) {
+            Write-Host "  $Message [y/N] " -ForegroundColor Yellow -NoNewline
+            $Answer = Read-Host
+        }
+        if ([string]::IsNullOrWhiteSpace($Answer)) { return $false }
+        $ans = $Answer.Trim().ToLower()
+        return ($ans -eq 'y' -or $ans -eq 'yes')
+    }
+}
+
+function Test-GitClean {
+    param([Parameter(Mandatory = $true, Position = 0)][string]$ProjectPath)
+    if (-not (Test-Path $ProjectPath)) { return $true }
+    $gitDir = Join-Path $ProjectPath '.git'
+    if (-not (Test-Path $gitDir)) { return $true }
+    try {
+        $status = git -C $ProjectPath status --porcelain 2>$null
+        return (-not $status -or $status.Trim().Length -eq 0)
+    } catch {
+        return $true
+    }
 }
