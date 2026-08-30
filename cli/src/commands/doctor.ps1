@@ -95,9 +95,38 @@ function Rtb-Doctor {
     # 6. TUI Binary
     Write-Host ''
     Write-Host '  TUI Binary' -ForegroundColor Cyan
-    $tuiFound = [bool](Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue)
-    & $WriteCheck $tuiFound 'rtbtui binary in PATH' "Build with: cargo build --release -p rtbtui, then add to PATH or re-run install.ps1"
-    if (-not $tuiFound) { $allGood = $false }
+    $tuiCmd = Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue
+    $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtbtui.exe' } else { $null }
+    $customScriptsBinary = 'D:\06-Tools\scripts\rtbtui.exe'
+
+    $localTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtbtui.exe'
+    $localDebugTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtbtui.exe'
+    $localBuilt = (Test-Path $localTarget) -or (Test-Path $localDebugTarget)
+
+    $installedBinaryPath = if ($tuiCmd) {
+        $tuiCmd.Source
+    } elseif ($appDataBinary -and (Test-Path $appDataBinary)) {
+        $appDataBinary
+    } elseif (Test-Path $customScriptsBinary) {
+        $customScriptsBinary
+    } else {
+        $null
+    }
+
+    if ($installedBinaryPath) {
+        & $WriteCheck $true "rtbtui binary installed ($installedBinaryPath)"
+        $binDir = Split-Path $installedBinaryPath -Parent
+        if ($env:PATH -notlike "*$binDir*") {
+            $env:PATH = "$binDir;$env:PATH"
+        }
+    } elseif ($localBuilt) {
+        $builtPath = if (Test-Path $localTarget) { $localTarget } else { $localDebugTarget }
+        & $WriteCheck $false "rtbtui binary built locally ($builtPath) but not installed" "Run '.\install.ps1' to install rtbtui"
+        $allGood = $false
+    } else {
+        & $WriteCheck $false 'rtbtui binary installed' "Build with: cargo build --release -p rtbtui, then run '.\install.ps1'"
+        $allGood = $false
+    }
 
     # 7. Summary
     Write-Host ''
