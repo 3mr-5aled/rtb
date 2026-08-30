@@ -72,7 +72,7 @@ pub fn archive_project(project: &Project, config: &DevConfig) -> Result<PathBuf>
     let archive_path = backup_dir.join(&archive_name);
 
     // Create tar.gz using native Windows tar
-    let parent_dir = project.path.parent().unwrap_or(Path::new("D:\\"));
+    let parent_dir = project.path.parent().unwrap_or(Path::new("."));
     let status = Command::new("tar.exe")
         .args([
             "-czf",

@@ -28,7 +28,7 @@ function Rtb-Init {
         return
     }
     
-    $baseRoot = if (Test-Path 'D:\') { 'D:' } else { Join-Path $env:USERPROFILE 'rtb-workspace' }
+    $baseRoot = if ($env:RTB_WORKSPACE_ROOT) { $env:RTB_WORKSPACE_ROOT } else { Join-Path (if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }) 'rtb-projects' }
 
     $defaultConfig = @{
         version = "1.0.0"

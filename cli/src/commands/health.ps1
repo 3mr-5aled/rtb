@@ -26,7 +26,7 @@ function Dev-Health {
                 if (-not (git remote 2>$null)) { $repoIssues += 'NO REMOTE' }
                 if ($repoIssues.Count -gt 0) {
                     $issues++
-                    Write-Host "`n  $($repo.Replace('D:\',''))" -ForegroundColor Yellow
+                    Write-Host "`n  $repo" -ForegroundColor Yellow
                     Write-Host "    Last commit: $lastRel" -ForegroundColor DarkGray
                     foreach ($i in $repoIssues) {
                         $c = if ($i -match 'UNCOMMITTED|UNPUSHED') {'Red'} else {'Yellow'}
