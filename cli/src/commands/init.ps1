@@ -1,9 +1,16 @@
 function Rtb-Init {
     [CmdletBinding()]
     param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [string[]]$RemainingArgs,
+
         [switch]$Force
     )
     
+    $allArgs = @()
+    if ($RemainingArgs) { $allArgs += $RemainingArgs }
+    $isForce = $Force.IsPresent -or ($allArgs -contains '-Force') -or ($allArgs -contains '--force') -or ($allArgs -contains '-f')
+
     Write-RtbHeader -Title "Initialize Configuration"
     
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
@@ -15,7 +22,7 @@ function Rtb-Init {
         Write-Host "Created configuration directory at: $userConfigDir" -ForegroundColor Green
     }
     
-    if ((Test-Path $userConfigFile) -and -not $Force) {
+    if ((Test-Path $userConfigFile) -and -not $isForce) {
         Write-Host "Configuration already exists at $userConfigFile." -ForegroundColor Yellow
         Write-Host "Use 'rtb init -Force' to overwrite with defaults." -ForegroundColor Gray
         return
