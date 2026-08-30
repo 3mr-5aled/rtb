@@ -1,6 +1,6 @@
 # RTB — رتّب (Repository & Tooling Base)
 
-[![Version](https://img.shields.io/badge/version-v0.2.0--beta-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![Version](https://img.shields.io/badge/version-v0.3.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)](https://microsoft.com/powershell)
 [![Rust](https://img.shields.io/badge/Rust-1.80+-orange.svg)](https://www.rust-lang.org/)

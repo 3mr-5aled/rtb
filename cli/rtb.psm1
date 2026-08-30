@@ -27,7 +27,7 @@ function rtb {
 
     if (-not $Command -or $Command -eq '--help' -or $Command -eq '-h') { $Command = 'help' }
     if ($Command -eq '--version' -or $Command -eq '-v') {
-        Write-Host "RTB (ﺐﺘّﺭ) CLI v1.0.0" -ForegroundColor Green
+        Write-Host "RTB (ﺐﺘّﺭ) CLI v0.3.0" -ForegroundColor Green
         return
     }
 
