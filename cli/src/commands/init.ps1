@@ -20,29 +20,31 @@ function Rtb-Init {
         return
     }
     
+    $baseRoot = if (Test-Path 'D:\') { 'D:' } else { Join-Path $env:USERPROFILE 'rtb-workspace' }
+
     $defaultConfig = @{
         version = "1.0.0"
         projectRoots = @{
-            active     = "D:\02-Projects\01-Development\01-Active"
-            paused     = "D:\02-Projects\01-Development\04-Paused"
-            planning   = "D:\02-Projects\01-Development\02-Planning"
-            testing    = "D:\02-Projects\01-Development\03-Testing"
-            abandoned  = "D:\02-Projects\01-Development\05-Abandoned"
-            production = "D:\02-Projects\02-Deployed\01-Production"
-            staging    = "D:\02-Projects\02-Deployed\02-Staging"
-            vibe       = "D:\02-Projects\03-Vibe-Coding"
-            sandbox    = "D:\01-SandBox"
+            active     = "$baseRoot\02-Projects\01-Development\01-Active"
+            paused     = "$baseRoot\02-Projects\01-Development\04-Paused"
+            planning   = "$baseRoot\02-Projects\01-Development\02-Planning"
+            testing    = "$baseRoot\02-Projects\01-Development\03-Testing"
+            abandoned  = "$baseRoot\02-Projects\01-Development\05-Abandoned"
+            production = "$baseRoot\02-Projects\02-Deployed\01-Production"
+            staging    = "$baseRoot\02-Projects\02-Deployed\02-Staging"
+            vibe       = "$baseRoot\02-Projects\03-Vibe-Coding"
+            sandbox    = "$baseRoot\01-SandBox"
         }
-        backupRoot = "D:\08-Backup"
-        configRoot = "D:\05-Config"
-        templateDir = "D:\05-Config\templates"
+        backupRoot = "$baseRoot\08-Backup"
+        configRoot = "$baseRoot\05-Config"
+        templateDir = "$baseRoot\05-Config\templates"
         cleanDeps = @{
             daysInactive = 60
             targets = @("node_modules", ".venv", ".next", "__pycache__", "dist", "build", "target")
         }
         staleThresholdDays = 90
         gitHealth = @{
-            scanRoots = @("D:\02-Projects", "D:\01-SandBox")
+            scanRoots = @("$baseRoot\02-Projects", "$baseRoot\01-SandBox")
         }
     }
     

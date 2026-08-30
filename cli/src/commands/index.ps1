@@ -36,7 +36,7 @@ function Dev-Index {
         }
     }
     $output += "`n---`n*Total: $total projects*`n"
-    $outPath = 'D:\02-Projects\PROJECT-INDEX.md'
+    $outPath = if ($config.projectRoots.active -and (Test-Path $config.projectRoots.active)) { Join-Path (Split-Path $config.projectRoots.active -Parent) 'PROJECT-INDEX.md' } else { 'PROJECT-INDEX.md' }
     $output | Set-Content $outPath -Encoding UTF8
     Write-Host "  Generated index: $total projects → $outPath" -ForegroundColor Green
 }
