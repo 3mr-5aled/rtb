@@ -4,12 +4,32 @@ Describe "Extended Project Intelligence & CLI --json" {
     BeforeAll {
         $script:tempTestDir = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_ps_test_$([Guid]::NewGuid().ToString('N'))"
         New-Item -ItemType Directory -Path $script:tempTestDir -Force | Out-Null
+        $script:activeRoot = Join-Path $script:tempTestDir "active"
+        $script:projectName = "rtb-command-tool"
+        $script:projectPath = Join-Path $script:activeRoot $script:projectName
+        New-Item -ItemType Directory -Path $script:projectPath -Force | Out-Null
+        Set-Content -Path (Join-Path $script:projectPath "package.json") -Value '{"name":"rtb-command-tool","dependencies":{"next":"14.0.0"}}'
+
+        $script:testConfig = [PSCustomObject]@{
+            projectRoots = [PSCustomObject]@{
+                active = [PSCustomObject]@{
+                    path  = $script:activeRoot
+                    label = "active"
+                    emoji = "📁"
+                }
+            }
+        }
     }
 
     AfterAll {
         if (Test-Path $script:tempTestDir) {
             Remove-Item -Recurse -Force $script:tempTestDir -ErrorAction SilentlyContinue
         }
+    }
+
+    BeforeEach {
+        Mock -ModuleName rtb Get-RtbConfig { return $script:testConfig }
+        Mock -ModuleName rtb Get-DevConfig { return $script:testConfig }
     }
 
     It "Detects .NET stack, Monorepo, CI/CD, and Runtime version in Get-ProjectDetails" {
@@ -41,11 +61,10 @@ Describe "Extended Project Intelligence & CLI --json" {
     }
 
     It "Rtb-Info returns detailed metadata object when --json flag is passed" {
-        # Test info against existing 'rtb-command-tool' project
-        $jsonStr = Rtb-Info rtb-command-tool --json | Out-String
+        $jsonStr = Rtb-Info $script:projectName --json | Out-String
         $jsonStr | Should -Not -BeNullOrEmpty
         $parsed = $jsonStr | ConvertFrom-Json
-        $parsed.name | Should -Be "rtb-command-tool"
+        $parsed.name | Should -Be $script:projectName
         ($parsed.is_monorepo -ne $null) | Should -Be $true
     }
 }
