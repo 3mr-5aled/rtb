@@ -4,13 +4,13 @@ function Dev-Index {
     $output = "# Project Index`n`n> Generated $(Get-Date -Format 'yyyy-MM-dd HH:mm')`n`n| Project | Status | Stack | Last Modified |`n|:---|:---|:---|:---|`n"
     $total = 0
     $categories = @(
-        @{Path=$config.projectRoots.active;Status='🟢 Active'},
-        @{Path=$config.projectRoots.paused;Status='⏸️ Paused'},
-        @{Path=$config.projectRoots.production;Status='🚀 Production'},
-        @{Path=$config.projectRoots.vibe;Status='⚡ Vibe'}
+        @{Path=(Get-RtbRootPath $config.projectRoots.active);Status='🟢 Active'},
+        @{Path=(Get-RtbRootPath $config.projectRoots.paused);Status='⏸️ Paused'},
+        @{Path=(Get-RtbRootPath $config.projectRoots.production);Status='🚀 Production'},
+        @{Path=(Get-RtbRootPath $config.projectRoots.vibe);Status='⚡ Vibe'}
     )
     foreach ($cat in $categories) {
-        if (-not (Test-Path $cat.Path)) { continue }
+        if (-not $cat.Path -or -not (Test-Path $cat.Path)) { continue }
         Get-ChildItem $cat.Path -Directory | ForEach-Object {
             $total++
             $stack = @()
@@ -36,7 +36,8 @@ function Dev-Index {
         }
     }
     $output += "`n---`n*Total: $total projects*`n"
-    $outPath = if ($config.projectRoots.active -and (Test-Path $config.projectRoots.active)) { Join-Path (Split-Path $config.projectRoots.active -Parent) 'PROJECT-INDEX.md' } else { 'PROJECT-INDEX.md' }
+    $activeRoot = Get-RtbRootPath $config.projectRoots.active
+    $outPath = if ($activeRoot -and (Test-Path $activeRoot)) { Join-Path (Split-Path $activeRoot -Parent) 'PROJECT-INDEX.md' } else { 'PROJECT-INDEX.md' }
     $output | Set-Content $outPath -Encoding UTF8
     Write-Host "  Generated index: $total projects → $outPath" -ForegroundColor Green
 }

@@ -1,6 +1,6 @@
 # RTB — رتّب (Repository & Tooling Base)
 
-[![Version](https://img.shields.io/badge/version-v0.3.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![Version](https://img.shields.io/badge/version-v0.4.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)](https://microsoft.com/powershell)
 [![Rust](https://img.shields.io/badge/Rust-1.80+-orange.svg)](https://www.rust-lang.org/)
@@ -9,7 +9,7 @@
 > [!NOTE]
 > **Beta Pre-Release**: RTB is currently in active beta testing. We welcome feedback, bug reports, and suggestions via [GitHub Issues](https://github.com/3mr-5aled/rtb/issues) and [Discussions](https://github.com/3mr-5aled/rtb/discussions)!
 
-**RTB — رتّب** is a fast, cross-platform Developer Project Operations Tool featuring a PowerShell CLI (`rtb`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, customizable live execution, and safe workspace management.
+**RTB — رتّب** is a fast, developer-first Project Operations Tool featuring a PowerShell CLI (`rtb`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, AI agent orchestration, and automated workspace lifecycle management.
 
 ---
 
@@ -20,21 +20,22 @@ rtb/
 ├── config/
 │   └── rtb.config.json     # Default JSON configuration template
 ├── cli/                    # PowerShell CLI module source & commands
-│   ├── rtb.psd1            # Module Manifest
-│   ├── rtb.psm1            # Primary CLI Module Entrypoint
+│   ├── rtb.psd1            # Module Manifest (v0.4.0)
+│   ├── rtb.psm1            # Primary CLI Module Entrypoint & Config Gate
 │   ├── src/
-│   │   ├── commands/       # Subcommands (init, run, build, test, commit, goto, etc.)
+│   │   ├── commands/       # Subcommands (init, run, build, test, commit, goto, doctor, upgrade, etc.)
 │   │   ├── completions/    # Shell completion scripts (ps1, bash, zsh, fish)
-│   │   └── utils/          # Helpers & config loaders
-│   └── tests/              # Pester unit tests
+│   │   └── utils/          # Helpers, schema normalizer & config loaders
+│   └── tests/              # Pester unit & integration tests
 ├── tui/                    # Rust Ratatui interactive TUI source
 │   ├── Cargo.toml
 │   ├── Cargo.lock
 │   └── src/
-├── .github/                # Workflows & Issue templates
+├── .github/                # CI/CD Workflows & Issue templates
 │   ├── workflows/release.yml
 │   └── ISSUE_TEMPLATE/
-├── install.ps1             # Automated installer & profile integrator
+├── install.ps1             # Dual-mode automated installer & profile integrator
+├── uninstall.ps1           # Standalone automated uninstaller
 ├── PROJECT.md              # Project metadata
 ├── LICENSE                 # MIT License
 └── README.md
@@ -44,7 +45,28 @@ rtb/
 
 ## 🚀 Quick Start & Installation
 
-### Option 1: Automatic Installer (Recommended)
+### Option 1: Standalone One-Liner (Recommended)
+
+Run the following command in PowerShell (no git clone or source code required):
+
+```powershell
+irm https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.ps1 | iex
+```
+
+This will automatically:
+- Download the latest release bundle (`rtb-cli.zip`) from GitHub Releases.
+- Deploy the `rtb` CLI module to `%APPDATA%\rtb\module`.
+- Install the `rtbtui` binary into `%APPDATA%\rtb\bin` and permanently add it to your user `PATH`.
+- Configure module autoload in your PowerShell `$PROFILE`.
+
+Next, run the interactive configuration wizard:
+```powershell
+rtb init
+```
+
+---
+
+### Option 2: Local Repository Installation (Developers & Contributors)
 
 1. Clone the repository:
    ```bash
@@ -52,59 +74,112 @@ rtb/
    cd rtb
    ```
 
-2. Run the PowerShell setup script:
+2. Run the local installer script:
    ```powershell
    pwsh -File ./install.ps1
    ```
 
-   This will:
-   - Build `rtbtui` binary via Cargo (if Rust is installed) or configure existing binaries.
-   - Set up the PowerShell module autoload in your `$PROFILE`.
-   - Register dynamic tab completions for `rtb` commands.
-
-3. Initialize your workspace roots:
+3. Initialize your workspace:
    ```powershell
    rtb init
    ```
 
 ---
 
-### Option 2: Pre-compiled Binaries
+### 🔄 Upgrading RTB
 
-Download pre-built standalone binaries directly from [GitHub Releases](https://github.com/3mr-5aled/rtb/releases).
+To check for updates and self-upgrade:
+
+```powershell
+# Check if a new release is available
+rtb upgrade --check
+
+# Download and install the latest release automatically
+rtb upgrade
+```
+
+---
+
+### 🗑️ Uninstallation
+
+To cleanly uninstall RTB, remove binaries, and clean up PowerShell profile imports:
+
+- **Via CLI command:**
+  ```powershell
+  rtb uninstall
+  # Or force clean without confirmation prompt:
+  rtb uninstall -Force
+  ```
+
+- **Via standalone script:**
+  ```powershell
+  pwsh -File ./uninstall.ps1
+  ```
+
+Add the `-KeepConfig` flag if you wish to preserve your `%APPDATA%\rtb\rtb.config.json` user settings for future use.
 
 ---
 
 ## 🛠️ CLI Command Reference (`rtb`)
 
-| Command                                             | Description                                                       |
-| --------------------------------------------------- | ----------------------------------------------------------------- |
-| `rtb init`                                          | Initialize user configuration in `%APPDATA%\rtb\rtb.config.json`  |
-| `rtb run [project]`                                 | Auto-detect and run project dev/start scripts                     |
-| `rtb commit [-Message <str>] [-Amend] [-Push]`      | Interactive CLI prompt to stage, commit, and push git changes     |
-| `rtb build [project]`                               | Auto-detect and run project build scripts                         |
-| `rtb test [project]`                                | Auto-detect and run project test suites                           |
-| `rtb goto <project>`                                | Tab-complete fuzzy project directory navigation                   |
-| `rtb ui` / `rtbtui`                                 | Launch interactive Ratatui TUI operations center                  |
-| `rtb list [--active\|--paused\|--deployed\|--vibe]` | Filtered project status listing                                   |
-| `rtb new <name>`                                    | Scaffold a new project                                            |
-| `rtb pause <name>`                                  | Move project to `04-Paused` and prune dependencies                |
-| `rtb resume <name>`                                 | Move project to `01-Active`                                       |
-| `rtb deploy <name>`                                 | Move project to `02-Deployed`                                     |
-| `rtb archive <name>`                                | Compress project into `.tar.gz` backup archive                    |
-| `rtb unarchive <name>`                              | Restore archived project archive                                  |
-| `rtb health`                                        | Perform Git repository health overview scan                       |
-| `rtb clean [--dry-run\|--force]`                    | Safe dependency pruning (`node_modules`, `target`, `.venv`)       |
-| `rtb --version` / `rtb --help`                      | View version and available command details                        |
+### Setup & Lifecycle
+| Command | Description |
+| :--- | :--- |
+| `rtb init [--force]` | Interactive setup wizard (detects root, scaffolds folders, configures emojis/labels) |
+| `rtb doctor` | System health check (validates config, roots, git, runtimes, agents, and TUI binary) |
+| `rtb upgrade [--check] [--force]` | Check for newer releases and perform in-place self-upgrade |
+| `rtb uninstall [--force] [-KeepConfig]` | Cleanly remove RTB binaries, module, and profile integrations |
+| `rtb --version` / `rtb --help` | Display current version or command help menu |
+
+### Navigation & Discovery
+| Command | Description |
+| :--- | :--- |
+| `rtb goto <query> [--<agent>]` | Fuzzy project search & fast directory jump (with optional AI agent launch) |
+| `rtb list [--active\|--paused\|--deployed\|--all] [--json]` | Filtered project status listing with last modified timestamps |
+| `rtb status [--json]` | Fast one-line prompt status segment (`rtb » project (Active) [main ±1] Node.js`) |
+| `rtb open <project>` | Open project directory in File Explorer |
+
+### Project Intelligence & Operations
+| Command | Description |
+| :--- | :--- |
+| `rtb run [project]` | Auto-detect and run dev/start scripts (`npm`, `pnpm`, `cargo`, `python`, etc.) |
+| `rtb build [project]` | Auto-detect and run project build pipelines |
+| `rtb test [project]` | Auto-detect and execute project test suites |
+| `rtb info [project] [--json]` | Deep multi-runtime project intelligence inspection |
+| `rtb deps [outdated] [project]` | Audit declared project dependencies and package lockfiles |
+| `rtb workspace [project]` | Inspect monorepo workspace packages (pnpm, yarn, bun, npm, Cargo) |
+| `rtb commit [-Message <str>] [-Amend] [-Push]` | Interactive CLI prompt to stage, commit, and push git changes |
+
+### AI Agent Orchestration
+| Command | Description |
+| :--- | :--- |
+| `rtb agy [project]` | Launch Google Antigravity CLI with auto-generated project context |
+| `rtb claude\|gemini\|codex [project]` | Launch Claude, Gemini, or Codex CLI |
+| `rtb cursor\|windsurf\|aider [project]` | Launch Cursor, Windsurf, or Aider |
+| `rtb agent [project] [-List]` | List installed AI agent CLIs or launch targeted agent |
+
+### Workspace Management & Safety
+| Command | Description |
+| :--- | :--- |
+| `rtb new <name> [--stack <type>]` | Scaffold a new project in `01-Active` |
+| `rtb pause <name> [--prune] [-Force]` | Move project to `04-Paused` with uncommitted changes check and dep pruning |
+| `rtb resume <name> [--install]` | Move project back to `01-Active` (optionally reinstall dependencies) |
+| `rtb deploy <name> [--prod\|--staging]` | Promote active project to production or staging |
+| `rtb archive <name> [-Force]` | Safely compress project into `.tar.gz` backup archive |
+| `rtb unarchive <archive-name>` | Restore project snapshot to `01-Active` |
+| `rtb health` | Perform Git repository health overview scan |
+| `rtb clean [--commit] [--dry-run]` | Safe dependency pruning (`node_modules`, `target`, `.venv`) with dry-run default |
+| `rtb index` | Generate comprehensive `PROJECT-INDEX.md` markdown catalog |
+| `rtb backup` / `rtb env` | Backup configurations or `.env` credential files |
 
 ---
 
 ## 💻 Interactive TUI (`rtbtui` / `rtb ui`)
 
-Launch the interactive dashboard with:
+Launch the interactive terminal dashboard with:
 ```bash
 rtb ui
-# or
+# or directly
 rtbtui
 ```
 
@@ -129,10 +204,12 @@ RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority
 1. **User Profile**: `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Linux/macOS)
 2. **Repository Fallback**: `config/rtb.config.json`
 
-To generate your personalized user configuration:
+To generate or reconfigure your personalized user configuration:
 
 ```powershell
 rtb init
+# Or force re-initialization:
+rtb init -Force
 ```
 
 ---

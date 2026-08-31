@@ -16,8 +16,8 @@ function Dev-Deploy {
 
     $config = Get-DevConfig
     $kebabName = $Name.ToLower() -replace '[^a-z0-9\-]', '-'
-    $activePath = Join-Path $config.projectRoots.active $kebabName
-    $deployRoot = if ($target -eq 'production') { $config.projectRoots.production } else { $config.projectRoots.staging }
+    $activePath = Join-Path (Get-RtbRootPath $config.projectRoots.active) $kebabName
+    $deployRoot = if ($target -eq 'production') { (Get-RtbRootPath $config.projectRoots.production) } else { (Get-RtbRootPath $config.projectRoots.staging) }
     $deployPath = Join-Path $deployRoot $kebabName
 
     if (-not (Test-Path $activePath)) {

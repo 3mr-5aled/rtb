@@ -1,20 +1,49 @@
 # Shared utility functions for RTB CLI
 
+function Get-RtbRootPath {
+    param([object]$RootEntry)
+    if ($null -eq $RootEntry) { return $null }
+    if ($RootEntry -is [string]) { return $RootEntry }
+    if ($RootEntry.PSObject.Properties['path']) { return $RootEntry.path }
+    return [string]$RootEntry
+}
+
 function Get-RtbConfig {
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
     $dotConfigDir = Join-Path $userHomeDir '.config/rtb'
     $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb/rtb.config.json' } else { $null }
 
     $paths = @(
-        (Join-Path $dotConfigDir 'rtb.config.json'),
         $appDataPath,
+        (Join-Path $dotConfigDir 'rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\..\config\dev.config.json')
     )
     foreach ($p in $paths) {
         if ($p -and (Test-Path $p)) {
-            return Get-Content $p -Raw | ConvertFrom-Json
+            $cfg = Get-Content $p -Raw | ConvertFrom-Json
+            if ($cfg -and $cfg.projectRoots) {
+                # Normalize projectRoots entries to objects with { path, label, emoji }
+                foreach ($prop in $cfg.projectRoots.PSObject.Properties) {
+                    $val = $prop.Value
+                    if ($val -is [string]) {
+                        $prop.Value = [PSCustomObject]@{
+                            path  = $val
+                            label = $prop.Name
+                            emoji = '📁'
+                        }
+                    } elseif ($val -is [PSCustomObject] -and $val.PSObject.Properties['path']) {
+                        if (-not $val.PSObject.Properties['label']) {
+                            $val | Add-Member -NotePropertyName 'label' -NotePropertyValue $prop.Name -Force
+                        }
+                        if (-not $val.PSObject.Properties['emoji']) {
+                            $val | Add-Member -NotePropertyName 'emoji' -NotePropertyValue '📁' -Force
+                        }
+                    }
+                }
+            }
+            return $cfg
         }
     }
     Write-Error 'rtb config not found. Expected at %USERPROFILE%\.config\rtb\rtb.config.json or %APPDATA%\rtb\rtb.config.json'
@@ -25,18 +54,54 @@ function Get-DevConfig {
     return Get-RtbConfig
 }
 
+function Test-RtbConfigured {
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $dotConfigPath = Join-Path $userHomeDir '.config/rtb/rtb.config.json'
+    $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb/rtb.config.json' } else { $null }
+
+    $cfgPath = $null
+    if ($appDataPath -and (Test-Path $appDataPath)) {
+        $cfgPath = $appDataPath
+    } elseif (Test-Path $dotConfigPath) {
+        $cfgPath = $dotConfigPath
+    }
+
+    if (-not $cfgPath) { return $false }
+
+    try {
+        $cfg = Get-Content $cfgPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+        if (-not $cfg -or -not $cfg.projectRoots -or -not $cfg.projectRoots.active) {
+            return $false
+        }
+        $active = $cfg.projectRoots.active
+        $activePath = if ($active -is [string]) {
+            $active
+        } elseif ($active.PSObject.Properties['path']) {
+            $active.path
+        } else {
+            $null
+        }
+        return (-not [string]::IsNullOrWhiteSpace($activePath))
+    } catch {
+        return $false
+    }
+}
+
 function Get-AllProjectNames {
     $config = Get-RtbConfig
     if (-not $config) { return @() }
     
     $names = @()
     $roots = @(
-        $config.projectRoots.active,
-        $config.projectRoots.paused,
-        $config.projectRoots.production,
-        $config.projectRoots.staging,
-        $config.projectRoots.vibe,
-        $config.projectRoots.sandbox
+        (Get-RtbRootPath $config.projectRoots.active),
+        (Get-RtbRootPath $config.projectRoots.paused),
+        (Get-RtbRootPath $config.projectRoots.production),
+        (Get-RtbRootPath $config.projectRoots.staging),
+        (Get-RtbRootPath $config.projectRoots.vibe),
+        (Get-RtbRootPath $config.projectRoots.sandbox),
+        (Get-RtbRootPath $config.projectRoots.planning),
+        (Get-RtbRootPath $config.projectRoots.testing),
+        (Get-RtbRootPath $config.projectRoots.abandoned)
     )
     
     foreach ($root in $roots) {
@@ -54,16 +119,16 @@ function Get-ProjectsByStatus {
     $config = Get-RtbConfig
     if (-not $config) { return @() }
     
-    $root = switch ($Status) {
-        'active'     { $config.projectRoots.active }
-        'paused'     { $config.projectRoots.paused }
-        'production' { $config.projectRoots.production }
-        'staging'    { $config.projectRoots.staging }
-        'vibe'       { $config.projectRoots.vibe }
-        'sandbox'    { $config.projectRoots.sandbox }
-        'planning'   { $config.projectRoots.planning }
-        'testing'    { $config.projectRoots.testing }
-        'abandoned'  { $config.projectRoots.abandoned }
+    $root = switch ($Status.ToLower()) {
+        'active'     { Get-RtbRootPath $config.projectRoots.active }
+        'paused'     { Get-RtbRootPath $config.projectRoots.paused }
+        'production' { Get-RtbRootPath $config.projectRoots.production }
+        'staging'    { Get-RtbRootPath $config.projectRoots.staging }
+        'vibe'       { Get-RtbRootPath $config.projectRoots.vibe }
+        'sandbox'    { Get-RtbRootPath $config.projectRoots.sandbox }
+        'planning'   { Get-RtbRootPath $config.projectRoots.planning }
+        'testing'    { Get-RtbRootPath $config.projectRoots.testing }
+        'abandoned'  { Get-RtbRootPath $config.projectRoots.abandoned }
     }
     
     if ($root -and (Test-Path $root)) {
@@ -78,14 +143,15 @@ function Find-ProjectPath {
     if (-not $config) { return $null }
     
     $roots = @(
-        @{ Path = $config.projectRoots.active; Status = 'Active' },
-        @{ Path = $config.projectRoots.paused; Status = 'Paused' },
-        @{ Path = $config.projectRoots.production; Status = 'Production' },
-        @{ Path = $config.projectRoots.staging; Status = 'Staging' },
-        @{ Path = $config.projectRoots.vibe; Status = 'Vibe' },
-        @{ Path = $config.projectRoots.sandbox; Status = 'Sandbox' },
-        @{ Path = $config.projectRoots.planning; Status = 'Planning' },
-        @{ Path = $config.projectRoots.testing; Status = 'Testing' }
+        @{ Path = (Get-RtbRootPath $config.projectRoots.active);     Status = 'Active' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.paused);     Status = 'Paused' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.production); Status = 'Production' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.staging);    Status = 'Staging' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.vibe);       Status = 'Vibe' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.sandbox);    Status = 'Sandbox' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.planning);   Status = 'Planning' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.testing);    Status = 'Testing' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.abandoned);  Status = 'Abandoned' }
     )
     
     foreach ($entry in $roots) {
@@ -116,15 +182,15 @@ function Find-ProjectPathFuzzy {
     if (-not $config) { return @() }
 
     $roots = @(
-        @{ Path = $config.projectRoots.active;     Status = 'Active' },
-        @{ Path = $config.projectRoots.paused;     Status = 'Paused' },
-        @{ Path = $config.projectRoots.production; Status = 'Production' },
-        @{ Path = $config.projectRoots.staging;    Status = 'Staging' },
-        @{ Path = $config.projectRoots.vibe;       Status = 'Vibe' },
-        @{ Path = $config.projectRoots.sandbox;    Status = 'Sandbox' },
-        @{ Path = $config.projectRoots.planning;   Status = 'Planning' },
-        @{ Path = $config.projectRoots.testing;    Status = 'Testing' },
-        @{ Path = $config.projectRoots.abandoned;  Status = 'Abandoned' }
+        @{ Path = (Get-RtbRootPath $config.projectRoots.active);     Status = 'Active' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.paused);     Status = 'Paused' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.production); Status = 'Production' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.staging);    Status = 'Staging' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.vibe);       Status = 'Vibe' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.sandbox);    Status = 'Sandbox' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.planning);   Status = 'Planning' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.testing);    Status = 'Testing' },
+        @{ Path = (Get-RtbRootPath $config.projectRoots.abandoned);  Status = 'Abandoned' }
     )
 
     $q = $Query.ToLower()
@@ -313,7 +379,7 @@ function Get-ProjectDetails {
     }
 
     # Last modified
-    $lastFile = Get-ChildItem $ProjectPath -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+    $lastFile = Get-ChildItem $ProjectPath -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -notmatch 'node_modules|\.git|dist|build|\.next|target' } |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
     $lastMod = if ($lastFile) { $lastFile.LastWriteTime.ToString('yyyy-MM-ddTHH:mm:ss') } else { $null }
@@ -340,19 +406,20 @@ function Get-AllProjectsDetails {
     if (-not $config) { return @() }
 
     $categories = @(
-        @{ Name = 'Active';     Status = 'Active';     Path = $config.projectRoots.active;     Show = $Filter -in 'all','active' },
-        @{ Name = 'Paused';     Status = 'Paused';     Path = $config.projectRoots.paused;     Show = $Filter -in 'all','paused' },
-        @{ Name = 'Production'; Status = 'Production'; Path = $config.projectRoots.production; Show = $Filter -in 'all','deployed' },
-        @{ Name = 'Staging';    Status = 'Staging';    Path = $config.projectRoots.staging;    Show = $Filter -in 'all','deployed' },
-        @{ Name = 'Vibe';       Status = 'Vibe';       Path = $config.projectRoots.vibe;       Show = $Filter -in 'all','vibe' },
-        @{ Name = 'Sandbox';    Status = 'Sandbox';    Path = $config.projectRoots.sandbox;    Show = $Filter -in 'all','all' },
-        @{ Name = 'Planning';   Status = 'Planning';   Path = $config.projectRoots.planning;   Show = $Filter -in 'all','all' },
-        @{ Name = 'Testing';    Status = 'Testing';    Path = $config.projectRoots.testing;    Show = $Filter -in 'all','all' }
+        @{ Name = 'Active';     Status = 'Active';     Path = (Get-RtbRootPath $config.projectRoots.active);     Show = $Filter -in 'all','active' },
+        @{ Name = 'Paused';     Status = 'Paused';     Path = (Get-RtbRootPath $config.projectRoots.paused);     Show = $Filter -in 'all','paused' },
+        @{ Name = 'Production'; Status = 'Production'; Path = (Get-RtbRootPath $config.projectRoots.production); Show = $Filter -in 'all','deployed' },
+        @{ Name = 'Staging';    Status = 'Staging';    Path = (Get-RtbRootPath $config.projectRoots.staging);    Show = $Filter -in 'all','deployed' },
+        @{ Name = 'Vibe';       Status = 'Vibe';       Path = (Get-RtbRootPath $config.projectRoots.vibe);       Show = $Filter -in 'all','vibe' },
+        @{ Name = 'Sandbox';    Status = 'Sandbox';    Path = (Get-RtbRootPath $config.projectRoots.sandbox);    Show = $Filter -in 'all','all' },
+        @{ Name = 'Planning';   Status = 'Planning';   Path = (Get-RtbRootPath $config.projectRoots.planning);   Show = $Filter -in 'all','all' },
+        @{ Name = 'Testing';    Status = 'Testing';    Path = (Get-RtbRootPath $config.projectRoots.testing);    Show = $Filter -in 'all','all' },
+        @{ Name = 'Abandoned';  Status = 'Abandoned';  Path = (Get-RtbRootPath $config.projectRoots.abandoned);  Show = $Filter -in 'all','all' }
     )
 
     $results = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($cat in $categories) {
-        if (-not $cat.Show -or -not (Test-Path $cat.Path)) { continue }
+        if (-not $cat.Show -or -not $cat.Path -or -not (Test-Path $cat.Path)) { continue }
         $dirs = Get-ChildItem -Path $cat.Path -Directory -ErrorAction SilentlyContinue
         foreach ($d in $dirs) {
             $details = Get-ProjectDetails -ProjectPath $d.FullName -Status $cat.Status

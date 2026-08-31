@@ -37,8 +37,8 @@ function Dev-Pause {
 
     $config = Get-RtbConfig
     $kebabName = $Name.ToLower() -replace '[^a-z0-9\-]', '-'
-    $activePath = Join-Path $config.projectRoots.active $kebabName
-    $pausedPath = Join-Path $config.projectRoots.paused $kebabName
+    $activePath = Join-Path (Get-RtbRootPath $config.projectRoots.active) $kebabName
+    $pausedPath = Join-Path (Get-RtbRootPath $config.projectRoots.paused) $kebabName
 
     if (-not (Test-Path $activePath)) {
         Write-Host "  Project '$kebabName' not found in Active!" -ForegroundColor Red

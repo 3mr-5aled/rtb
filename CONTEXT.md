@@ -25,3 +25,19 @@ Centralized execution and safety engine for system operations.
 AI agent discovery, context generation, and process execution engine.
 - **Interface**: `AgentOrchestrator::launch(agent_id, project_path)` / `Rtb-Agent`, `rtb <agent-shorthand>`, `rtb goto --<agent>`.
 - **Responsibilities**: Discovers installed AI agent CLIs (`agy`, `claude`, `gemini`, `codex`, `cursor`, `windsurf`, `aider`, `openhands`) in `PATH`, auto-generates transient project context payloads (`.rtb_context.md`), maps agent shorthand commands and `--<agent>` flags, and manages cross-platform process spawning.
+
+## Installation & Delivery Glossary
+
+**Installation Mode**: Either `repo` (developer running `pwsh -File ./install.ps1` from a cloned source tree) or `standalone` (end user piping `install.ps1` via `irm | iex`). Detected automatically: if `$PSScriptRoot` is empty or contains no `cli\` subfolder → standalone; otherwise → repo.
+
+**Module Home**: The directory where the PowerShell CLI module (`rtb.psd1`, `rtb.psm1`, `src/`) lives after installation. In standalone mode: `%APPDATA%\rtb\module\`. In repo mode: `<repo>/cli/`. The `$PROFILE` `Import-Module` line always points here.
+
+**Release Bundle** (`rtb-cli.zip`): The canonical GitHub Release asset produced by CI. Contains the full CLI module folder, `rtbtui.exe`, `logo.txt`, and `uninstall.ps1`. This is the only artifact a standalone installer downloads.
+
+**User Configuration**: The `rtb.config.json` file at `%APPDATA%\rtb\rtb.config.json`. A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
+
+**Config Gate**: The mechanism in `rtb.psm1` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `doctor`, `uninstall`.
+
+**Project Root Entry**: A single entry in `projectRoots` in `rtb.config.json`. Structured as `{ path: String, label: String, emoji: String }`. Represents one lifecycle folder (e.g. Active, Paused, Deployed). Replaces the previous flat string schema.
+
+**Workspace Scaffold**: The directory tree created by `rtb init` under the user's chosen root. Folders are selected interactively via a multi-select list; each has a default emoji and label that the user may customize. `Vibe Coding` is not part of the standard scaffold — it is a user-defined custom folder type.

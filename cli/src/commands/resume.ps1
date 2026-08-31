@@ -14,8 +14,8 @@ function Dev-Resume {
 
     $config = Get-DevConfig
     $kebabName = $Name.ToLower() -replace '[^a-z0-9\-]', '-'
-    $pausedPath = Join-Path $config.projectRoots.paused $kebabName
-    $activePath = Join-Path $config.projectRoots.active $kebabName
+    $pausedPath = Join-Path (Get-RtbRootPath $config.projectRoots.paused) $kebabName
+    $activePath = Join-Path (Get-RtbRootPath $config.projectRoots.active) $kebabName
 
     if (-not (Test-Path $pausedPath)) {
         Write-Host "  Project '$kebabName' not found in Paused!" -ForegroundColor Red

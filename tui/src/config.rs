@@ -17,15 +17,47 @@ pub struct DevConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+enum StringOrPathObject {
+    Str(String),
+    Obj {
+        path: String,
+        label: Option<String>,
+        emoji: Option<String>,
+    },
+}
+
+fn deserialize_root_path<'de, D>(deserializer: D) -> std::result::Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let helper = Option::<StringOrPathObject>::deserialize(deserializer)?;
+    match helper {
+        Some(StringOrPathObject::Str(s)) => Ok(s),
+        Some(StringOrPathObject::Obj { path, .. }) => Ok(path),
+        None => Ok(String::new()),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct ProjectRoots {
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub active: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub paused: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub planning: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub testing: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub abandoned: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub production: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub staging: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub vibe: String,
+    #[serde(deserialize_with = "deserialize_root_path", default)]
     pub sandbox: String,
 }
 
@@ -176,6 +208,38 @@ mod tests {
         let config = config.unwrap();
         assert_eq!(config.version, "0.2.0-beta");
         assert_eq!(config.clean_deps.days_inactive, 30);
+    }
+
+    #[test]
+    fn config_deserialize_object_roots_sample() {
+        let sample_json = r#"{
+            "version": "1.0.0",
+            "projectRoots": {
+                "active": { "path": "D:/Projects/Active", "label": "Active", "emoji": "📁" },
+                "paused": { "path": "D:/Projects/Paused", "label": "Paused", "emoji": "⏸️" },
+                "production": { "path": "D:/Projects/Production", "label": "Production", "emoji": "🚀" },
+                "staging": { "path": "D:/Projects/Staging", "label": "Staging", "emoji": "🚀" },
+                "sandbox": { "path": "D:/Projects/Sandbox", "label": "Sandbox", "emoji": "📦" }
+            },
+            "backupRoot": "D:/Backups",
+            "configRoot": "D:/Config",
+            "templateDir": "D:/Templates",
+            "cleanDeps": {
+                "daysInactive": 60,
+                "targets": ["node_modules", "target"]
+            },
+            "staleThresholdDays": 90,
+            "gitHealth": {
+                "scanRoots": ["D:/Projects"]
+            }
+        }"#;
+
+        let config: Result<DevConfig, _> = serde_json::from_str(sample_json);
+        assert!(config.is_ok(), "Object schema config should parse correctly");
+        let config = config.unwrap();
+        assert_eq!(config.version, "1.0.0");
+        assert_eq!(config.project_roots.active, "D:/Projects/Active");
+        assert_eq!(config.project_roots.paused, "D:/Projects/Paused");
     }
 }
 

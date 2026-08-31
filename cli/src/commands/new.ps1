@@ -24,7 +24,7 @@ function Dev-New {
 
     $config = Get-DevConfig
     $kebabName = $Name.ToLower() -replace '[^a-z0-9\-]', '-' -replace '-+', '-'
-    $targetDir = Join-Path $config.projectRoots.active $kebabName
+    $targetDir = Join-Path (Get-RtbRootPath $config.projectRoots.active) $kebabName
 
     if (Test-Path $targetDir) {
         Write-Host "  Project '$kebabName' already exists!" -ForegroundColor Red

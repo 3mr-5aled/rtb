@@ -5,6 +5,31 @@ All notable changes to **RTB — رتّب (Repository & Tooling Base)** will be 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2026-08-31
+
+### Added
+
+- **Standalone One-Liner Installer (`irm ... | iex`)**:
+  - Direct installation from GitHub Releases without requiring `git clone` or local source files.
+  - Automatic release bundle packaging (`rtb-cli.zip`) in GitHub Actions workflow via `softprops/action-gh-release@v2`.
+  - Automatic permanent user `PATH` configuration (in Windows Registry) and active session `$env:PATH` injection.
+  - PowerShell `$PROFILE` integration targeting the centralized module home at `%APPDATA%\rtb\module\`.
+- **Interactive Configuration Wizard (`rtb init`)**:
+  - Smart workspace root detection (scans `~/Projects`, `~/dev`, `~/code`, `~/repos`, `~/workspace`, `D:\02-Projects`, etc.).
+  - Interactive multi-select toggle list for scaffolding lifecycle folders (`Active`, `Paused`, `Deployed`, `Planning`, `Testing`, `Abandoned`, `Sandbox`).
+  - Per-folder emoji and custom display label customization.
+- **Config Gate**:
+  - Intercepts data-dependent commands on unconfigured systems with a helpful prompt: `"Would you like to configure now? (Y/n)"`.
+  - Exempts `help`, `doctor`, `init`, `uninstall`, `--version`, and `--help`.
+- **Self-Upgrade Engine (`rtb upgrade`)**:
+  - `rtb upgrade --check` compares local manifest version with GitHub Releases API.
+  - `rtb upgrade` downloads and installs the latest `rtb-cli.zip` release bundle live.
+- **Self-Contained Uninstaller (`rtb uninstall` / `uninstall.ps1`)**:
+  - Dedicated prompt for PowerShell profile autoload cleanup with warning on manual retention.
+  - Works on standalone systems without repository sources.
+- **Rich Configuration Schema**:
+  - `projectRoots` now supports `{ path, label, emoji }` with automatic backward-compatible normalization for legacy flat string paths across both PowerShell CLI and Rust TUI (`rtbtui`).
+
 ---
 
 ## [v0.3.0] - 2026-08-30

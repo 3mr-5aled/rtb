@@ -39,7 +39,12 @@ function Rtb-Clean {
     $config = Get-RtbConfig
     $cutoff = (Get-Date).AddDays(-$resolvedDays)
     $targets = $config.cleanDeps.targets
-    $searchPaths = @($config.projectRoots.active, $config.projectRoots.paused, $config.projectRoots.vibe, $config.projectRoots.sandbox)
+    $searchPaths = @(
+        (Get-RtbRootPath $config.projectRoots.active),
+        (Get-RtbRootPath $config.projectRoots.paused),
+        (Get-RtbRootPath $config.projectRoots.vibe),
+        (Get-RtbRootPath $config.projectRoots.sandbox)
+    )
 
     Write-RtbHeader "Dependency Pruning (${resolvedDays}d threshold)"
     if ($isDryRun) {

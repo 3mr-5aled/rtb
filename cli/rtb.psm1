@@ -27,7 +27,30 @@ function rtb {
 
     if (-not $Command -or $Command -eq '--help' -or $Command -eq '-h') { $Command = 'help' }
     if ($Command -eq '--version' -or $Command -eq '-v') {
-        Write-Host "RTB (ﺐﺘّﺭ) CLI v0.3.0" -ForegroundColor Green
+        $ver = '0.4.0'
+        $psdPath = Join-Path $PSScriptRoot 'rtb.psd1'
+        if (Test-Path $psdPath) {
+            try {
+                $manifest = Import-PowerShellDataFile -Path $psdPath -ErrorAction SilentlyContinue
+                if ($manifest -and $manifest.ModuleVersion) { $ver = $manifest.ModuleVersion }
+            } catch {}
+        }
+        Write-Host "RTB (ﺐﺘّﺭ) CLI v$ver" -ForegroundColor Green
+        return
+    }
+
+    # Config Gate for data-dependent commands
+    $freeCommands = @('help', 'init', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
+    if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
+        Write-Host ""
+        Write-Host "  ⚠  RTB is not configured yet." -ForegroundColor Yellow
+        Write-Host "     Run 'rtb init' to set up your workspace." -ForegroundColor Gray
+        Write-Host ""
+        $answer = Read-Host "  Would you like to configure now? (Y/n)"
+        if ([string]::IsNullOrWhiteSpace($answer) -or $answer.Trim() -match '^(y|yes)$') {
+            Rtb-Init
+            return
+        }
         return
     }
 
@@ -66,6 +89,7 @@ function rtb {
         'deps'        { if ($Arguments) { Rtb-Deps @Arguments } else { Rtb-Deps } }
         'workspace'   { if ($Arguments) { Rtb-Workspace @Arguments } else { Rtb-Workspace } }
         'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
+        'uninstall'   { if ($Arguments) { Rtb-Uninstall @Arguments } else { Rtb-Uninstall } }
         'doctor'      { if ($Arguments) { Rtb-Doctor @Arguments } else { Rtb-Doctor } }
         'status'      { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } }
         'ui'          { Dev-Ui }

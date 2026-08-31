@@ -26,15 +26,15 @@ function Rtb-Status {
 
     if ($config -and $config.projectRoots) {
         $rootMap = [ordered]@{
-            'Active'     = $config.projectRoots.active
-            'Paused'     = $config.projectRoots.paused
-            'Production' = $config.projectRoots.production
-            'Staging'    = $config.projectRoots.staging
-            'Vibe'       = $config.projectRoots.vibe
-            'Sandbox'    = $config.projectRoots.sandbox
-            'Planning'   = $config.projectRoots.planning
-            'Testing'    = $config.projectRoots.testing
-            'Abandoned'  = $config.projectRoots.abandoned
+            'Active'     = (Get-RtbRootPath $config.projectRoots.active)
+            'Paused'     = (Get-RtbRootPath $config.projectRoots.paused)
+            'Production' = (Get-RtbRootPath $config.projectRoots.production)
+            'Staging'    = (Get-RtbRootPath $config.projectRoots.staging)
+            'Vibe'       = (Get-RtbRootPath $config.projectRoots.vibe)
+            'Sandbox'    = (Get-RtbRootPath $config.projectRoots.sandbox)
+            'Planning'   = (Get-RtbRootPath $config.projectRoots.planning)
+            'Testing'    = (Get-RtbRootPath $config.projectRoots.testing)
+            'Abandoned'  = (Get-RtbRootPath $config.projectRoots.abandoned)
         }
         foreach ($status in $rootMap.Keys) {
             $root = $rootMap[$status]

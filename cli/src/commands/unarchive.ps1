@@ -26,7 +26,7 @@ function Dev-Unarchive {
     }
 
     Write-RtbHeader "Unarchiving: $ArchiveName"
-    $activeDir = $config.projectRoots.active
+    $activeDir = Get-RtbRootPath $config.projectRoots.active
 
     Push-Location $activeDir
     tar -xzf $archivePath 2>&1 | Out-Null

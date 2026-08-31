@@ -27,16 +27,16 @@ function Rtb-List {
     Write-Host ''
 
     $categories = @(
-        @{ Name = 'Active';     Icon = '🟢'; Path = $config.projectRoots.active;     Show = $filter -in 'all','active' },
-        @{ Name = 'Paused';     Icon = '⏸️';  Path = $config.projectRoots.paused;     Show = $filter -in 'all','paused' },
-        @{ Name = 'Production'; Icon = '🚀'; Path = $config.projectRoots.production; Show = $filter -in 'all','deployed' },
-        @{ Name = 'Staging';    Icon = '🧪'; Path = $config.projectRoots.staging;    Show = $filter -in 'all','deployed' },
-        @{ Name = 'Vibe';       Icon = '⚡'; Path = $config.projectRoots.vibe;       Show = $filter -in 'all','vibe' }
+        @{ Name = if ($config.projectRoots.active.label) { $config.projectRoots.active.label } else { 'Active' };     Icon = if ($config.projectRoots.active.emoji) { $config.projectRoots.active.emoji } else { '📁' }; Path = (Get-RtbRootPath $config.projectRoots.active);     Show = $filter -in 'all','active' },
+        @{ Name = if ($config.projectRoots.paused.label) { $config.projectRoots.paused.label } else { 'Paused' };     Icon = if ($config.projectRoots.paused.emoji) { $config.projectRoots.paused.emoji } else { '⏸️' };  Path = (Get-RtbRootPath $config.projectRoots.paused);     Show = $filter -in 'all','paused' },
+        @{ Name = if ($config.projectRoots.production.label) { $config.projectRoots.production.label } else { 'Production' }; Icon = if ($config.projectRoots.production.emoji) { $config.projectRoots.production.emoji } else { '🚀' }; Path = (Get-RtbRootPath $config.projectRoots.production); Show = $filter -in 'all','deployed' },
+        @{ Name = if ($config.projectRoots.staging.label) { $config.projectRoots.staging.label } else { 'Staging' };    Icon = if ($config.projectRoots.staging.emoji) { $config.projectRoots.staging.emoji } else { '🚀' }; Path = (Get-RtbRootPath $config.projectRoots.staging);    Show = $filter -in 'all','deployed' },
+        @{ Name = if ($config.projectRoots.vibe.label) { $config.projectRoots.vibe.label } else { 'Vibe' };       Icon = if ($config.projectRoots.vibe.emoji) { $config.projectRoots.vibe.emoji } else { '✨' }; Path = (Get-RtbRootPath $config.projectRoots.vibe);       Show = $filter -in 'all','vibe' }
     )
 
     $total = 0
     foreach ($cat in $categories) {
-        if (-not $cat.Show -or -not (Test-Path $cat.Path)) { continue }
+        if (-not $cat.Show -or -not $cat.Path -or -not (Test-Path $cat.Path)) { continue }
         $projects = Get-ChildItem $cat.Path -Directory -ErrorAction SilentlyContinue
         if ($projects.Count -eq 0) { continue }
 

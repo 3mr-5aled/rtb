@@ -1,15 +1,51 @@
 {
   "version": "1.0.0",
   "projectRoots": {
-    "active": "D:\\02-Projects\\01-Development\\01-Active",
-    "paused": "D:\\02-Projects\\01-Development\\04-Paused",
-    "planning": "D:\\02-Projects\\01-Development\\02-Planning",
-    "testing": "D:\\02-Projects\\01-Development\\03-Testing",
-    "abandoned": "D:\\02-Projects\\01-Development\\05-Abandoned",
-    "production": "D:\\02-Projects\\02-Deployed\\01-Production",
-    "staging": "D:\\02-Projects\\02-Deployed\\02-Staging",
-    "vibe": "D:\\02-Projects\\03-Vibe-Coding",
-    "sandbox": "D:\\01-SandBox"
+    "active": {
+      "path": "D:\\02-Projects\\01-Development\\01-Active",
+      "label": "Active",
+      "emoji": "📁"
+    },
+    "paused": {
+      "path": "D:\\02-Projects\\01-Development\\04-Paused",
+      "label": "Paused",
+      "emoji": "⏸️"
+    },
+    "planning": {
+      "path": "D:\\02-Projects\\01-Development\\02-Planning",
+      "label": "Planning",
+      "emoji": "📋"
+    },
+    "testing": {
+      "path": "D:\\02-Projects\\01-Development\\03-Testing",
+      "label": "Testing",
+      "emoji": "🧪"
+    },
+    "abandoned": {
+      "path": "D:\\02-Projects\\01-Development\\05-Abandoned",
+      "label": "Abandoned",
+      "emoji": "🪦"
+    },
+    "production": {
+      "path": "D:\\02-Projects\\02-Deployed\\01-Production",
+      "label": "Production",
+      "emoji": "🚀"
+    },
+    "staging": {
+      "path": "D:\\02-Projects\\02-Deployed\\02-Staging",
+      "label": "Staging",
+      "emoji": "🚀"
+    },
+    "vibe": {
+      "path": "D:\\02-Projects\\03-Vibe-Coding",
+      "label": "Vibe Coding",
+      "emoji": "✨"
+    },
+    "sandbox": {
+      "path": "D:\\01-SandBox",
+      "label": "Sandbox",
+      "emoji": "📦"
+    }
   },
   "backupRoot": "D:\\08-Backup",
   "configRoot": "D:\\05-Config",

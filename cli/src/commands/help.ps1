@@ -4,9 +4,10 @@ function Rtb-Help {
     Write-Host ' - Repository & Tooling Base Developer Project Operations CLI' -ForegroundColor White
     Write-Host ''
     Write-Host '  SETUP & CONFIG' -ForegroundColor Yellow
-    Write-Host '    rtb init                             Initialize user configuration file'
+    Write-Host '    rtb init [--force]                   Interactive workspace setup wizard'
     Write-Host '    rtb doctor                           System health & dependency diagnostic'
-    Write-Host '    rtb upgrade [--check]                Check for updates and self-upgrade'
+    Write-Host '    rtb upgrade [--check] [--force]      Check for updates and self-upgrade'
+    Write-Host '    rtb uninstall [--force]              Cleanly uninstall RTB from system'
     Write-Host '    rtb --version                        Display RTB version'
     Write-Host '    rtb --help                           Display this help menu'
     Write-Host ''

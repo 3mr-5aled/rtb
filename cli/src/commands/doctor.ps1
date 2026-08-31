@@ -45,9 +45,13 @@ function Rtb-Doctor {
             abandoned  = $config.projectRoots.abandoned
         }
         foreach ($key in $rootMap.Keys) {
-            $val = $rootMap[$key]
-            $exists = [bool]($val -and (Test-Path -LiteralPath $val))
-            $label = if ($val) { "$key → $val" } else { "$key → (not configured)" }
+            $entry = $rootMap[$key]
+            $pathVal = if ($entry -is [string]) { $entry } elseif ($entry -and $entry.PSObject.Properties['path']) { $entry.path } else { $null }
+            $emojiVal = if ($entry -and $entry.PSObject.Properties['emoji']) { $entry.emoji } else { '📁' }
+            $labelName = if ($entry -and $entry.PSObject.Properties['label']) { $entry.label } else { $key }
+
+            $exists = [bool]($pathVal -and (Test-Path -LiteralPath $pathVal))
+            $label = if ($pathVal) { "$emojiVal $labelName ($key) → $pathVal" } else { "$key → (not configured)" }
             & $WriteCheck $exists $label "Directory does not exist. Create it or update projectRoots.$key in your config."
             if (-not $exists) { $allGood = $false }
         }
