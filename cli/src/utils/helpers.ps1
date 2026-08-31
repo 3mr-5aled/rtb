@@ -46,7 +46,6 @@ function Get-RtbConfig {
             return $cfg
         }
     }
-    Write-Error 'rtb config not found. Expected at %USERPROFILE%\.config\rtb\rtb.config.json or %APPDATA%\rtb\rtb.config.json'
     return $null
 }
 
@@ -55,32 +54,12 @@ function Get-DevConfig {
 }
 
 function Test-RtbConfigured {
-    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-    $dotConfigPath = Join-Path $userHomeDir '.config/rtb/rtb.config.json'
-    $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb/rtb.config.json' } else { $null }
-
-    $cfgPath = $null
-    if ($appDataPath -and (Test-Path $appDataPath)) {
-        $cfgPath = $appDataPath
-    } elseif (Test-Path $dotConfigPath) {
-        $cfgPath = $dotConfigPath
-    }
-
-    if (-not $cfgPath) { return $false }
-
     try {
-        $cfg = Get-Content $cfgPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+        $cfg = Get-RtbConfig -ErrorAction SilentlyContinue
         if (-not $cfg -or -not $cfg.projectRoots -or -not $cfg.projectRoots.active) {
             return $false
         }
-        $active = $cfg.projectRoots.active
-        $activePath = if ($active -is [string]) {
-            $active
-        } elseif ($active.PSObject.Properties['path']) {
-            $active.path
-        } else {
-            $null
-        }
+        $activePath = Get-RtbRootPath $cfg.projectRoots.active
         return (-not [string]::IsNullOrWhiteSpace($activePath))
     } catch {
         return $false

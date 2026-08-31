@@ -41,15 +41,16 @@ if (-not $Force) {
     $shouldCleanProfile = ($profileAns -match '^(y|yes)$')
 }
 
-$oldPattern = "(?m)^.*(Import-Module.*?(dev-tools|dev-cli|rtb-command-tool|rtb[\\/]module[\\/]rtb\.psd1|rtb\.psd1)|# RTB CLI Module).*`r?`n?"
-
 if ($shouldCleanProfile) {
     foreach ($pPath in $profilePaths) {
         if ($pPath -and (Test-Path $pPath)) {
-            $pContent = Get-Content $pPath -Raw -ErrorAction SilentlyContinue
-            if ($pContent -and ($pContent -match "(dev-tools|dev-cli|rtb-command-tool|rtb[\\/]module[\\/]rtb\.psd1|rtb\.psd1)")) {
-                $cleanedContent = [regex]::Replace($pContent, $oldPattern, "")
-                Set-Content -Path $pPath -Value $cleanedContent.TrimEnd() -Encoding UTF8
+            $pLines = Get-Content $pPath -ErrorAction SilentlyContinue
+            if ($pLines) {
+                $cleanedLines = @($pLines | Where-Object {
+                    $_ -notmatch 'Import-Module\s+.*?[''"].*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1[''"]' -and
+                    $_ -notmatch '#\s*RTB.*?Module'
+                })
+                $cleanedLines -join "`r`n" | Set-Content -Path $pPath -Encoding UTF8
                 Write-Host "Removed RTB autoload entry from profile: $pPath" -ForegroundColor Green
             }
         }

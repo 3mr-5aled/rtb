@@ -145,7 +145,6 @@ $profilePaths = @(
 ) | Select-Object -Unique
 
 $moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
-$oldPattern = "(?m)^.*(Import-Module.*?(dev-tools|dev-cli|rtb-command-tool|rtb[\\/]module[\\/]rtb\.psd1|rtb\.psd1)|# RTB CLI Module).*`r?`n?"
 
 foreach ($pPath in $profilePaths) {
     if (-not $pPath) { continue }
@@ -155,19 +154,19 @@ foreach ($pPath in $profilePaths) {
         New-Item -ItemType File -Path $pPath -Force | Out-Null
     }
 
-    $pContent = Get-Content $pPath -Raw -ErrorAction SilentlyContinue
-    if ($null -eq $pContent) { $pContent = "" }
-
-    if ($pContent -match "(dev-tools|dev-cli|rtb-command-tool|rtb[\\/]module[\\/]rtb\.psd1|rtb\.psd1)") {
-        $pContent = [regex]::Replace($pContent, $oldPattern, "")
-    }
-
-    if (-not ($pContent.Contains($moduleImportLine))) {
-        Add-Content -Path $pPath -Value "`n# RTB CLI Module`n$moduleImportLine" -Encoding UTF8
-        Write-Host "Configured RTB module autoload in profile: $pPath" -ForegroundColor Green
+    $pLines = Get-Content $pPath -ErrorAction SilentlyContinue
+    $cleanedLines = if ($pLines) {
+        @($pLines | Where-Object {
+            $_ -notmatch 'Import-Module\s+.*?[''"].*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1[''"]' -and
+            $_ -notmatch '#\s*RTB.*?Module'
+        })
     } else {
-        Write-Host "Profile ($pPath) already configured." -ForegroundColor Gray
+        @()
     }
+
+    $newContent = ($cleanedLines + @("", "# RTB CLI Module", $moduleImportLine)) -join "`r`n"
+    $newContent.TrimEnd() + "`r`n" | Set-Content -Path $pPath -Encoding UTF8
+    Write-Host "Configured RTB module autoload in profile: $pPath" -ForegroundColor Green
 }
 
 # 5. Import module in current session

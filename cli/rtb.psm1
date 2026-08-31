@@ -41,7 +41,8 @@ function rtb {
 
     # Config Gate for data-dependent commands
     $freeCommands = @('help', 'init', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
-    if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
+    $isCI = [bool]($env:CI -or $env:GITHUB_ACTIONS -or -not [Environment]::UserInteractive)
+    if (-not $isCI -and $Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
         Write-Host ""
         Write-Host "  ⚠  RTB is not configured yet." -ForegroundColor Yellow
         Write-Host "     Run 'rtb init' to set up your workspace." -ForegroundColor Gray
