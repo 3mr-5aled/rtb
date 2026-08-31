@@ -1,187 +1,520 @@
-# RTB (ﺐﺘّﺭ) Dual-Mode Installer & Integrator Script
+#Requires -Version 5.1
+# RTB Setup Wizard - Windows / PowerShell
+# Interactive and CI-capable Setup Wizard for the RTB Project Operations Suite.
+param(
+    [string]$InstallPath = '',
+    [switch]$Quiet,
+    [switch]$NoExec
+)
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  Installing & Configuring RTB (ﺐﺘّﺭ) Project Suite" -ForegroundColor Cyan
-Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+# Ensure console output handles UTF-8
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
 
-$scriptRoot = $PSScriptRoot
-$isStandalone = (-not $scriptRoot) -or (-not (Test-Path (Join-Path $scriptRoot "cli\rtb.psd1")))
+$script:InstallPath = $InstallPath
+$script:scriptRoot  = $PSScriptRoot
 
-$userHomeDir   = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-$userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
-$moduleHome    = Join-Path $userConfigDir 'module'
-$scriptsDir    = if ($env:RTB_BIN_DIR) {
-    $env:RTB_BIN_DIR
-} elseif ($env:APPDATA) {
-    Join-Path $env:APPDATA 'rtb\bin'
-} else {
-    Join-Path $userHomeDir '.config\rtb\bin'
+# Non-interactive / CI / Quiet Detection
+$script:QUIET = $Quiet.IsPresent -or ($env:RTB_QUIET -eq '1') -or ($env:RTB_NON_INTERACTIVE -in @('1', 'true', 'True')) -or ($env:CI -eq 'true') -or ($env:GITHUB_ACTIONS -eq 'true')
+
+# ANSI Capability Detection
+$script:ANSI = (-not $script:QUIET) -and (
+    $PSVersionTable.PSVersion.Major -ge 7 -or
+    $env:TERM -match 'xterm|screen|256color|alacritty|kitty' -or
+    $env:WT_SESSION -or
+    ((Test-Path variable:Host) -and ($Host.UI.RawUI.ForegroundColor -ne -1))
+)
+
+# Braille Spinner Animation Frames
+$script:SPINNER_FRAMES = @(
+    [char]0x280B, [char]0x2819, [char]0x2839, [char]0x2838, [char]0x283C,
+    [char]0x2834, [char]0x2826, [char]0x2827, [char]0x2807, [char]0x280F
+)
+
+function global:Esc([string]$code) {
+    if ($script:ANSI) {
+        "$([char]27)[$code"
+    } else {
+        ''
+    }
 }
 
-# 1. Ensure target directories exist
-if (-not (Test-Path $scriptsDir)) {
-    New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
-}
-if (-not (Test-Path $userConfigDir)) {
-    New-Item -ItemType Directory -Path $userConfigDir -Force | Out-Null
-}
-if (-not (Test-Path $moduleHome)) {
-    New-Item -ItemType Directory -Path $moduleHome -Force | Out-Null
+function global:Write-Step([int]$n, [int]$total, [string]$label) {
+    if ($script:QUIET) {
+        Write-Host "[$n/$total] $label"
+        return
+    }
+    $c = Esc '36m'
+    $b = Esc '1m'
+    $r = Esc '0m'
+    $diamond = [char]0x25C6
+    Write-Host "  ${b}${c}[$n/$total]${r} $diamond $label"
 }
 
-# 2. Deploy module files and binaries
-if ($isStandalone) {
-    Write-Host "Running in standalone mode: downloading release bundle from GitHub..." -ForegroundColor Yellow
-    $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
-    $tempZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
-    $tempExtract = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random)"
+function global:Write-Warn([string]$msg) {
+    $y = Esc '33m'
+    $r = Esc '0m'
+    $warnIcon = [char]0x26A0
+    Write-Host "  ${y}$warnIcon  $msg${r}"
+}
+
+function global:Write-Fail([string]$msg) {
+    $red = Esc '31m'
+    $r = Esc '0m'
+    $failIcon = [char]0x2717
+    Write-Host "  ${red}$failIcon  $msg${r}"
+    if ($script:NoExitOnFail) {
+        throw $msg
+    } else {
+        exit 1
+    }
+}
+
+function global:Start-Spinner([string]$Label) {
+    $isRedirected = $false
+    try {
+        if (-not $script:ForceInteractive) {
+            $isRedirected = [Console]::IsInputRedirected -or [Console]::IsOutputRedirected
+        }
+    } catch {}
+
+    if ($script:QUIET -or $isRedirected -or (-not $script:ANSI)) {
+        Write-Host "  ... $Label"
+        return @{ Type = 'Quiet'; Label = $Label; Job = $null }
+    }
 
     try {
-        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
-        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        $frames = $script:SPINNER_FRAMES
+        $rs = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace()
+        $rs.Open()
+        $ps = [System.Management.Automation.PowerShell]::Create()
+        $ps.Runspace = $rs
 
-        $extractedCli = Join-Path $tempExtract 'cli'
-        if (Test-Path $extractedCli) {
-            Copy-Item -Path "$extractedCli\*" -Destination $moduleHome -Recurse -Force
-        }
-
-        $extractedTui = Join-Path $tempExtract 'rtbtui.exe'
-        if (Test-Path $extractedTui) {
-            Copy-Item -Path $extractedTui -Destination "$scriptsDir\rtbtui.exe" -Force
-            Copy-Item -Path $extractedTui -Destination "$scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
-        }
-
-        $extractedLogo = Join-Path $tempExtract 'logo.txt'
-        if (Test-Path $extractedLogo) {
-            Copy-Item -Path $extractedLogo -Destination "$scriptsDir\logo.txt" -Force
-        }
-
-        $extractedUninstall = Join-Path $tempExtract 'uninstall.ps1'
-        if (Test-Path $extractedUninstall) {
-            Copy-Item -Path $extractedUninstall -Destination "$scriptsDir\uninstall.ps1" -Force
-            Copy-Item -Path $extractedUninstall -Destination "$userConfigDir\uninstall.ps1" -Force
-        }
-        Write-Host "Extracted RTB components to $userConfigDir" -ForegroundColor Green
-    } catch {
-        Write-Host "❌ Error: Could not download release bundle from $($zipUrl): $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "   The release assets may still be publishing on GitHub Actions." -ForegroundColor Yellow
-        Write-Host "   Please check https://github.com/3mr-5aled/rtb/actions or build locally." -ForegroundColor Gray
-        throw "RTB Installation aborted: release bundle not available."
-    } finally {
-        if (Test-Path $tempZip) { Remove-Item -Force $tempZip -ErrorAction SilentlyContinue }
-        if (Test-Path $tempExtract) { Remove-Item -Recurse -Force $tempExtract -ErrorAction SilentlyContinue }
-    }
-} else {
-    Write-Host "Running in repository mode: deploying local components..." -ForegroundColor Gray
-    $sourceCli = Join-Path $scriptRoot "cli"
-    if (Test-Path $sourceCli) {
-        Copy-Item -Path "$sourceCli\*" -Destination $moduleHome -Recurse -Force
-        Write-Host "Deployed CLI module to $moduleHome" -ForegroundColor Green
-    }
-
-    $tuiDir = Join-Path $scriptRoot "tui"
-    $cargoCmd = Get-Command cargo -ErrorAction SilentlyContinue
-    if ($cargoCmd -and (Test-Path (Join-Path $tuiDir 'Cargo.toml'))) {
-        Write-Host "Building rtbtui binary with Cargo..." -ForegroundColor Yellow
-        Push-Location $tuiDir
-        try {
-            cargo build --release
-            $builtBin = Join-Path $tuiDir "target\release\rtbtui.exe"
-            if (Test-Path $builtBin) {
-                Copy-Item $builtBin "$scriptsDir\rtbtui.exe" -Force
-                Copy-Item $builtBin "$scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
-                Write-Host "Updated rtbtui.exe binary in $scriptsDir" -ForegroundColor Green
+        $scriptBlock = {
+            param($frames, $label)
+            $i = 0
+            while ($true) {
+                $frame = $frames[$i % $frames.Count]
+                [Console]::Write("`r  $frame  $label")
+                [System.Threading.Thread]::Sleep(80)
+                $i++
             }
-        } catch {
-            Write-Host "Warning: Cargo build failed, retaining existing binary if present." -ForegroundColor Yellow
-        } finally {
-            Pop-Location
+        }
+
+        $ps.AddScript($scriptBlock).AddArgument($frames).AddArgument($Label) | Out-Null
+        $handle = $ps.BeginInvoke()
+
+        return @{
+            Type       = 'Runspace'
+            Runspace   = $rs
+            PowerShell = $ps
+            Handle     = $handle
+            Label      = $Label
+        }
+    } catch {
+        Write-Host "  ... $Label"
+        return @{ Type = 'Quiet'; Label = $Label; Job = $null }
+    }
+}
+
+function global:Stop-Spinner([hashtable]$ctx, [bool]$success) {
+    if ($ctx -and $ctx.Type -eq 'Runspace') {
+        try {
+            if ($ctx.PowerShell) {
+                $ctx.PowerShell.Stop()
+                $ctx.PowerShell.Dispose()
+            }
+            if ($ctx.Runspace) {
+                $ctx.Runspace.Close()
+                $ctx.Runspace.Dispose()
+            }
+        } catch {}
+        try {
+            [Console]::Write("`r" + (" " * 80) + "`r")
+        } catch {}
+    } elseif ($ctx -and $ctx.Job) {
+        try {
+            Stop-Job $ctx.Job -ErrorAction SilentlyContinue
+            Remove-Job $ctx.Job -Force -ErrorAction SilentlyContinue
+            [Console]::Write("`r" + (" " * 80) + "`r")
+        } catch {}
+    }
+
+    $lbl = if ($ctx -and $ctx.Label) { $ctx.Label } else { '' }
+    $icon = if ($success) { [char]0x2705 } else { [char]0x274C }
+    $color = if ($success) { Esc '32m' } else { Esc '31m' }
+    $reset = Esc '0m'
+    Write-Host "  $icon  ${color}$lbl${reset}"
+}
+
+function global:Show-Header {
+    if ($script:QUIET) {
+        Write-Host 'RTB Setup Wizard'
+        return
+    }
+    $c = Esc '36m'
+    $b = Esc '1m'
+    $r = Esc '0m'
+    $d = Esc '90m'
+    Write-Host ""
+    Write-Host "  ${b}${c}██████╗ ████████╗██████╗ ${r}"
+    Write-Host "  ${b}${c}██╔══██╗╚══██╔══╝██╔══██╗${r}"
+    Write-Host "  ${b}${c}██████╔╝   ██║   ██████╔╝${r}"
+    Write-Host "  ${b}${c}██╔══██╗   ██║   ██╔══██╗${r}"
+    Write-Host "  ${b}${c}██║  ██║   ██║   ██████╔╝${r}"
+    Write-Host "  ${b}${c}╚═╝  ╚═╝   ╚═╝   ╚═════╝ ${r}  Setup Wizard"
+    Write-Host ""
+    Write-Host "  ${c}RTB - Repository & Tooling Base${r}"
+    Write-Host "  ${d}Windows / PowerShell installer${r}"
+    Write-Host ""
+}
+
+function global:Prompt-InstallPath([string]$default) {
+    $isRedirected = $false
+    try {
+        if (-not $script:ForceInteractive) {
+            $isRedirected = [Console]::IsInputRedirected
+        }
+    } catch {}
+
+    if ($script:QUIET -or $script:InstallPath -or $isRedirected) {
+        if ($script:InstallPath) { return $script:InstallPath } else { return $default }
+    }
+
+    Write-Host "  $(Esc '32m')?$(Esc '0m') Install location $(Esc '90m')(Enter to accept)$(Esc '0m')"
+    Write-Host "    $(Esc '90m')$default$(Esc '0m')"
+    Write-Host -NoNewline "  $([char]0x203A) "
+    $in = Read-Host
+    if ($in -and $in.Trim()) {
+        return $in.Trim()
+    } else {
+        return $default
+    }
+}
+
+function global:Prompt-Profiles([string[]]$candidates) {
+    $isRedirected = $false
+    try {
+        if (-not $script:ForceInteractive) {
+            $isRedirected = [Console]::IsInputRedirected
+        }
+    } catch {}
+
+    if ($script:QUIET -or $isRedirected) {
+        return @($candidates | Where-Object { [bool]$_ })
+    }
+
+    $selected = @()
+    Write-Host ""
+    Write-Host "  $(Esc '32m')?$(Esc '0m') Which PowerShell profiles should RTB auto-load into?"
+    foreach ($p in $candidates) {
+        if ($p) {
+            Write-Host -NoNewline "    Include $(Esc '90m')$p$(Esc '0m')? [Y/n] "
+            $ans = Read-Host
+            if ($ans -notmatch '^[Nn]') {
+                $selected += $p
+            }
+        }
+    }
+    return $selected
+}
+
+function global:Prompt-RunInit {
+    $isRedirected = $false
+    try {
+        if (-not $script:ForceInteractive) {
+            $isRedirected = [Console]::IsInputRedirected
+        }
+    } catch {}
+
+    if ($script:QUIET -or $isRedirected) {
+        return $false
+    }
+    Write-Host ""
+    Write-Host -NoNewline "  $(Esc '32m')?$(Esc '0m') Run 'rtb init' now? [Y/n] "
+    $ans = Read-Host
+    return ($ans -notmatch '^[Nn]')
+}
+
+function global:Show-Summary([string]$installPath, [string[]]$profiles) {
+    $g = Esc '32m'
+    $b = Esc '1m'
+    $c = Esc '36m'
+    $d = Esc '90m'
+    $r = Esc '0m'
+    $check = [char]0x2714
+
+    Write-Host ""
+    Write-Host "  ${b}${g}$check RTB installed successfully!${r}"
+    Write-Host ""
+    Write-Host "  ${c}Install path:${r}  $installPath"
+    if ($profiles -and $profiles.Count -gt 0) {
+        foreach ($p in $profiles) {
+            Write-Host "  ${c}Profile:${r}       $p"
         }
     } else {
-        $existingTui = Join-Path $tuiDir "target\release\rtbtui.exe"
-        if (Test-Path $existingTui) {
-            Copy-Item $existingTui "$scriptsDir\rtbtui.exe" -Force
-            Write-Host "Copied prebuilt rtbtui.exe to $scriptsDir" -ForegroundColor Green
+        Write-Host "  ${c}Profile:${r}       (none configured)"
+    }
+    Write-Host ""
+    Write-Host "  ${b}Next steps:${r}"
+    Write-Host "    ${g}rtb init${r}  ${d}- configure your project workspace${r}"
+    Write-Host "    ${g}rtb help${r}  ${d}- explore available commands${r}"
+    Write-Host "    ${g}rtb ui${r}    ${d}- open the interactive terminal dashboard${r}"
+    Write-Host ""
+}
+
+function global:Find-RepoRoot {
+    $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+    while ($dir -and (Test-Path $dir)) {
+        if (Test-Path (Join-Path $dir 'cli\rtb.psd1')) {
+            return $dir
         }
-    }
-
-    $logoSrc = Join-Path $scriptRoot "logo.txt"
-    if (Test-Path $logoSrc) {
-        Copy-Item $logoSrc "$scriptsDir\logo.txt" -Force
-    }
-
-    $uninstallSrc = Join-Path $scriptRoot "uninstall.ps1"
-    if (Test-Path $uninstallSrc) {
-        Copy-Item $uninstallSrc "$scriptsDir\uninstall.ps1" -Force
-        Copy-Item $uninstallSrc "$userConfigDir\uninstall.ps1" -Force
-    }
-}
-
-# 3. Permanently configure User PATH (Registry) & current session PATH
-$userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
-if ($userPath) {
-    $pathParts = $userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-    if ($pathParts -notcontains $scriptsDir) {
-        $newPath = "$userPath;$scriptsDir"
-        [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
-        Write-Host "Added RTB binary directory to User PATH." -ForegroundColor Green
-    }
-} else {
-    [Environment]::SetEnvironmentVariable('PATH', $scriptsDir, 'User')
-    Write-Host "Added RTB binary directory to User PATH." -ForegroundColor Green
-}
-
-if (($env:PATH -split ';') -notcontains $scriptsDir) {
-    $env:PATH = "$scriptsDir;$env:PATH"
-}
-
-# 4. Configure PowerShell Profiles
-$cliPsdPath = Join-Path $moduleHome "rtb.psd1"
-$docsDir = [Environment]::GetFolderPath('MyDocuments')
-$profilePaths = @(
-    $PROFILE,
-    (Join-Path $docsDir "WindowsPowerShell\Microsoft.PowerShell_profile.ps1"),
-    (Join-Path $docsDir "PowerShell\Microsoft.PowerShell_profile.ps1")
-) | Select-Object -Unique
-
-# 4. Configure PowerShell Profiles (only if module was deployed)
-if (Test-Path $cliPsdPath) {
-    $moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
-
-    foreach ($pPath in $profilePaths) {
-        if (-not $pPath) { continue }
-        if (-not (Test-Path $pPath)) {
-            $parentDir = Split-Path $pPath -Parent
-            if (-not (Test-Path $parentDir)) { New-Item -ItemType Directory -Path $parentDir -Force | Out-Null }
-            New-Item -ItemType File -Path $pPath -Force | Out-Null
+        $parent = Split-Path $dir -Parent
+        if (-not $parent -or $parent -eq $dir) {
+            return $null
         }
+        $dir = $parent
+    }
+    return $null
+}
 
-        $pLines = Get-Content $pPath -ErrorAction SilentlyContinue
-        $cleanedLines = if ($pLines) {
-            @($pLines | Where-Object {
-                $_ -notmatch 'Import-Module\s+.*?[''"].*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1[''"]' -and
-                $_ -notmatch '#\s*RTB.*?Module'
-            })
+function global:Install-Steps {
+    $TOTAL = 5
+    $repoRoot = Find-RepoRoot
+    $isStandalone = if ($script:isStandaloneOverride -ne $null) {
+        $script:isStandaloneOverride
+    } else {
+        (-not $repoRoot)
+    }
+
+    # Step 1: Directories (Critical)
+    Write-Step 1 $TOTAL 'Creating directories'
+    $ctx = Start-Spinner 'Setting up install directories'
+    try {
+        foreach ($d in @($script:scriptsDir, $script:userConfigDir, $script:moduleHome)) {
+            if (-not (Test-Path $d)) {
+                New-Item -ItemType Directory -Path $d -Force | Out-Null
+            }
+        }
+        Stop-Spinner $ctx $true
+    } catch {
+        Stop-Spinner $ctx $false
+        Write-Fail "Cannot create directories: $_"
+    }
+
+    # Step 2: Module Deployment (Critical)
+    Write-Step 2 $TOTAL 'Deploying RTB module'
+    if ($isStandalone) {
+        $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
+        $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
+        $tmpExt = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random)"
+        $ctx = Start-Spinner 'Downloading rtb-cli.zip'
+        try {
+            Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -EA Stop
+            Stop-Spinner $ctx $true
+
+            $ctx = Start-Spinner 'Extracting module files'
+            Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
+            $ec = Join-Path $tmpExt 'cli'
+            if (Test-Path $ec) {
+                Copy-Item "$ec\*" $script:moduleHome -Recurse -Force
+            }
+            foreach ($f in @('logo.txt', 'uninstall.ps1')) {
+                $src = Join-Path $tmpExt $f
+                if (Test-Path $src) {
+                    Copy-Item $src "$script:scriptsDir\$f" -Force
+                }
+            }
+            $uninst = Join-Path $tmpExt 'uninstall.ps1'
+            if (Test-Path $uninst) {
+                Copy-Item $uninst "$script:userConfigDir\uninstall.ps1" -Force
+            }
+            Stop-Spinner $ctx $true
+        } catch {
+            Stop-Spinner $ctx $false
+            Write-Fail "Download failed: $_`nCheck https://github.com/3mr-5aled/rtb/releases"
+        } finally {
+            Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        $ctx = Start-Spinner 'Copying local CLI module'
+        $src = Join-Path $repoRoot 'cli'
+        if (Test-Path $src) {
+            Copy-Item "$src\*" $script:moduleHome -Recurse -Force
+            Stop-Spinner $ctx $true
         } else {
-            @()
+            Stop-Spinner $ctx $false
+            Write-Fail 'cli\ not found.'
         }
+        foreach ($f in @('logo.txt', 'uninstall.ps1')) {
+            $s = Join-Path $repoRoot $f
+            if (Test-Path $s) {
+                Copy-Item $s "$script:scriptsDir\$f" -Force
+            }
+        }
+        $uninst = Join-Path $repoRoot 'uninstall.ps1'
+        if (Test-Path $uninst) {
+            Copy-Item $uninst "$script:userConfigDir\uninstall.ps1" -Force
+        }
+    }
 
-        $newContent = ($cleanedLines + @("", "# RTB CLI Module", $moduleImportLine)) -join "`r`n"
-        $newContent.TrimEnd() + "`r`n" | Set-Content -Path $pPath -Encoding UTF8
-        Write-Host "Configured RTB module autoload in profile: $pPath" -ForegroundColor Green
+    # Step 3: TUI Binary (Non-critical)
+    Write-Step 3 $TOTAL 'Installing rtbtui binary'
+    if ($isStandalone) {
+        $binUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-windows-amd64.exe'
+        $tmpBin = Join-Path ([System.IO.Path]::GetTempPath()) "rtbtui-$(Get-Random).exe"
+        $ctx = Start-Spinner 'Downloading rtbtui.exe'
+        try {
+            Invoke-WebRequest -Uri $binUrl -OutFile $tmpBin -UseBasicParsing -TimeoutSec 180 -EA Stop
+            Copy-Item $tmpBin "$script:scriptsDir\rtbtui.exe" -Force
+            Copy-Item $tmpBin "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+            Stop-Spinner $ctx $true
+        } catch {
+            Stop-Spinner $ctx $false
+            Write-Warn "TUI binary download failed - 'rtb ui' unavailable, CLI is fine."
+        } finally {
+            Remove-Item $tmpBin -Force -ErrorAction SilentlyContinue
+        }
+    } else {
+        $tuiDir = Join-Path $repoRoot 'tui'
+        $cargo = Get-Command cargo -ErrorAction SilentlyContinue
+        if ($cargo -and (Test-Path (Join-Path $tuiDir 'Cargo.toml'))) {
+            $ctx = Start-Spinner 'Building rtbtui with Cargo'
+            Push-Location $tuiDir
+            try {
+                cargo build --release 2>&1 | Out-Null
+                $bin = Join-Path $tuiDir 'target\release\rtbtui.exe'
+                if (Test-Path $bin) {
+                    Copy-Item $bin "$script:scriptsDir\rtbtui.exe" -Force
+                    Copy-Item $bin "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+                    Stop-Spinner $ctx $true
+                } else {
+                    Stop-Spinner $ctx $false
+                    Write-Warn 'Cargo build succeeded but binary not found in target\release.'
+                }
+            } catch {
+                Stop-Spinner $ctx $false
+                Write-Warn 'Cargo build failed - retaining existing binary if present.'
+            } finally {
+                Pop-Location
+            }
+        } else {
+            $pre = Join-Path $tuiDir 'target\release\rtbtui.exe'
+            if (Test-Path $pre) {
+                Copy-Item $pre "$script:scriptsDir\rtbtui.exe" -Force
+                Copy-Item $pre "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+                Write-Warn 'cargo not found - copied prebuilt binary.'
+            } else {
+                Write-Warn "cargo not found and no prebuilt binary - 'rtb ui' will not work."
+            }
+        }
+    }
+
+    # Step 4: PATH Configuration (Non-critical)
+    Write-Step 4 $TOTAL 'Configuring PATH'
+    $ctx = Start-Spinner 'Updating User PATH'
+    try {
+        $cur = [Environment]::GetEnvironmentVariable('PATH', 'User')
+        $pathParts = if ($cur) { $cur -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } } else { @() }
+        if ($pathParts -notcontains $script:scriptsDir) {
+            $newPath = if ($cur) { "$cur;$($script:scriptsDir)" } else { $script:scriptsDir }
+            [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
+        }
+        if (($env:PATH -split ';') -notcontains $script:scriptsDir) {
+            $env:PATH = "$($script:scriptsDir);$($env:PATH)"
+        }
+        Stop-Spinner $ctx $true
+    } catch {
+        Stop-Spinner $ctx $false
+        Write-Warn "PATH update failed - add '$($script:scriptsDir)' manually."
+    }
+
+    # Step 5: Profile Injection (Non-critical)
+    Write-Step 5 $TOTAL 'Configuring PowerShell profile(s)'
+    $psd = Join-Path $script:moduleHome 'rtb.psd1'
+    if (Test-Path $psd) {
+        $line = "Import-Module '$psd' -DisableNameChecking -Force"
+        foreach ($p in $script:resolvedProfiles) {
+            if ($p) {
+                $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
+                try {
+                    $dir = Split-Path $p -Parent
+                    if ($dir -and -not (Test-Path $dir)) {
+                        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                    }
+                    if (-not (Test-Path $p)) {
+                        New-Item -ItemType File -Path $p -Force | Out-Null
+                    }
+                    $pLines = Get-Content $p -ErrorAction SilentlyContinue
+                    $clean = if ($pLines) {
+                        @($pLines | Where-Object {
+                            $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
+                            $_ -notmatch '#\s*RTB.*?Module'
+                        })
+                    } else {
+                        @()
+                    }
+                    $newContent = ($clean + @('', '# RTB CLI Module', $line)) -join "`r`n"
+                    $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
+                    Stop-Spinner $ctx $true
+                } catch {
+                    Stop-Spinner $ctx $false
+                    Write-Warn "Could not update $p - $_"
+                }
+            }
+        }
+        Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
+    } else {
+        Write-Warn "rtb.psd1 not found in '$($script:moduleHome)' - skipping profile injection."
     }
 }
 
-# 5. Import module in current session
-if (Test-Path $cliPsdPath) {
-    Import-Module $cliPsdPath -DisableNameChecking -Force
-    Write-Host "Successfully loaded 'rtb' CLI module into current session!" -ForegroundColor Cyan
+function global:Main {
+    Show-Header
+
+    $default = if ($env:APPDATA) {
+        Join-Path $env:APPDATA 'rtb'
+    } else {
+        $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+        Join-Path $homeDir '.config\rtb'
+    }
+
+    $script:userConfigDir = Prompt-InstallPath $default
+    $script:moduleHome    = Join-Path $script:userConfigDir 'module'
+    $script:scriptsDir    = if ($env:RTB_BIN_DIR) { $env:RTB_BIN_DIR } else { Join-Path $script:userConfigDir 'bin' }
+
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    $candidateProfiles = @()
+    if ($PROFILE) { $candidateProfiles += $PROFILE }
+    if ($docs) {
+        $candidateProfiles += (Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1')
+        $candidateProfiles += (Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1')
+    }
+    $allProfiles = @($candidateProfiles | Where-Object { [bool]$_ } | Select-Object -Unique)
+    $script:resolvedProfiles = Prompt-Profiles $allProfiles
+
+    Install-Steps
+    Show-Summary $script:userConfigDir $script:resolvedProfiles
+
+    if (Prompt-RunInit) {
+        if (Get-Command rtb -ErrorAction SilentlyContinue) {
+            rtb init
+        } else {
+            $psd = Join-Path $script:moduleHome 'rtb.psd1'
+            if (Test-Path $psd) {
+                Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
+                if (Get-Command rtb -ErrorAction SilentlyContinue) {
+                    rtb init
+                }
+            }
+        }
+    }
 }
 
-Write-Host "`nInstallation Complete! Next steps:" -ForegroundColor Green
-Write-Host "  1. Run 'rtb init' to configure your projects workspace." -ForegroundColor White
-Write-Host "  2. Run 'rtb help' to explore available commands." -ForegroundColor White
-Write-Host "  3. Run 'rtbtui' or 'rtb ui' to open the interactive terminal dashboard." -ForegroundColor White
-Write-Host "  4. Configuration file: $userConfigDir\rtb.config.json (editable anytime)" -ForegroundColor Gray
+if (-not $NoExec) {
+    Main
+}

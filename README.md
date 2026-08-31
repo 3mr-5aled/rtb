@@ -51,7 +51,8 @@ rtb/
 ├── .github/                # CI/CD Workflows & Issue templates
 │   ├── workflows/release.yml
 │   └── ISSUE_TEMPLATE/
-├── install.ps1             # Dual-mode automated installer & profile integrator
+├── install.ps1             # Windows / PowerShell interactive Setup Wizard
+├── install.sh              # Linux / macOS POSIX interactive Setup Wizard
 ├── uninstall.ps1           # Standalone automated uninstaller
 ├── PROJECT.md              # Project metadata
 ├── LICENSE                 # MIT License
@@ -64,26 +65,52 @@ rtb/
 
 ### Option 1: Standalone One-Liner (Recommended)
 
-Run the following command in PowerShell (no git clone or source code required):
-
+#### 🪟 Windows (PowerShell 5.1+ / PowerShell 7+)
 ```powershell
 irm https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.ps1 | iex
 ```
 
-This will automatically:
-- Download the latest release bundle (`rtb-cli.zip`) from GitHub Releases.
-- Deploy the `rtb` CLI module to `%APPDATA%\rtb\module`.
-- Install the `rtbtui` binary into `%APPDATA%\rtb\bin` and permanently add it to your user `PATH`.
-- Configure module autoload in your PowerShell `$PROFILE`.
+#### 🐧 Linux / 🍎 macOS
+```bash
+curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | sh
+```
 
-Next, run the interactive configuration wizard:
+The interactive Setup Wizard will automatically:
+- Display live animated progress and detect your OS, architecture, and shell environment.
+- Prompt for install location (defaulting to `%APPDATA%\rtb` on Windows or `~/.config/rtb` on Unix).
+- Download and extract the latest CLI module (`rtb.psd1`, `rtb.psm1`, commands, completions, utils).
+- Download the native TUI binary (`rtbtui`) and configure your system `PATH`.
+- Configure module autoload in your shell configuration (`$PROFILE`, `.bashrc`, `.zshrc`, etc.) with legacy import deduplication.
+- Prompt to immediately initialize your workspace via `rtb init`.
+
+---
+
+### Option 2: CI / Non-Interactive Automation
+
+For headless pipelines (GitHub Actions, Docker, Azure Pipelines), pass quiet flags or environment variables:
+
+**Windows PowerShell:**
 ```powershell
-rtb init
+# Flag option
+pwsh -File ./install.ps1 -Quiet -InstallPath "C:\tools\rtb"
+
+# Environment variable option
+$env:RTB_QUIET = "1"
+irm https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```bash
+# Quiet installation
+curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB_QUIET=1 sh
+
+# Custom directory in CI
+curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB_QUIET=1 RTB_INSTALL_PATH="/opt/rtb" sh
 ```
 
 ---
 
-### Option 2: Local Repository Installation (Developers & Contributors)
+### Option 3: Local Repository Installation (Developers & Contributors)
 
 1. Clone the repository:
    ```bash
@@ -91,10 +118,15 @@ rtb init
    cd rtb
    ```
 
-2. Run the local installer script:
-   ```powershell
-   pwsh -File ./install.ps1
-   ```
+2. Run the local Setup Wizard:
+   - **Windows:**
+     ```powershell
+     pwsh -File ./install.ps1
+     ```
+   - **Linux / macOS:**
+     ```bash
+     sh ./install.sh
+     ```
 
 3. Initialize your workspace:
    ```powershell
