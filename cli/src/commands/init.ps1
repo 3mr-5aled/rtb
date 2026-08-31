@@ -25,7 +25,7 @@ function Rtb-Init {
         Write-Host ""
         Write-Host "  Configuration already exists at:" -ForegroundColor Yellow
         Write-Host "    $userConfigFile" -ForegroundColor White
-        Write-Host "  You can edit this file directly to adjust project roots or settings." -ForegroundColor Cyan
+        Write-Host "  Run 'rtb config' to open and edit your configuration in your default editor." -ForegroundColor Cyan
         Write-Host "  Use 'rtb init -Force' to overwrite and re-run the setup wizard." -ForegroundColor Gray
         Write-Host ""
         return
@@ -107,7 +107,7 @@ function Rtb-Init {
                 $f = $folderDefs[$i]
                 $check = if ($f.Selected) { "[✓]" } else { "[ ]" }
                 $color = if ($f.Selected) { "Green" } else { "DarkGray" }
-                Write-Host "    $check $($i + 1). $($f.Emoji) $($f.Label) → $($f.Dir)" -ForegroundColor $color
+                Write-Host "    $check $($i + 1). $($f.Label) → $($f.Dir)" -ForegroundColor $color
             }
             Write-Host "  Toggle numbers (e.g. '4 5') or ENTER to proceed: " -ForegroundColor Yellow -NoNewline
             $inputToggles = Read-Host
@@ -129,32 +129,7 @@ function Rtb-Init {
         }
     }
 
-    # ── Step 3: Customize Emoji / Name for Selected Folders ─────────────────
-    Write-Host "`n  Step 3: Custom Display Names & Emojis" -ForegroundColor Cyan
-    Write-Host "  (Press ENTER to accept suggested defaults)" -ForegroundColor Gray
-
-    for ($i = 0; $i -lt $folderDefs.Count; $i++) {
-        $f = $folderDefs[$i]
-        if (-not $f.Selected) { continue }
-
-        Write-Host "  Customize '$($f.Label)'? (Enter to keep '$($f.Emoji) $($f.Label)'): " -ForegroundColor Yellow -NoNewline
-        $customLabelInput = Read-Host
-
-        if (-not [string]::IsNullOrWhiteSpace($customLabelInput)) {
-            $trimmed = $customLabelInput.Trim()
-            # If user provided emoji + label, or just label
-            if ($trimmed -match '^(\p{So}|\p{Cs}|\p{Sk}|[\u2600-\u27BF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF])\s*(.*)$') {
-                $f.Emoji = $Matches[1]
-                if (-not [string]::IsNullOrWhiteSpace($Matches[2])) {
-                    $f.Label = $Matches[2].Trim()
-                }
-            } else {
-                $f.Label = $trimmed
-            }
-        }
-    }
-
-    # ── Step 4: Create Directories & Build Config ───────────────────────────
+    # ── Step 3: Create Directories & Build Config ───────────────────────────
     $projectRoots = [ordered]@{}
 
     foreach ($f in $folderDefs) {
@@ -217,7 +192,7 @@ function Rtb-Init {
     Write-Host "`n  ✓ RTB configuration successfully initialized!" -ForegroundColor Green
     Write-Host "    Configuration file: $userConfigFile" -ForegroundColor White
     Write-Host "    Workspace root    : $chosenRoot" -ForegroundColor White
-    Write-Host "    (You can edit '$userConfigFile' anytime to customize roots or settings)" -ForegroundColor DarkGray
+    Write-Host "    💡 To customize emojis, labels, or paths, run 'rtb config' anytime." -ForegroundColor Yellow
     Write-Host "`n  Ready to build! Run 'rtb help' or launch the TUI with 'rtb ui'." -ForegroundColor Cyan
 }
 

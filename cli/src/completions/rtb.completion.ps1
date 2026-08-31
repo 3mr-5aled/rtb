@@ -7,7 +7,7 @@ $rtbCompleter = {
     $count = $elements.Count
 
     $subCommands = @(
-        'init', 'run', 'build', 'test', 'commit', 'info', 'agent', 'deps', 'workspace', 'upgrade',
+        'init', 'config', 'run', 'build', 'test', 'commit', 'info', 'agent', 'deps', 'workspace', 'upgrade',
         'uninstall', 'doctor', 'status',
         'goto', 'open', 'new', 'pause', 'resume', 'deploy', 'archive',
         'unarchive', 'list', 'health', 'clean', 'index',
