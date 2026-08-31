@@ -41,3 +41,5 @@ AI agent discovery, context generation, and process execution engine.
 **Project Root Entry**: A single entry in `projectRoots` in `rtb.config.json`. Structured as `{ path: String, label: String, emoji: String }`. Represents one lifecycle folder (e.g. Active, Paused, Deployed). Replaces the previous flat string schema.
 
 **Workspace Scaffold**: The directory tree created by `rtb init` under the user's chosen root. Folders are selected interactively via a multi-select list; each has a default emoji and label that the user may customize. `Vibe Coding` is not part of the standard scaffold — it is a user-defined custom folder type.
+
+**Setup Wizard**: The interactive installation flow that collects user decisions (install path, profile targets) and executes installer steps with real-time progress feedback (spinners, colored step labels, a final summary box). Implemented as two entry-point scripts — `install.ps1` (Windows / pwsh) and `install.sh` (Linux / macOS) — that share the same UX conventions. The wizard is distinct from the **Installation Mode** concept: mode is about _where files come from_; the wizard is about _how the user experiences the process_.
