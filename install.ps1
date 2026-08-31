@@ -1,9 +1,9 @@
-# RTB (رتّب) Dual-Mode Installer & Integrator Script
+# RTB (ﺐﺘّﺭ) Dual-Mode Installer & Integrator Script
 
 $ErrorActionPreference = 'Stop'
 
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  Installing & Configuring RTB (رتّب) Project Suite" -ForegroundColor Cyan
+Write-Host "  Installing & Configuring RTB (ﺐﺘّﺭ) Project Suite" -ForegroundColor Cyan
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
 
 $scriptRoot = $PSScriptRoot
@@ -184,3 +184,4 @@ Write-Host "`nInstallation Complete! Next steps:" -ForegroundColor Green
 Write-Host "  1. Run 'rtb init' to configure your projects workspace." -ForegroundColor White
 Write-Host "  2. Run 'rtb help' to explore available commands." -ForegroundColor White
 Write-Host "  3. Run 'rtbtui' or 'rtb ui' to open the interactive terminal dashboard." -ForegroundColor White
+Write-Host "  4. Configuration file: $userConfigDir\rtb.config.json (editable anytime)" -ForegroundColor Gray

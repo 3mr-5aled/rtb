@@ -42,9 +42,12 @@ function rtb {
     # Config Gate for data-dependent commands
     $freeCommands = @('help', 'init', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
     if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
+        $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+        $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
+        $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
         Write-Host ""
         Write-Host "  ⚠  RTB is not configured yet." -ForegroundColor Yellow
-        Write-Host "     Run 'rtb init' to set up your workspace." -ForegroundColor Gray
+        Write-Host "     Run 'rtb init' to set up your workspace (or edit $userConfigFile directly)." -ForegroundColor Gray
         Write-Host ""
 
         $isNonInteractive = [bool]($env:RTB_NON_INTERACTIVE -or $env:CI -or $env:GITHUB_ACTIONS -or [Console]::IsInputRedirected)

@@ -1,5 +1,22 @@
 # RTB — رتّب (Repository & Tooling Base)
 
+```text
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢸⣿⣿⣿⣿⣿⣿⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣷⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⣤⠀⠀⠀⠀⠀
+⠀⠀⢸⣿⣿⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠀⠀⠀⠀⠀
+⠀⠀⢸⣿⡏⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⠀
+⠀⠀⢸⣿⠃⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿ ⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀
+⠀⠀⢸⡟⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀
+⠀⠀⢸⡇⢸⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀
+⠀⠀⢸⠁⣿⣿⣿⣿⣿⣿⣿             ⣿⣿ ⣿⣿⣿⡟⠀⠀⠀
+⠀⠀⠘⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀⠀
+⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⡿⠀⠀⠀⠀
+⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀
+⠀⠀⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠀⠀⠀
+```
+
 [![Version](https://img.shields.io/badge/version-v0.4.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)](https://microsoft.com/powershell)
@@ -197,14 +214,21 @@ rtbtui
 
 ---
 
-## ⚙️ Configuration Hierarchy
-
+## ⚙️ Configuration & Direct Editing
+ 
 RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority:
 
 1. **User Profile**: `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Linux/macOS)
 2. **Repository Fallback**: `config/rtb.config.json`
 
-To generate or reconfigure your personalized user configuration:
+### Direct Configuration Editing
+You can open and edit `%APPDATA%\rtb\rtb.config.json` (or `~/.config/rtb/rtb.config.json`) directly in any code editor (e.g. VS Code, Notepad) at any time to:
+- Add or modify custom project root lifecycle paths (`active`, `paused`, `production`, etc.)
+- Configure custom folder labels and emojis
+- Adjust dependency cleanup rules and stale project thresholds
+- Customize Git health scan paths
+
+To generate or reconfigure your user configuration interactively:
 
 ```powershell
 rtb init

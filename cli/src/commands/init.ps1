@@ -25,6 +25,7 @@ function Rtb-Init {
         Write-Host ""
         Write-Host "  Configuration already exists at:" -ForegroundColor Yellow
         Write-Host "    $userConfigFile" -ForegroundColor White
+        Write-Host "  You can edit this file directly to adjust project roots or settings." -ForegroundColor Cyan
         Write-Host "  Use 'rtb init -Force' to overwrite and re-run the setup wizard." -ForegroundColor Gray
         Write-Host ""
         return
@@ -216,6 +217,7 @@ function Rtb-Init {
     Write-Host "`n  ✓ RTB configuration successfully initialized!" -ForegroundColor Green
     Write-Host "    Configuration file: $userConfigFile" -ForegroundColor White
     Write-Host "    Workspace root    : $chosenRoot" -ForegroundColor White
+    Write-Host "    (You can edit '$userConfigFile' anytime to customize roots or settings)" -ForegroundColor DarkGray
     Write-Host "`n  Ready to build! Run 'rtb help' or launch the TUI with 'rtb ui'." -ForegroundColor Cyan
 }
 

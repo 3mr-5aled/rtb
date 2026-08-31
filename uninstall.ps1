@@ -1,4 +1,4 @@
-# RTB (رتّب) Automated Uninstaller Script
+# RTB (ﺐﺘّﺭ) Automated Uninstaller Script
 
 [CmdletBinding()]
 param(
@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Yellow
-Write-Host "  Uninstalling RTB (رتّب) Developer Project Operations Suite" -ForegroundColor Yellow
+Write-Host "  Uninstalling RTB (ﺐﺘّﺭ) Developer Project Operations Suite" -ForegroundColor Yellow
 Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Yellow
 
 if (-not $Force) {

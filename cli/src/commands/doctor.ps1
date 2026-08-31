@@ -26,7 +26,8 @@ function Rtb-Doctor {
     $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
     $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
     $configPassed = ($null -ne $config)
-    & $WriteCheck $configPassed 'rtb.config.json found and parseable' "Run 'rtb init' to create your config at $userConfigFile"
+    $configLabel = if ($configPassed) { "rtb.config.json ($userConfigFile)" } else { "rtb.config.json found and parseable" }
+    & $WriteCheck $configPassed $configLabel "Run 'rtb init' to create your config at $userConfigFile"
     if (-not $configPassed) { $allGood = $false }
 
     # 2. Project Roots Check (9 roots)

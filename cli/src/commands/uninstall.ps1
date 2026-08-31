@@ -43,7 +43,7 @@ function Rtb-Uninstall {
     } else {
         # Self-contained fallback uninstallation
         Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Yellow
-        Write-Host "  Uninstalling RTB (رتّب) Developer Project Operations Suite" -ForegroundColor Yellow
+        Write-Host "  Uninstalling RTB (ﺐﺘّﺭ) Developer Project Operations Suite" -ForegroundColor Yellow
         Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Yellow
 
         if (-not $isForce) {
