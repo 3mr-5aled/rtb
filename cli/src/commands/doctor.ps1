@@ -100,6 +100,7 @@ function Rtb-Doctor {
     Write-Host ''
     Write-Host '  TUI Binary' -ForegroundColor Cyan
     $tuiCmd = Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue
+    $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtbtui.exe' } else { $null }
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
     $userConfigBinary = Join-Path $userHomeDir '.config\rtb\bin\rtbtui.exe'
 
