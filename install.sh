@@ -27,7 +27,10 @@ fi
 
 esc() {
     if [ "$ANSI" = "1" ]; then
-        printf '\033[%sm' "$1"
+        case "$1" in
+            *m) printf '\033[%s' "$1" ;;
+            *)  printf '\033[%sm' "$1" ;;
+        esac
     fi
 }
 
