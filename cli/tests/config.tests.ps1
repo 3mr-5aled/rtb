@@ -19,4 +19,14 @@ Describe "Get-RtbConfig and Test-RtbConfigured" {
         $configured = Test-RtbConfigured
         $configured -is [bool] | Should -Be $true
     }
+
+    It "Rtb-Config and Dev-Config commands exist and resolve config path" {
+        (Get-Command Rtb-Config -ErrorAction SilentlyContinue) | Should -Not -BeNullOrEmpty
+        (Get-Command Dev-Config -ErrorAction SilentlyContinue) | Should -Not -BeNullOrEmpty
+        
+        Mock Start-Process {}
+        Mock Invoke-Item {}
+        { Rtb-Config } | Should -Not -Throw
+    }
 }
+

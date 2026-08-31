@@ -40,7 +40,7 @@ function rtb {
     }
 
     # Config Gate for data-dependent commands
-    $freeCommands = @('help', 'init', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
+    $freeCommands = @('help', 'init', 'config', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
     if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
         $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
         $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
@@ -67,6 +67,7 @@ function rtb {
 
     switch ($Command.ToLower()) {
         'init'        { if ($Arguments) { Rtb-Init @Arguments } else { Rtb-Init } }
+        'config'      { if ($Arguments) { Rtb-Config @Arguments } else { Rtb-Config } }
         'run'         { if ($Arguments) { Rtb-Run @Arguments } else { Rtb-Run } }
         'build'       { if ($Arguments) { Rtb-Build @Arguments } else { Rtb-Build } }
         'test'        { if ($Arguments) { Rtb-Test @Arguments } else { Rtb-Test } }

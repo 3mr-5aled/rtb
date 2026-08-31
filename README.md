@@ -174,7 +174,8 @@ Add the `-KeepConfig` flag if you wish to preserve your `%APPDATA%\rtb\rtb.confi
 ### Setup & Lifecycle
 | Command | Description |
 | :--- | :--- |
-| `rtb init [--force]` | Interactive setup wizard (detects root, scaffolds folders, configures emojis/labels) |
+| `rtb init [--force]` | Interactive setup wizard (detects workspace root and scaffolds lifecycle folders) |
+| `rtb config` | Open active `rtb.config.json` configuration file in default editor |
 | `rtb doctor` | System health check (validates config, roots, git, runtimes, agents, and TUI binary) |
 | `rtb upgrade [--check] [--force]` | Check for newer releases and perform in-place self-upgrade |
 | `rtb uninstall [--force] [-KeepConfig]` | Cleanly remove RTB binaries, module, and profile integrations |
@@ -253,14 +254,42 @@ RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority
 1. **User Profile**: `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Linux/macOS)
 2. **Repository Fallback**: `config/rtb.config.json`
 
-### Direct Configuration Editing
-You can open and edit `%APPDATA%\rtb\rtb.config.json` (or `~/.config/rtb/rtb.config.json`) directly in any code editor (e.g. VS Code, Notepad) at any time to:
-- Add or modify custom project root lifecycle paths (`active`, `paused`, `production`, etc.)
-- Configure custom folder labels and emojis
-- Adjust dependency cleanup rules and stale project thresholds
-- Customize Git health scan paths
+### Direct Configuration Editing (`rtb config`)
 
-To generate or reconfigure your user configuration interactively:
+Run `rtb config` to immediately launch your configuration in your default editor (`$env:EDITOR`, VS Code, or Notepad):
+
+```powershell
+rtb config
+```
+
+### Customizing Emojis, Labels & Project Roots
+
+You can customize the emoji icon, display label, and physical folder path for any lifecycle root directly in `rtb.config.json`:
+
+```json
+{
+  "version": "1.0.0",
+  "projectRoots": {
+    "active": {
+      "path": "D:\\02-Projects\\01-Development\\01-Active",
+      "label": "Active Projects",
+      "emoji": "⚡"
+    },
+    "paused": {
+      "path": "D:\\02-Projects\\01-Development\\04-Paused",
+      "label": "On Hold",
+      "emoji": "⏸️"
+    },
+    "production": {
+      "path": "D:\\02-Projects\\02-Deployed\\01-Production",
+      "label": "Production Apps",
+      "emoji": "🚀"
+    }
+  }
+}
+```
+
+To re-scaffold or generate your configuration interactively:
 
 ```powershell
 rtb init
