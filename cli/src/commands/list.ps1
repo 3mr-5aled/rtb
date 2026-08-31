@@ -17,7 +17,11 @@ function Rtb-List {
 
     if ($asJson) {
         $projects = Get-AllProjectsDetails -Filter $filter
-        $projects | ConvertTo-Json -Depth 5
+        if ($null -eq $projects) {
+            '[]'
+        } else {
+            ConvertTo-Json -InputObject $projects -Depth 5
+        }
         return
     }
 
