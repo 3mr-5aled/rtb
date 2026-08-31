@@ -6,6 +6,6 @@ Describe "Self-Upgrade Engine (Rtb-Upgrade)" {
 
     It "Rtb-Upgrade -Check reports version status" {
         $result = Rtb-Upgrade -Check
-        $result | Should Not BeNullOrEmpty
+        $result | Should -Not -BeNullOrEmpty
     }
 }

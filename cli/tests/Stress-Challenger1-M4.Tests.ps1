@@ -23,6 +23,10 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
         }
     }
 
+    BeforeEach {
+        Mock Get-Command { return $null }
+    }
+
     AfterAll {
         if (Test-Path $script:tempBase) {
             Remove-Item -Recurse -Force $script:tempBase -ErrorAction SilentlyContinue
@@ -33,25 +37,25 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
         It "returns $false and does not throw when Get-RtbConfig returns $null" {
             Mock Get-RtbConfig { return $null }
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $false and does not throw when Get-RtbConfig throws an exception" {
             Mock Get-RtbConfig { throw [System.IO.InvalidDataException]::new("Corrupted JSON data at line 1") }
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $false when config is an empty hashtable or missing projectRoots" {
             Mock Get-RtbConfig { return [PSCustomObject]@{} }
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $false when projectRoots is null" {
             Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $null } }
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $false when projectRoots has all empty string paths" {
@@ -59,7 +63,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             foreach ($r in $script:rootDirs) { $emptyRoots[$r] = "" }
             Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$emptyRoots } }
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
     }
 
@@ -76,7 +80,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
                 }
                 Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$customRoots } }
                 $res = Rtb-Doctor
-                $res | Should Be $false
+                $res | Should -Be $false
             }
         }
 
@@ -92,7 +96,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
 
             $res = Rtb-Doctor
-            $res | Should Be $true
+            $res | Should -Be $true
         }
 
         It "returns $false when a project root is null or whitespace" {
@@ -102,7 +106,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$customRoots } }
 
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
     }
 
@@ -113,7 +117,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'git' }
 
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $false when required tool 'rtbtui' is missing" {
@@ -122,7 +126,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'rtbtui' }
 
             $res = Rtb-Doctor
-            $res | Should Be $false
+            $res | Should -Be $false
         }
 
         It "returns $true when required tools exist even if all optional tools and AI agents are missing" {
@@ -131,7 +135,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return $null } -ParameterFilter { $Name -notin @('git', 'rtbtui') }
 
             $res = Rtb-Doctor
-            $res | Should Be $true
+            $res | Should -Be $true
         }
 
         It "returns $true when all required and optional tools and AI agents exist" {
@@ -139,7 +143,7 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } }
 
             $res = Rtb-Doctor
-            $res | Should Be $true
+            $res | Should -Be $true
         }
     }
 
@@ -149,34 +153,34 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
 
             $output = @(Rtb-Doctor)
-            $output.Count | Should Be 1
-            ($output[0] -is [bool]) | Should Be $true
-            $output[0] | Should Be $true
+            $output.Count | Should -Be 1
+            ($output[0] -is [bool]) | Should -Be $true
+            $output[0] | Should -Be $true
         }
 
         It "returns exactly 1 pipeline item of type [bool] on failure" {
             Mock Get-RtbConfig { return $null }
 
             $output = @(Rtb-Doctor)
-            $output.Count | Should Be 1
-            ($output[0] -is [bool]) | Should Be $true
-            $output[0] | Should Be $false
+            $output.Count | Should -Be 1
+            ($output[0] -is [bool]) | Should -Be $true
+            $output[0] | Should -Be $false
         }
 
         It "aliases Dev-Doctor, Test-RtbDoctor, and Test-RtbEnvironment preserve single boolean output" {
             Mock Get-RtbConfig { return $null }
 
             $d1 = @(Dev-Doctor)
-            $d1.Count | Should Be 1
-            $d1[0] | Should Be $false
+            $d1.Count | Should -Be 1
+            $d1[0] | Should -Be $false
 
             $d2 = @(Test-RtbDoctor)
-            $d2.Count | Should Be 1
-            $d2[0] | Should Be $false
+            $d2.Count | Should -Be 1
+            $d2[0] | Should -Be $false
 
             $d3 = @(Test-RtbEnvironment)
-            $d3.Count | Should Be 1
-            $d3[0] | Should Be $false
+            $d3.Count | Should -Be 1
+            $d3[0] | Should -Be $false
         }
 
         It "pipes cleanly to Where-Object or Foreach-Object without stdout leakage" {
@@ -184,8 +188,8 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
 
             $types = Rtb-Doctor | ForEach-Object { $_.GetType().FullName }
-            @($types).Count | Should Be 1
-            $types | Should Be 'System.Boolean'
+            @($types).Count | Should -Be 1
+            $types | Should -Be 'System.Boolean'
         }
     }
 
@@ -196,11 +200,11 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
                     Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$script:validRoots } }
                     Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
                     $res = Rtb-Doctor
-                    $res | Should Be $true
+                    $res | Should -Be $true
                 } else {
                     Mock Get-RtbConfig { return $null }
                     $res = Rtb-Doctor
-                    $res | Should Be $false
+                    $res | Should -Be $false
                 }
             }
         }
@@ -211,16 +215,16 @@ Describe "Milestone M4: Challenger 1 Empirical Stress Tests - rtb doctor" {
             Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$script:validRoots } }
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
 
-            { rtb doctor } | Should Not Throw
-            { dev doctor } | Should Not Throw
+            { rtb doctor } | Should -Not -Throw
+            { dev doctor } | Should -Not -Throw
         }
 
         It "passes extra arguments to rtb doctor gracefully" {
             Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = [PSCustomObject]$script:validRoots } }
             Mock Get-Command { return [PSCustomObject]@{ Name = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
 
-            { rtb doctor -Verbose } | Should Not Throw
-            { rtb doctor --extra-flag } | Should Not Throw
+            { rtb doctor -Verbose } | Should -Not -Throw
+            { rtb doctor --extra-flag } | Should -Not -Throw
         }
     }
 }

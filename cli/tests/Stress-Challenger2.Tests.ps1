@@ -25,8 +25,8 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb clean -Days 15 -Commit } | Should Not Throw
-                Test-Path $nm | Should Be $false
+                { rtb clean -Days 15 -Commit } | Should -Not -Throw
+                Test-Path $nm | Should -Be $false
             }
 
             It "deletes old dependencies with 'rtb clean -Commit -Days 15' (flag before days)" {
@@ -38,8 +38,8 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb clean -Commit -Days 15 } | Should Not Throw
-                Test-Path $nm | Should Be $false
+                { rtb clean -Commit -Days 15 } | Should -Not -Throw
+                Test-Path $nm | Should -Be $false
             }
 
             It "deletes old dependencies with 'rtb clean -Commit 15' (flag before positional days)" {
@@ -51,8 +51,8 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb clean -Commit 15 } | Should Not Throw
-                Test-Path $nm | Should Be $false
+                { rtb clean -Commit 15 } | Should -Not -Throw
+                Test-Path $nm | Should -Be $false
             }
 
             It "deletes old dependencies with 'rtb clean 15 -Commit' (positional days before flag)" {
@@ -64,8 +64,8 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb clean 15 -Commit } | Should Not Throw
-                Test-Path $nm | Should Be $false
+                { rtb clean 15 -Commit } | Should -Not -Throw
+                Test-Path $nm | Should -Be $false
             }
 
             It "deletes old dependencies with 'rtb clean --days 15 --commit' (GNU long flags)" {
@@ -77,8 +77,8 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb clean --days 15 --commit } | Should Not Throw
-                Test-Path $nm | Should Be $false
+                { rtb clean --days 15 --commit } | Should -Not -Throw
+                Test-Path $nm | Should -Be $false
             }
 
             It "preserves folders with 'rtb clean -Days 30' (dry-run without -Commit)" {
@@ -89,8 +89,8 @@ InModuleScope rtb {
 
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
 
-                { rtb clean -Days 30 } | Should Not Throw
-                Test-Path $nm | Should Be $true
+                { rtb clean -Days 30 } | Should -Not -Throw
+                Test-Path $nm | Should -Be $true
             }
 
             It "honors dry-run when both --commit and --dry-run are provided" {
@@ -101,8 +101,8 @@ InModuleScope rtb {
 
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $dir; paused = $null; vibe = $null; sandbox = $null }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
 
-                { rtb clean --commit --dry-run } | Should Not Throw
-                Test-Path $nm | Should Be $true
+                { rtb clean --commit --dry-run } | Should -Not -Throw
+                Test-Path $nm | Should -Be $true
             }
         }
 
@@ -118,8 +118,8 @@ InModuleScope rtb {
                 Mock Find-ProjectPath { @{ Path = $testRepo; Status = 'Active' } }
                 Mock Get-RtbConfig { [PSCustomObject]@{ backupRoot = $script:stressTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-                { rtb archive -Force "lead_force_proj_1" } | Should Not Throw
-                Test-Path $testRepo | Should Be $false
+                { rtb archive -Force "lead_force_proj_1" } | Should -Not -Throw
+                Test-Path $testRepo | Should -Be $false
             }
 
             It "archives with 'rtb archive --force myproj' (leading --force GNU flag)" {
@@ -133,8 +133,8 @@ InModuleScope rtb {
                 Mock Find-ProjectPath { @{ Path = $testRepo; Status = 'Active' } }
                 Mock Get-RtbConfig { [PSCustomObject]@{ backupRoot = $script:stressTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-                { rtb archive --force "lead_force_proj_2" } | Should Not Throw
-                Test-Path $testRepo | Should Be $false
+                { rtb archive --force "lead_force_proj_2" } | Should -Not -Throw
+                Test-Path $testRepo | Should -Be $false
             }
 
             It "archives with 'rtb archive -f myproj' (leading short flag)" {
@@ -148,18 +148,18 @@ InModuleScope rtb {
                 Mock Find-ProjectPath { @{ Path = $testRepo; Status = 'Active' } }
                 Mock Get-RtbConfig { [PSCustomObject]@{ backupRoot = $script:stressTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-                { rtb archive -f "lead_force_proj_3" } | Should Not Throw
-                Test-Path $testRepo | Should Be $false
+                { rtb archive -f "lead_force_proj_3" } | Should -Not -Throw
+                Test-Path $testRepo | Should -Be $false
             }
 
             It "prints usage on 'rtb archive -Force' when no project name is provided" {
                 $output = (rtb archive -Force *>&1 | Out-String)
-                $output | Should Match "Usage:"
+                $output | Should -Match "Usage:"
             }
 
             It "prints usage on 'rtb archive' when no arguments are provided" {
                 $output = (rtb archive *>&1 | Out-String)
-                $output | Should Match "Usage:"
+                $output | Should -Match "Usage:"
             }
         }
 
@@ -181,9 +181,9 @@ InModuleScope rtb {
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $active; paused = $paused }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
                 Mock Confirm-RtbAction { $true }
 
-                { rtb pause --prune "pause-lead-1" } | Should Not Throw
-                Test-Path (Join-Path $paused "pause-lead-1") | Should Be $true
-                Test-Path (Join-Path $paused "pause-lead-1\node_modules") | Should Be $false
+                { rtb pause --prune "pause-lead-1" } | Should -Not -Throw
+                Test-Path (Join-Path $paused "pause-lead-1") | Should -Be $true
+                Test-Path (Join-Path $paused "pause-lead-1\node_modules") | Should -Be $false
             }
 
             It "pauses with 'rtb pause -Force --prune myproj' (leading -Force and --prune)" {
@@ -200,9 +200,9 @@ InModuleScope rtb {
 
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $active; paused = $paused }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
 
-                { rtb pause -Force --prune "pause-lead-2" } | Should Not Throw
-                Test-Path (Join-Path $paused "pause-lead-2") | Should Be $true
-                Test-Path (Join-Path $paused "pause-lead-2\node_modules") | Should Be $false
+                { rtb pause -Force --prune "pause-lead-2" } | Should -Not -Throw
+                Test-Path (Join-Path $paused "pause-lead-2") | Should -Be $true
+                Test-Path (Join-Path $paused "pause-lead-2\node_modules") | Should -Be $false
             }
 
             It "pauses with 'rtb pause --prune -Force myproj' (leading --prune and -Force)" {
@@ -219,9 +219,9 @@ InModuleScope rtb {
 
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $active; paused = $paused }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
 
-                { rtb pause --prune -Force "pause-lead-3" } | Should Not Throw
-                Test-Path (Join-Path $paused "pause-lead-3") | Should Be $true
-                Test-Path (Join-Path $paused "pause-lead-3\node_modules") | Should Be $false
+                { rtb pause --prune -Force "pause-lead-3" } | Should -Not -Throw
+                Test-Path (Join-Path $paused "pause-lead-3") | Should -Be $true
+                Test-Path (Join-Path $paused "pause-lead-3\node_modules") | Should -Be $false
             }
 
             It "pauses with 'rtb pause --prune --force myproj' (GNU style long flags before name)" {
@@ -238,24 +238,24 @@ InModuleScope rtb {
 
                 Mock Get-RtbConfig { [PSCustomObject]@{ projectRoots = [PSCustomObject]@{ active = $active; paused = $paused }; cleanDeps = [PSCustomObject]@{ targets = @('node_modules') } } }
 
-                { rtb pause --prune --force "pause-lead-4" } | Should Not Throw
-                Test-Path (Join-Path $paused "pause-lead-4") | Should Be $true
-                Test-Path (Join-Path $paused "pause-lead-4\node_modules") | Should Be $false
+                { rtb pause --prune --force "pause-lead-4" } | Should -Not -Throw
+                Test-Path (Join-Path $paused "pause-lead-4") | Should -Be $true
+                Test-Path (Join-Path $paused "pause-lead-4\node_modules") | Should -Be $false
             }
 
             It "prints usage on 'rtb pause' when no arguments are provided" {
                 $output = (rtb pause *>&1 | Out-String)
-                $output | Should Match "Usage:"
+                $output | Should -Match "Usage:"
             }
 
             It "prints usage on 'rtb pause -Force' when no project is provided" {
                 $output = (rtb pause -Force *>&1 | Out-String)
-                $output | Should Match "Usage:"
+                $output | Should -Match "Usage:"
             }
 
             It "prints usage on 'rtb pause --prune' when no project is provided" {
                 $output = (rtb pause --prune *>&1 | Out-String)
-                $output | Should Match "Usage:"
+                $output | Should -Match "Usage:"
             }
         }
     }
@@ -284,13 +284,13 @@ InModuleScope rtb {
             rtb archive -Force "valid_tar_proj"
 
             $expectedArchive = Join-Path $script:tarStressTemp "project-snapshots\valid_tar_proj-$((Get-Date).ToString('yyyy-MM-dd')).tar.gz"
-            Test-Path $expectedArchive | Should Be $true
-            (Get-Item $expectedArchive).Length | Should BeGreaterThan 0
-            Test-Path $realProj | Should Be $false
+            Test-Path $expectedArchive | Should -Be $true
+            (Get-Item $expectedArchive).Length | Should -BeGreaterThan 0
+            Test-Path $realProj | Should -Be $false
 
             # Verify tar integrity
             $listing = tar -tzf $expectedArchive 2>&1
-            ($listing -match "index.js") | Should Be $true
+            ($listing -match "index.js") | Should -Be $true
         }
 
         It "retains source directory and deletes corrupt archive when tar fails or produces 0-byte output" {
@@ -304,7 +304,7 @@ InModuleScope rtb {
             $tarExitCode = 1 # Non-zero exit code
             $archivePath = $corruptArchive
             $isSafe = ($tarExitCode -eq 0 -and (Test-Path $archivePath) -and ((Get-Item $archivePath).Length -gt 0))
-            $isSafe | Should Be $false
+            $isSafe | Should -Be $false
 
             # When not safe, the source path must not be removed and the broken archive must be cleaned
             if (-not $isSafe) {
@@ -313,8 +313,8 @@ InModuleScope rtb {
                 }
             }
 
-            Test-Path $failProj | Should Be $true
-            Test-Path $corruptArchive | Should Be $false
+            Test-Path $failProj | Should -Be $true
+            Test-Path $corruptArchive | Should -Be $false
         }
     }
 }

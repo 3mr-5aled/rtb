@@ -64,8 +64,8 @@ InModuleScope rtb {
                     $paramHash[$sw.TrimStart('-')] = $true
                     Dev-Goto @paramHash
 
-                    $script:capturedAgent | Should Be $expectedAgent
-                    $script:capturedPath | Should Be $script:proj1
+                    $script:capturedAgent | Should -Be $expectedAgent
+                    $script:capturedPath | Should -Be $script:proj1
                 }
             }
 
@@ -80,7 +80,7 @@ InModuleScope rtb {
                 }
 
                 Dev-Goto -Name "alpha-service" -Agent "gemini"
-                $script:capturedAgent | Should Be "gemini"
+                $script:capturedAgent | Should -Be "gemini"
             }
 
             It "resolves positional syntax 'Dev-Goto alpha-service codex'" {
@@ -94,7 +94,7 @@ InModuleScope rtb {
                 }
 
                 Dev-Goto "alpha-service" "codex"
-                $script:capturedAgent | Should Be "codex"
+                $script:capturedAgent | Should -Be "codex"
             }
 
             It "preserves agent execution after interactive disambiguation picker choice" {
@@ -115,9 +115,9 @@ InModuleScope rtb {
 
                 # User chooses option 2 (beta-backend) with -Claude switch
                 Dev-Goto -Name "beta" -Choice "2" -Claude
-                (Get-Location).Path | Should Be $script:proj3
-                $script:capturedAgent | Should Be "claude"
-                $script:capturedPath | Should Be $script:proj3
+                (Get-Location).Path | Should -Be $script:proj3
+                $script:capturedAgent | Should -Be "claude"
+                $script:capturedPath | Should -Be $script:proj3
             }
 
             It "dispatches 'rtb goto alpha-service -Claude' via top-level rtb command" {
@@ -131,7 +131,7 @@ InModuleScope rtb {
                 }
 
                 rtb goto alpha-service -Claude
-                $script:capturedAgent | Should Be "claude"
+                $script:capturedAgent | Should -Be "claude"
             }
 
             It "dispatches 'dev goto alpha-service -Agy' via dev alias" {
@@ -145,7 +145,7 @@ InModuleScope rtb {
                 }
 
                 dev goto alpha-service -Agy
-                $script:capturedAgent | Should Be "agy"
+                $script:capturedAgent | Should -Be "agy"
             }
         }
 
@@ -163,62 +163,62 @@ InModuleScope rtb {
 
             It "selects first item with choice '1'" {
                 Dev-Goto -Name "beta" -Choice "1"
-                (Get-Location).Path | Should Be $script:proj2
+                (Get-Location).Path | Should -Be $script:proj2
             }
 
             It "selects third item with choice '3'" {
                 Dev-Goto -Name "beta" -Choice "3"
-                (Get-Location).Path | Should Be $script:proj4
+                (Get-Location).Path | Should -Be $script:proj4
             }
 
             It "cancels when choice is '0' (zero is out of 1-based bounds)" {
                 $output = (Dev-Goto -Name "beta" -Choice "0" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is '4' (greater than match count 3)" {
                 $output = (Dev-Goto -Name "beta" -Choice "4" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is '9' (upper digit bound but beyond match count)" {
                 $output = (Dev-Goto -Name "beta" -Choice "9" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is negative '-1'" {
                 $output = (Dev-Goto -Name "beta" -Choice "-1" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is arbitrary non-numeric text 'cancel'" {
                 $output = (Dev-Goto -Name "beta" -Choice "cancel" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is special characters '!@#'" {
                 $output = (Dev-Goto -Name "beta" -Choice "!@#" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is empty string ''" {
                 Mock Read-Host { "" }
                 $output = (Dev-Goto -Name "beta" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
 
             It "cancels when choice is whitespace '   '" {
                 Mock Read-Host { "   " }
                 $output = (Dev-Goto -Name "beta" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
         }
 
@@ -242,7 +242,7 @@ InModuleScope rtb {
                 Mock Find-ProjectPathFuzzy { $script:largeMatches }
 
                 Dev-Goto -Name "item" -Choice "5"
-                (Get-Location).Path | Should Be (Join-Path $script:stressTemp "item-5")
+                (Get-Location).Path | Should -Be (Join-Path $script:stressTemp "item-5")
             }
 
             It "cancels on out-of-range choice '99'" {
@@ -250,8 +250,8 @@ InModuleScope rtb {
                 Mock Find-ProjectPathFuzzy { $script:largeMatches }
 
                 $output = (Dev-Goto -Name "item" -Choice "99" *>&1 | Out-String)
-                $output | Should Match "Cancelled\."
-                (Get-Location).Path | Should Be $script:stressTemp
+                $output | Should -Match "Cancelled\."
+                (Get-Location).Path | Should -Be $script:stressTemp
             }
         }
     }
@@ -305,13 +305,13 @@ tower-http = { version = "0.5", features = ["cors"] }
                 Set-Content -Path (Join-Path $dir "Cargo.toml") -Value $cargo
 
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "fullstack-hybrid"
-                $ctxPath | Should Not BeNullOrEmpty
-                Test-Path $ctxPath | Should Be $true
+                $ctxPath | Should -Not -BeNullOrEmpty
+                Test-Path $ctxPath | Should -Be $true
 
                 $content = Get-Content -Path $ctxPath -Raw
-                $content | Should Match "\*\*package\.json deps:\*\* next, react, tailwindcss"
-                $content | Should Match "\*\*devDependencies:\*\* typescript, @types/react"
-                $content | Should Match "\*\*Cargo\.toml crates:\*\* name, version, edition, axum, tokio, serde, serde_json, tower-http"
+                $content | Should -Match "\*\*package\.json deps:\*\* next, react, tailwindcss"
+                $content | Should -Match "\*\*devDependencies:\*\* typescript, @types/react"
+                $content | Should -Match "\*\*Cargo\.toml crates:\*\* name, version, edition, axum, tokio, serde, serde_json, tower-http"
             }
         }
 
@@ -348,8 +348,8 @@ require (
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "py_go_combo"
                 $content = Get-Content -Path $ctxPath -Raw
 
-                $content | Should Match "\*\*requirements\.txt:\*\* torch>=2\.1\.0, transformers==4\.35\.0, fastapi>=0\.104\.0, uvicorn\[standard\]>=0\.24\.0, pydantic>=2\.5\.0"
-                $content | Should Match "\*\*go\.mod requires:\*\* github\.com/gin-gonic/gin v1\.9\.1, github\.com/google/uuid v1\.6\.0, github\.com/redis/go-redis/v9 v9\.5\.1, go\.uber\.org/zap v1\.27\.0"
+                $content | Should -Match "\*\*requirements\.txt:\*\* torch>=2\.1\.0, transformers==4\.35\.0, fastapi>=0\.104\.0, uvicorn\[standard\]>=0\.24\.0, pydantic>=2\.5\.0"
+                $content | Should -Match "\*\*go\.mod requires:\*\* github\.com/gin-gonic/gin v1\.9\.1, github\.com/google/uuid v1\.6\.0, github\.com/redis/go-redis/v9 v9\.5\.1, go\.uber\.org/zap v1\.27\.0"
             }
         }
 
@@ -366,10 +366,10 @@ require (
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "quad_combo"
                 $content = Get-Content -Path $ctxPath -Raw
 
-                $content | Should Match "\*\*package\.json deps:\*\* vue"
-                $content | Should Match "\*\*Cargo\.toml crates:\*\* ratatui, crossterm"
-                $content | Should Match "\*\*requirements\.txt:\*\* numpy>=1\.26\.0, pandas>=2\.1\.0"
-                $content | Should Match "\*\*go\.mod requires:\*\* github\.com/gorilla/mux v1\.8\.1"
+                $content | Should -Match "\*\*package\.json deps:\*\* vue"
+                $content | Should -Match "\*\*Cargo\.toml crates:\*\* ratatui, crossterm"
+                $content | Should -Match "\*\*requirements\.txt:\*\* numpy>=1\.26\.0, pandas>=2\.1\.0"
+                $content | Should -Match "\*\*go\.mod requires:\*\* github\.com/gorilla/mux v1\.8\.1"
             }
         }
 
@@ -382,7 +382,7 @@ require (
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "malformed_json"
                 $content = Get-Content -Path $ctxPath -Raw
 
-                $content | Should Match "\(could not parse package\.json\)"
+                $content | Should -Match "\(could not parse package\.json\)"
             }
 
             It "handles empty package.json with no dependencies" {
@@ -393,7 +393,7 @@ require (
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "empty_json"
                 $content = Get-Content -Path $ctxPath -Raw
 
-                $content | Should Match "\(no recognised dependency manifest found\)"
+                $content | Should -Match "\(no recognised dependency manifest found\)"
             }
 
             It "filters comments and blank lines in requirements.txt" {
@@ -414,8 +414,8 @@ scipy>=1.11.0
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "commented_reqs"
                 $content = Get-Content -Path $ctxPath -Raw
 
-                $content | Should Match "\*\*requirements\.txt:\*\* scikit-learn>=1\.3\.0, scipy>=1\.11\.0"
-                $content -notmatch "# Header comment" | Should Be $true
+                $content | Should -Match "\*\*requirements\.txt:\*\* scikit-learn>=1\.3\.0, scipy>=1\.11\.0"
+                $content -notmatch "# Header comment" | Should -Be $true
             }
 
             It "handles go.mod with inline single require line" {
@@ -428,7 +428,7 @@ scipy>=1.11.0
                 $ctxPath = New-RtbAgentContextFile -ProjectPath $dir -ProjectName "single_gomod"
                 $content = Get-Content -Path $ctxPath -Raw
                 # Should generate context file without error
-                Test-Path $ctxPath | Should Be $true
+                Test-Path $ctxPath | Should -Be $true
             }
         }
     }

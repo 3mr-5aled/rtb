@@ -24,28 +24,28 @@ Describe "Extended Project Intelligence & CLI --json" {
         @{ name = "test-app"; dependencies = @{ next = "14.0.0"; tailwindcss = "3.0.0" } } | ConvertTo-Json | Set-Content (Join-Path $projDir "package.json")
 
         $details = Get-ProjectDetails -ProjectPath $projDir -Status "Active"
-        $details.name | Should Be "TestProject"
-        ($details.stack -contains ".NET") | Should Be $true
-        ($details.stack -contains "Next.js") | Should Be $true
-        ($details.stack -contains "Tailwind") | Should Be $true
-        $details.is_monorepo | Should Be $true
-        $details.ci_cd | Should Be "GitHub Actions"
-        $details.runtime_version | Should Be "v20.10.0"
+        $details.name | Should -Be "TestProject"
+        ($details.stack -contains ".NET") | Should -Be $true
+        ($details.stack -contains "Next.js") | Should -Be $true
+        ($details.stack -contains "Tailwind") | Should -Be $true
+        $details.is_monorepo | Should -Be $true
+        $details.ci_cd | Should -Be "GitHub Actions"
+        $details.runtime_version | Should -Be "v20.10.0"
     }
 
     It "Rtb-List outputs valid JSON array when --json flag is passed" {
         $jsonStr = Rtb-List --json | Out-String
-        $jsonStr | Should Not BeNullOrEmpty
+        $jsonStr | Should -Not -BeNullOrEmpty
         $parsed = $jsonStr | ConvertFrom-Json
-        $parsed | Should Not BeNullOrEmpty
+        $parsed | Should -Not -BeNullOrEmpty
     }
 
     It "Rtb-Info returns detailed metadata object when --json flag is passed" {
         # Test info against existing 'rtb-command-tool' project
         $jsonStr = Rtb-Info rtb-command-tool --json | Out-String
-        $jsonStr | Should Not BeNullOrEmpty
+        $jsonStr | Should -Not -BeNullOrEmpty
         $parsed = $jsonStr | ConvertFrom-Json
-        $parsed.name | Should Be "rtb-command-tool"
-        ($parsed.is_monorepo -ne $null) | Should Be $true
+        $parsed.name | Should -Be "rtb-command-tool"
+        ($parsed.is_monorepo -ne $null) | Should -Be $true
     }
 }

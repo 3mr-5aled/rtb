@@ -17,7 +17,7 @@ Describe "New-RtbAgentContextFile" {
 
     It "returns null if project path does not exist" {
         $result = New-RtbAgentContextFile -ProjectPath (Join-Path $script:baseTemp "non_existent_folder")
-        $result | Should BeNullOrEmpty
+        $result | Should -BeNullOrEmpty
     }
 
     It "creates .rtb_context.md with all required section headers" {
@@ -25,23 +25,23 @@ Describe "New-RtbAgentContextFile" {
         New-Item -ItemType Directory -Path $projDir -Force | Out-Null
 
         $ctxPath = New-RtbAgentContextFile -ProjectPath $projDir -ProjectName "basic_project" -Status "Active" -Stack @("Node.js", "Express") -GitBranch "main" -ReadmePreview "# Basic Project"
-        $ctxPath | Should Not BeNullOrEmpty
-        Test-Path $ctxPath | Should Be $true
+        $ctxPath | Should -Not -BeNullOrEmpty
+        Test-Path $ctxPath | Should -Be $true
 
         $content = Get-Content -Path $ctxPath -Raw
-        $content | Should Match "# RTB Agent Workspace Context: basic_project"
-        $content | Should Match "## Project Info"
-        $content.Contains("- **Project Path**: $projDir") | Should Be $true
-        $content | Should Match "- \*\*Status\*\*: Active"
-        $content | Should Match "- \*\*Detected Stack\*\*: Node\.js, Express"
-        $content | Should Match "- \*\*Git Branch\*\*: main"
-        $content | Should Match "- \*\*Generated At\*\*:"
-        $content | Should Match "## README Preview"
-        $content | Should Match "# Basic Project"
-        $content | Should Match "## Git Context"
-        $content | Should Match "### Last 10 Commits"
-        $content | Should Match "### Current Diff \(--stat HEAD\)"
-        $content | Should Match "## Dependencies"
+        $content | Should -Match "# RTB Agent Workspace Context: basic_project"
+        $content | Should -Match "## Project Info"
+        $content.Contains("- **Project Path**: $projDir") | Should -Be $true
+        $content | Should -Match "- \*\*Status\*\*: Active"
+        $content | Should -Match "- \*\*Detected Stack\*\*: Node\.js, Express"
+        $content | Should -Match "- \*\*Git Branch\*\*: main"
+        $content | Should -Match "- \*\*Generated At\*\*:"
+        $content | Should -Match "## README Preview"
+        $content | Should -Match "# Basic Project"
+        $content | Should -Match "## Git Context"
+        $content | Should -Match "### Last 10 Commits"
+        $content | Should -Match "### Current Diff \(--stat HEAD\)"
+        $content | Should -Match "## Dependencies"
     }
 
     It "provides correct fallbacks when project has no git, no stack, and no README" {
@@ -51,11 +51,11 @@ Describe "New-RtbAgentContextFile" {
         $ctxPath = New-RtbAgentContextFile -ProjectPath $projDir
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "- \*\*Detected Stack\*\*: Unknown"
-        $content | Should Match "- \*\*Git Branch\*\*: unknown"
-        $content | Should Match "\(no README\)"
-        $content | Should Match "\(not a git repository\)"
-        $content | Should Match "\(no recognised dependency manifest found\)"
+        $content | Should -Match "- \*\*Detected Stack\*\*: Unknown"
+        $content | Should -Match "- \*\*Git Branch\*\*: unknown"
+        $content | Should -Match "\(no README\)"
+        $content | Should -Match "\(not a git repository\)"
+        $content | Should -Match "\(no recognised dependency manifest found\)"
     }
 
     It "extracts git commit log and diff stat when git repo exists" {
@@ -74,8 +74,8 @@ Describe "New-RtbAgentContextFile" {
         $ctxPath = New-RtbAgentContextFile -ProjectPath $gitDir -ProjectName "git_project"
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "feat: first commit message"
-        $content | Should Match "initial\.txt"
+        $content | Should -Match "feat: first commit message"
+        $content | Should -Match "initial\.txt"
     }
 
     It "extracts dependencies and devDependencies from package.json" {
@@ -99,8 +99,8 @@ Describe "New-RtbAgentContextFile" {
         $ctxPath = New-RtbAgentContextFile -ProjectPath $pkgDir -ProjectName "pkg_project"
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "\*\*package\.json deps:\*\* express, cors"
-        $content | Should Match "\*\*devDependencies:\*\* typescript, jest"
+        $content | Should -Match "\*\*package\.json deps:\*\* express, cors"
+        $content | Should -Match "\*\*devDependencies:\*\* typescript, jest"
     }
 
     It "extracts dependencies from Cargo.toml" {
@@ -121,7 +121,7 @@ serde = { version = "1.0", features = ["derive"] }
         $ctxPath = New-RtbAgentContextFile -ProjectPath $cargoDir -ProjectName "cargo_project"
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "\*\*Cargo\.toml crates:\*\* name, version, ratatui, crossterm, serde"
+        $content | Should -Match "\*\*Cargo\.toml crates:\*\* name, version, ratatui, crossterm, serde"
     }
 
     It "extracts dependencies from requirements.txt" {
@@ -138,7 +138,7 @@ pytest>=7.0.0
         $ctxPath = New-RtbAgentContextFile -ProjectPath $pyDir -ProjectName "py_project"
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "\*\*requirements\.txt:\*\* flask>=2\.0\.0, requests==2\.31\.0, pytest>=7\.0\.0"
+        $content | Should -Match "\*\*requirements\.txt:\*\* flask>=2\.0\.0, requests==2\.31\.0, pytest>=7\.0\.0"
     }
 
     It "extracts dependencies from go.mod" {
@@ -159,6 +159,6 @@ require (
         $ctxPath = New-RtbAgentContextFile -ProjectPath $goDir -ProjectName "go_project"
         $content = Get-Content -Path $ctxPath -Raw
 
-        $content | Should Match "\*\*go\.mod requires:\*\* github\.com/gin-gonic/gin v1\.9\.1, github\.com/google/uuid v1\.4\.0"
+        $content | Should -Match "\*\*go\.mod requires:\*\* github\.com/gin-gonic/gin v1\.9\.1, github\.com/google/uuid v1\.4\.0"
     }
 }

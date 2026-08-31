@@ -8,11 +8,11 @@ Describe "Outdated Dependency Auditor (Rtb-Deps)" {
     It "Rtb-Deps returns declared dependencies for tui project" {
         $tuiPath = Join-Path $PSScriptRoot '..\..\tui'
         $deps = Rtb-Deps -ProjectName $tuiPath -Json
-        $deps | Should Not BeNullOrEmpty
+        $deps | Should -Not -BeNullOrEmpty
     }
 
     It "Rtb-Workspace detects project workspace configuration" {
         $ws = Rtb-Workspace -ProjectName 'rtb-command-tool' -Json
-        $ws | Should Not BeNullOrEmpty
+        $ws | Should -Not -BeNullOrEmpty
     }
 }

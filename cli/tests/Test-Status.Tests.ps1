@@ -50,8 +50,8 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $status = Rtb-Status
-                $status | Should Match "^rtb » sample-project \(Active\)"
-                $status | Should Match "Node\.js"
+                $status | Should -Match "^rtb » sample-project \(Active\)"
+                $status | Should -Match "Node\.js"
             } finally {
                 Pop-Location
             }
@@ -62,7 +62,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $status = Rtb-Status
-                $status | Should Match "^rtb » sample-project \(Active\)"
+                $status | Should -Match "^rtb » sample-project \(Active\)"
             } finally {
                 Pop-Location
             }
@@ -74,7 +74,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 Set-Content -Path (Join-Path $script:testProj "uncommitted.txt") -Value "dirty"
                 $status = Rtb-Status
-                $status | Should Match "±1"
+                $status | Should -Match "±1"
                 Remove-Item (Join-Path $script:testProj "uncommitted.txt") -Force -ErrorAction SilentlyContinue
             } finally {
                 Pop-Location
@@ -88,7 +88,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $status = Rtb-Status
-                $status | Should Match "^rtb » outside_workspace"
+                $status | Should -Match "^rtb » outside_workspace"
             } finally {
                 Pop-Location
             }
@@ -99,7 +99,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $status = Dev-Status
-                $status | Should Match "^rtb » sample-project"
+                $status | Should -Match "^rtb » sample-project"
             } finally {
                 Pop-Location
             }
@@ -110,7 +110,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $status = Get-RtbStatus
-                $status | Should Match "^rtb » sample-project"
+                $status | Should -Match "^rtb » sample-project"
             } finally {
                 Pop-Location
             }
@@ -123,16 +123,16 @@ Describe "Rtb-Status Shell Prompt Integration" {
             try {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $jsonStr = Rtb-Status -Json
-                $jsonStr | Should Not BeNullOrEmpty
+                $jsonStr | Should -Not -BeNullOrEmpty
 
                 $data = $jsonStr | ConvertFrom-Json
-                $data | Should Not BeNullOrEmpty
-                $data.project | Should Be "sample-project"
-                $data.status | Should Be "Active"
-                ($data.PSObject.Properties.Name -contains 'branch') | Should Be $true
-                ($data.PSObject.Properties.Name -contains 'uncommitted') | Should Be $true
-                ($data.PSObject.Properties.Name -contains 'stack') | Should Be $true
-                ($data.PSObject.Properties.Name -contains 'cwd') | Should Be $true
+                $data | Should -Not -BeNullOrEmpty
+                $data.project | Should -Be "sample-project"
+                $data.status | Should -Be "Active"
+                ($data.PSObject.Properties.Name -contains 'branch') | Should -Be $true
+                ($data.PSObject.Properties.Name -contains 'uncommitted') | Should -Be $true
+                ($data.PSObject.Properties.Name -contains 'stack') | Should -Be $true
+                ($data.PSObject.Properties.Name -contains 'cwd') | Should -Be $true
             } finally {
                 Pop-Location
             }
@@ -144,9 +144,9 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $jsonStr = Rtb-Status -Json
                 $data = $jsonStr | ConvertFrom-Json
-                $data.project | Should Be "sample-project"
-                $data.status | Should Be "Active"
-                $data.cwd | Should Match "nested"
+                $data.project | Should -Be "sample-project"
+                $data.status | Should -Be "Active"
+                $data.cwd | Should -Match "nested"
             } finally {
                 Pop-Location
             }
@@ -158,8 +158,8 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $jsonStr = Rtb-Status -Json
                 $data = $jsonStr | ConvertFrom-Json
-                ($data.stack -is [System.Array] -or $data.stack -is [System.Collections.IEnumerable]) | Should Be $true
-                ($data.stack -contains 'Node.js') | Should Be $true
+                ($data.stack -is [System.Array] -or $data.stack -is [System.Collections.IEnumerable]) | Should -Be $true
+                ($data.stack -contains 'Node.js') | Should -Be $true
             } finally {
                 Pop-Location
             }
@@ -171,8 +171,8 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $jsonStr = Rtb-Status '--json'
                 $data = $jsonStr | ConvertFrom-Json
-                $data.project | Should Be "sample-project"
-                $data.status | Should Be "Active"
+                $data.project | Should -Be "sample-project"
+                $data.status | Should -Be "Active"
             } finally {
                 Pop-Location
             }
@@ -184,8 +184,8 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $jsonStr = Rtb-Status '-j'
                 $data = $jsonStr | ConvertFrom-Json
-                $data.project | Should Be "sample-project"
-                $data.status | Should Be "Active"
+                $data.project | Should -Be "sample-project"
+                $data.status | Should -Be "Active"
             } finally {
                 Pop-Location
             }
@@ -197,8 +197,8 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $null }
                 $jsonStr = Rtb-Status -Json
                 $data = $jsonStr | ConvertFrom-Json
-                $data.project | Should Be "sample-project"
-                $data.status | Should BeNullOrEmpty
+                $data.project | Should -Be "sample-project"
+                $data.status | Should -BeNullOrEmpty
             } finally {
                 Pop-Location
             }
@@ -210,7 +210,7 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { throw [System.Exception]::new("Corrupted JSON") }
                 $jsonStr = Rtb-Status -Json
                 $data = $jsonStr | ConvertFrom-Json
-                $data.project | Should Be "sample-project"
+                $data.project | Should -Be "sample-project"
             } finally {
                 Pop-Location
             }
@@ -231,10 +231,10 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $null }
                 $jsonStr = Rtb-Status -Json
                 $data = $jsonStr | ConvertFrom-Json
-                ($data.stack -contains 'Rust') | Should Be $true
-                ($data.stack -contains 'Go') | Should Be $true
-                ($data.stack -contains 'Python') | Should Be $true
-                ($data.stack -contains 'PowerShell') | Should Be $true
+                ($data.stack -contains 'Rust') | Should -Be $true
+                ($data.stack -contains 'Go') | Should -Be $true
+                ($data.stack -contains 'Python') | Should -Be $true
+                ($data.stack -contains 'PowerShell') | Should -Be $true
             } finally {
                 Pop-Location
             }
@@ -248,10 +248,10 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock -ModuleName rtb Get-RtbConfig { return $script:mockConfig }
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $plain = rtb status
-                $plain | Should Match "^rtb » sample-project"
+                $plain | Should -Match "^rtb » sample-project"
 
                 $devPlain = dev status
-                $devPlain | Should Match "^rtb » sample-project"
+                $devPlain | Should -Match "^rtb » sample-project"
             } finally {
                 Pop-Location
             }
@@ -264,11 +264,11 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 Mock Get-RtbConfig { return $script:mockConfig }
                 $json1 = rtb status -Json
                 $data1 = $json1 | ConvertFrom-Json
-                $data1.project | Should Be "sample-project"
+                $data1.project | Should -Be "sample-project"
 
                 $json2 = rtb status --json
                 $data2 = $json2 | ConvertFrom-Json
-                $data2.project | Should Be "sample-project"
+                $data2.project | Should -Be "sample-project"
             } finally {
                 Pop-Location
             }

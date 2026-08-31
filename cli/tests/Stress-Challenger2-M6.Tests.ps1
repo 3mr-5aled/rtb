@@ -46,22 +46,22 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 # 1. Get-RtbConfig
                 $cfg = try { Get-RtbConfig -ErrorAction SilentlyContinue } catch { $null }
                 # Should fallback or return null, not crash
-                $cfg | Should BeNullOrEmpty
+                $cfg | Should -BeNullOrEmpty
 
                 # 2. Rtb-Doctor
                 $docResult = Rtb-Doctor
-                $docResult | Should Be $false
+                $docResult | Should -Be $false
 
                 # 3. Rtb-Status (plain and json)
                 $plainStatus = Rtb-Status
-                $plainStatus | Should Not BeNullOrEmpty
-                $plainStatus | Should Match '^rtb »'
+                $plainStatus | Should -Not -BeNullOrEmpty
+                $plainStatus | Should -Match '^rtb »'
 
                 $jsonStatus = Rtb-Status -Json
-                $jsonStatus | Should Not BeNullOrEmpty
+                $jsonStatus | Should -Not -BeNullOrEmpty
                 $parsed = $jsonStatus | ConvertFrom-Json
-                $parsed.project | Should Not BeNullOrEmpty
-                $parsed.stack | Should Not BeNullOrEmpty
+                $parsed.project | Should -Not -BeNullOrEmpty
+                $parsed.stack | Should -Not -BeNullOrEmpty
             }
             finally {
                 if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
@@ -90,14 +90,14 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 Set-Content -Path $dotFile -Value "" -Force
 
                 $cfg = Get-RtbConfig -ErrorAction SilentlyContinue
-                $cfg | Should BeNullOrEmpty
+                $cfg | Should -BeNullOrEmpty
 
                 $plainStatus = Rtb-Status
-                $plainStatus | Should Match '^rtb »'
+                $plainStatus | Should -Match '^rtb »'
 
                 $jsonStatus = Rtb-Status -Json
                 $parsed = $jsonStatus | ConvertFrom-Json
-                $parsed.stack | Should Not BeNullOrEmpty
+                $parsed.stack | Should -Not -BeNullOrEmpty
             }
             finally {
                 if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
@@ -133,13 +133,13 @@ Describe "Milestone M6 Adversarial Stress: Config Corruption & Boundary Resilien
                 Set-Content -Path $dotFile -Value $partialConfig -Force
 
                 $names = Get-AllProjectNames
-                $names.Count | Should Be 0
+                $names.Count | Should -Be 0
 
                 $projects = Get-ProjectsByStatus -Status 'active'
-                $projects.Count | Should Be 0
+                $projects.Count | Should -Be 0
 
                 $fuzzy = Find-ProjectPathFuzzy -Query "anything"
-                $fuzzy.Count | Should Be 0
+                $fuzzy.Count | Should -Be 0
             }
             finally {
                 if (Test-Path $dotFile) { Remove-Item -Path $dotFile -Force -ErrorAction SilentlyContinue }
@@ -181,7 +181,7 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
             )
 
             foreach ($q in $hostileQueries) {
-                { $res = Find-ProjectPathFuzzy -Query $q } | Should Not Throw
+                { $res = Find-ProjectPathFuzzy -Query $q } | Should -Not -Throw
             }
         }
     }
@@ -190,19 +190,19 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
         It "correctly interprets affirmative and negative fuzz inputs" {
             # Affirmatives
             @('y', 'Y', 'yes', 'YES', 'Yes', 'yEs', ' y ', ' YES ') | ForEach-Object {
-                Confirm-RtbAction -Message "Test" -Answer $_ | Should Be $true
+                Confirm-RtbAction -Message "Test" -Answer $_ | Should -Be $true
             }
 
             # Negatives & Hostile inputs
             @('n', 'N', 'no', 'NO', '', ' ', $null, 'maybe', '1', '0', 'true', 'false', 'cancel', 'abort', '!@#$') | ForEach-Object {
-                Confirm-RtbAction -Message "Test" -Answer $_ | Should Be $false
+                Confirm-RtbAction -Message "Test" -Answer $_ | Should -Be $false
             }
         }
     }
 
     Context "Test-GitClean Boundary States" {
         It "returns true for non-existent path" {
-            Test-GitClean (Join-Path $script:fuzzDir "does_not_exist") | Should Be $true
+            Test-GitClean (Join-Path $script:fuzzDir "does_not_exist") | Should -Be $true
         }
 
         It "returns true for a clean repository with commit" {
@@ -215,7 +215,7 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
             git -C $repo add file.txt 2>&1 | Out-Null
             git -C $repo commit -m "init" 2>&1 | Out-Null
 
-            Test-GitClean $repo | Should Be $true
+            Test-GitClean $repo | Should -Be $true
         }
 
         It "returns false for repository with unstaged modifications" {
@@ -229,7 +229,7 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
             git -C $repo commit -m "init" 2>&1 | Out-Null
 
             Set-Content -Path (Join-Path $repo "file.txt") -Value "modified"
-            Test-GitClean $repo | Should Be $false
+            Test-GitClean $repo | Should -Be $false
         }
 
         It "returns false for repository with untracked new files" {
@@ -243,7 +243,7 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
             git -C $repo commit -m "init" 2>&1 | Out-Null
 
             Set-Content -Path (Join-Path $repo "newfile.txt") -Value "untracked"
-            Test-GitClean $repo | Should Be $false
+            Test-GitClean $repo | Should -Be $false
         }
 
         It "returns false for repository with staged modifications" {
@@ -258,7 +258,7 @@ Describe "Milestone M6 Adversarial Stress: CLI Argument & Input Fuzzing" {
 
             Set-Content -Path (Join-Path $repo "file.txt") -Value "staged changes"
             git -C $repo add file.txt 2>&1 | Out-Null
-            Test-GitClean $repo | Should Be $false
+            Test-GitClean $repo | Should -Be $false
         }
     }
 }
@@ -286,7 +286,7 @@ Describe "Milestone M6 Adversarial Stress: AI Agent Context (.rtb_context.md) Ge
             $ctxPath = Join-Path $repo ".rtb_context.md"
             # Call internal context generator
             $details = Get-ProjectDetails -ProjectPath $repo -Status 'Active'
-            $details | Should Not BeNullOrEmpty
+            $details | Should -Not -BeNullOrEmpty
 
             # Test using Rtb-Agent context generator logic
             $lines = @(
@@ -309,10 +309,10 @@ Describe "Milestone M6 Adversarial Stress: AI Agent Context (.rtb_context.md) Ge
             $content = $lines -join "`n"
             Set-Content -Path $ctxPath -Value $content -Force
 
-            Test-Path $ctxPath | Should Be $true
+            Test-Path $ctxPath | Should -Be $true
             $saved = Get-Content $ctxPath -Raw
-            $saved | Should Match '# RTB Context: zero_commit_repo'
-            $saved | Should Match '\*\*Stack\*\*:\s*Rust'
+            $saved | Should -Match '# RTB Context: zero_commit_repo'
+            $saved | Should -Match '\*\*Stack\*\*:\s*Rust'
         }
 
         It "caps commit history to exactly 10 in a repository with 25 commits" {
@@ -331,9 +331,9 @@ Describe "Milestone M6 Adversarial Stress: AI Agent Context (.rtb_context.md) Ge
             # Run git log -10 on this repo
             $logLines = git -C $repo log -10 --oneline 2>$null
             $logCount = ($logLines | Measure-Object).Count
-            $logCount | Should Be 10
+            $logCount | Should -Be 10
 
-            $logLines[0] | Should Match 'Commit number 25'
+            $logLines[0] | Should -Match 'Commit number 25'
         }
 
         It "handles corrupted or malformed package.json without failing stack detection" {
@@ -342,9 +342,9 @@ Describe "Milestone M6 Adversarial Stress: AI Agent Context (.rtb_context.md) Ge
             Set-Content -Path (Join-Path $proj "package.json") -Value "{ NOT_VALID_JSON_AT_ALL " -Force
 
             $details = Get-ProjectDetails -ProjectPath $proj -Status 'Active'
-            $details | Should Not BeNullOrEmpty
+            $details | Should -Not -BeNullOrEmpty
             # Fallback stack is '-' or 'Node.js'
-            $details.stack | Should Not BeNullOrEmpty
+            $details.stack | Should -Not -BeNullOrEmpty
         }
     }
 }
@@ -353,24 +353,24 @@ Describe "Milestone M6 Adversarial Stress: Rtb-Status Schema Verification" {
     Context "JSON Schema Strict Compliance" {
         It "always outputs strict JSON with project, status, branch, uncommitted, stack, cwd" {
             $jsonStr = Rtb-Status -Json
-            $jsonStr | Should Not BeNullOrEmpty
+            $jsonStr | Should -Not -BeNullOrEmpty
 
             $obj = $jsonStr | ConvertFrom-Json
             # Verify exact properties exist
             $props = @($obj.PSObject.Properties.Name)
-            ($props -contains "project") | Should Be $true
-            ($props -contains "status") | Should Be $true
-            ($props -contains "branch") | Should Be $true
-            ($props -contains "uncommitted") | Should Be $true
-            ($props -contains "stack") | Should Be $true
-            ($props -contains "cwd") | Should Be $true
+            ($props -contains "project") | Should -Be $true
+            ($props -contains "status") | Should -Be $true
+            ($props -contains "branch") | Should -Be $true
+            ($props -contains "uncommitted") | Should -Be $true
+            ($props -contains "stack") | Should -Be $true
+            ($props -contains "cwd") | Should -Be $true
 
             # Check property types
-            ($obj.project -is [string]) | Should Be $true
-            ($obj.branch -is [string]) | Should Be $true
-            ($obj.uncommitted -is [int] -or $obj.uncommitted -is [long]) | Should Be $true
-            ($obj.stack -is [System.Array] -or $obj.stack -is [System.Collections.IEnumerable]) | Should Be $true
-            ($obj.cwd -is [string]) | Should Be $true
+            ($obj.project -is [string]) | Should -Be $true
+            ($obj.branch -is [string]) | Should -Be $true
+            ($obj.uncommitted -is [int] -or $obj.uncommitted -is [long]) | Should -Be $true
+            ($obj.stack -is [System.Array] -or $obj.stack -is [System.Collections.IEnumerable]) | Should -Be $true
+            ($obj.cwd -is [string]) | Should -Be $true
         }
     }
 }

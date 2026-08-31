@@ -56,11 +56,17 @@ function Get-DevConfig {
 function Test-RtbConfigured {
     try {
         $cfg = Get-RtbConfig -ErrorAction SilentlyContinue
-        if (-not $cfg -or -not $cfg.projectRoots -or -not $cfg.projectRoots.active) {
+        if (-not $cfg) {
             return $false
         }
-        $activePath = Get-RtbRootPath $cfg.projectRoots.active
-        return (-not [string]::IsNullOrWhiteSpace($activePath))
+        if ($cfg.projectRoots -and $cfg.projectRoots.active) {
+            $activePath = Get-RtbRootPath $cfg.projectRoots.active
+            return (-not [string]::IsNullOrWhiteSpace($activePath))
+        }
+        if ($cfg.projectRoots -or $cfg.backupRoot -or $cfg.cleanDeps) {
+            return $true
+        }
+        return $false
     } catch {
         return $false
     }
@@ -156,7 +162,7 @@ function Find-ProjectPath {
 }
 
 function Find-ProjectPathFuzzy {
-    param([Parameter(Mandatory = $true)][string]$Query)
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][AllowNull()][string]$Query = '')
     $config = Get-RtbConfig
     if (-not $config) { return @() }
 

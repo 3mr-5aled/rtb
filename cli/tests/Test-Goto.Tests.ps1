@@ -34,7 +34,7 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "zzz-non-existent-proj")
-        $results.Count | Should Be 0
+        $results.Count | Should -Be 0
     }
 
     It "scores exact match with 100" {
@@ -48,10 +48,10 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "rtb-command-tool")
-        $results.Count | Should Not Be 0
-        $results[0].Name | Should Be "rtb-command-tool"
-        $results[0].Score | Should Be 100
-        $results[0].Status | Should Be "Active"
+        $results.Count | Should -Not -Be 0
+        $results[0].Name | Should -Be "rtb-command-tool"
+        $results[0].Score | Should -Be 100
+        $results[0].Status | Should -Be "Active"
     }
 
     It "scores prefix match with 75" {
@@ -65,9 +65,9 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "rtb-ext")
-        $results.Count | Should Not Be 0
+        $results.Count | Should -Not -Be 0
         $match = $results | Where-Object { $_.Name -eq "rtb-extras" }
-        $match.Score | Should Be 75
+        $match.Score | Should -Be 75
     }
 
     It "scores substring match with 50" {
@@ -81,9 +81,9 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "service")
-        $results.Count | Should Not Be 0
+        $results.Count | Should -Not -Be 0
         $match = $results | Where-Object { $_.Name -eq "my-rtb-service" }
-        $match.Score | Should Be 50
+        $match.Score | Should -Be 50
     }
 
     It "scores full path match with 25 when folder path contains substring" {
@@ -97,9 +97,9 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "production")
-        $results.Count | Should Not Be 0
+        $results.Count | Should -Not -Be 0
         $match = $results | Where-Object { $_.Name -eq "production-deploy" }
-        $match.Score | Should Be 75
+        $match.Score | Should -Be 75
     }
 
     It "safely handles wildcard and bracket characters without throwing exception" {
@@ -112,9 +112,9 @@ Describe "Find-ProjectPathFuzzy" {
                 }
             }
         }
-        { Find-ProjectPathFuzzy -Query "[" } | Should Not Throw
-        { Find-ProjectPathFuzzy -Query "*" } | Should Not Throw
-        { Find-ProjectPathFuzzy -Query "[id]" } | Should Not Throw
+        { Find-ProjectPathFuzzy -Query "[" } | Should -Not -Throw
+        { Find-ProjectPathFuzzy -Query "*" } | Should -Not -Throw
+        { Find-ProjectPathFuzzy -Query "[id]" } | Should -Not -Throw
     }
 
     It "returns multi-root matches sorted by score descending" {
@@ -128,13 +128,13 @@ Describe "Find-ProjectPathFuzzy" {
             }
         }
         $results = @(Find-ProjectPathFuzzy -Query "rtb")
-        $results.Count | Should Be 4
+        $results.Count | Should -Be 4
         # Prefix matches (75) should rank first
-        $results[0].Score | Should Be 75
+        $results[0].Score | Should -Be 75
         $scores = $results | Select-Object -ExpandProperty Score
-        ($scores[0] -ge $scores[1]) | Should Be $true
-        ($scores[1] -ge $scores[2]) | Should Be $true
-        ($scores[2] -ge $scores[3]) | Should Be $true
+        ($scores[0] -ge $scores[1]) | Should -Be $true
+        ($scores[1] -ge $scores[2]) | Should -Be $true
+        ($scores[2] -ge $scores[3]) | Should -Be $true
     }
 }
 
@@ -165,7 +165,7 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
 
     It "displays usage instructions when no project name is provided" {
         $output = (Dev-Goto *>&1) | Out-String
-        $output | Should Match "Usage: rtb goto"
+        $output | Should -Match "Usage: rtb goto"
     }
 
     It "displays error when project matching query is not found" {
@@ -173,8 +173,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         Mock Get-AllProjectNames { @("unique-project-alpha", "multi-widget-frontend") }
 
         $output = (Dev-Goto -Name "non-existent-xyz" *>&1) | Out-String
-        $output | Should Match "No project matching 'non-existent-xyz' found"
-        $output | Should Match "Available projects:"
+        $output | Should -Match "No project matching 'non-existent-xyz' found"
+        $output | Should -Match "Available projects:"
     }
 
     It "automatically navigates on a single match without prompting" {
@@ -183,7 +183,7 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "unique"
-        (Get-Location).Path | Should Be $script:p1
+        (Get-Location).Path | Should -Be $script:p1
     }
 
     It "automatically navigates on exact match (score 100) even when multiple matches exist" {
@@ -196,7 +196,7 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "multi-widget"
-        (Get-Location).Path | Should Be $script:p1
+        (Get-Location).Path | Should -Be $script:p1
     }
 
     It "displays interactive picker and selects choice 2 on ambiguous match" {
@@ -210,7 +210,7 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         Mock Read-Host { '2' }
 
         Dev-Goto -Name "multi-widget" -Choice "2"
-        (Get-Location).Path | Should Be $script:p3
+        (Get-Location).Path | Should -Be $script:p3
     }
 
     It "cancels navigation when user enters empty input at picker prompt" {
@@ -224,8 +224,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         Mock Read-Host { '' }
 
         $output = (Dev-Goto -Name "multi-widget" *>&1) | Out-String
-        $output | Should Match "Cancelled."
-        (Get-Location).Path | Should Be $script:tempRoot
+        $output | Should -Match "Cancelled."
+        (Get-Location).Path | Should -Be $script:tempRoot
     }
 
     It "cancels navigation when user enters invalid non-numeric input" {
@@ -239,8 +239,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         Mock Read-Host { 'abc' }
 
         $output = (Dev-Goto -Name "multi-widget" *>&1) | Out-String
-        $output | Should Match "Cancelled."
-        (Get-Location).Path | Should Be $script:tempRoot
+        $output | Should -Match "Cancelled."
+        (Get-Location).Path | Should -Be $script:tempRoot
     }
 
     It "cancels navigation when user enters out-of-range number" {
@@ -254,8 +254,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         Mock Read-Host { '9' }
 
         $output = (Dev-Goto -Name "multi-widget" *>&1) | Out-String
-        $output | Should Match "Cancelled."
-        (Get-Location).Path | Should Be $script:tempRoot
+        $output | Should -Match "Cancelled."
+        (Get-Location).Path | Should -Be $script:tempRoot
     }
 
     It "forwards -Claude flag to Rtb-Agent when specified" {
@@ -271,8 +271,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "unique-project-alpha" -Claude
-        $script:agentCalled | Should Be $true
-        $script:targetAgent | Should Be "claude"
+        $script:agentCalled | Should -Be $true
+        $script:targetAgent | Should -Be "claude"
     }
 
     It "forwards -Agy flag to Rtb-Agent when specified" {
@@ -288,8 +288,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "unique-project-alpha" -Agy
-        $script:agentCalled | Should Be $true
-        $script:targetAgent | Should Be "agy"
+        $script:agentCalled | Should -Be $true
+        $script:targetAgent | Should -Be "agy"
     }
 
     It "normalizes raw string agent argument '-Claude' to 'claude'" {
@@ -305,8 +305,8 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "unique-project-alpha" -Agent "-Claude"
-        $script:agentCalled | Should Be $true
-        $script:targetAgent | Should Be "claude"
+        $script:agentCalled | Should -Be $true
+        $script:targetAgent | Should -Be "claude"
     }
 
     It "handles leading agent flag like '-Claude <project>'" {
@@ -322,9 +322,9 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
         }
 
         Dev-Goto -Name "-Claude" -Agent "unique-project-alpha"
-        $script:agentCalled | Should Be $true
-        $script:targetAgent | Should Be "claude"
-        (Get-Location).Path | Should Be $script:p1
+        $script:agentCalled | Should -Be $true
+        $script:targetAgent | Should -Be "claude"
+        (Get-Location).Path | Should -Be $script:p1
     }
 
     It "displays interactive picker when multiple exact matches (Score 100) exist across different roots" {
@@ -338,6 +338,6 @@ Describe "Dev-Goto Command & Disambiguation Picker" {
 
         # Select choice 2 (Paused root version)
         Dev-Goto -Name "same-name" -Choice "2"
-        (Get-Location).Path | Should Be $script:p2
+        (Get-Location).Path | Should -Be $script:p2
     }
 }

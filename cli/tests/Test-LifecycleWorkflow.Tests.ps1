@@ -29,9 +29,9 @@ Describe "Standalone Installation & Lifecycle Workflow" {
                 }
             }
 
-            $cfg.projectRoots.active.path | Should Be "C:\Mock\Active"
-            $cfg.projectRoots.active.label | Should Be "active"
-            $cfg.projectRoots.active.emoji | Should Be "📁"
+            $cfg.projectRoots.active.path | Should -Be "C:\Mock\Active"
+            $cfg.projectRoots.active.label | Should -Be "active"
+            $cfg.projectRoots.active.emoji | Should -Be "📁"
 
             Remove-Item -Force $tempFile -ErrorAction SilentlyContinue
         }
@@ -40,15 +40,15 @@ Describe "Standalone Installation & Lifecycle Workflow" {
     Context "Rtb-Upgrade Command" {
         It "Rtb-Upgrade -Check resolves current module version from rtb.psd1" {
             $versionOutput = Rtb-Upgrade -Check
-            $versionOutput | Should Not BeNullOrEmpty
-            $versionOutput | Should Match 'v\d+\.\d+'
+            $versionOutput | Should -Not -BeNullOrEmpty
+            $versionOutput | Should -Match 'v\d+\.\d+'
         }
     }
 
     Context "Config Gate and Helpers" {
         It "Test-RtbConfigured correctly detects active root presence" {
             $result = Test-RtbConfigured
-            $result -is [bool] | Should Be $true
+            $result -is [bool] | Should -Be $true
         }
     }
 }

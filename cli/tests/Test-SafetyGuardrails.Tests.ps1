@@ -8,80 +8,80 @@ Describe "Safety Guardrails: Confirm-RtbAction" {
 
     It "returns `$false when user passes 'n' via pipeline" {
         $result = 'n' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false when user passes 'N' via pipeline" {
         $result = 'N' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false when user passes 'no' via pipeline" {
         $result = 'no' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$true when user passes 'y' via pipeline" {
         $result = 'y' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$true when user passes 'Y' via pipeline" {
         $result = 'Y' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$true when user passes 'yes' via pipeline" {
         $result = 'yes' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$true when user passes 'YES' via pipeline" {
         $result = 'YES' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$false for empty string via pipeline" {
         $result = '' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false for whitespace string via pipeline" {
         $result = '   ' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false for arbitrary string via pipeline" {
         $result = 'invalid-input' | Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$true when -Answer 'y' is passed as argument" {
         $result = Confirm-RtbAction -Message 'Delete this?' -Answer 'y'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$false when -Answer 'n' is passed as argument" {
         $result = Confirm-RtbAction -Message 'Delete this?' -Answer 'n'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "prompts Read-Host interactively and returns `$true when user inputs 'y'" {
         Mock Read-Host { 'y' }
         $result = Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "prompts Read-Host interactively and returns `$false when user inputs 'n'" {
         Mock Read-Host { 'n' }
         $result = Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "prompts Read-Host interactively and returns `$false on empty Enter" {
         Mock Read-Host { '' }
         $result = Confirm-RtbAction -Message 'Delete this?'
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 }
 
@@ -101,14 +101,14 @@ Describe "Safety Guardrails: Test-GitClean" {
     It "returns `$true for a non-existent path" {
         $nonExistent = Join-Path $script:baseTemp "non_existent_folder"
         $result = Test-GitClean -ProjectPath $nonExistent
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$true for a directory without a .git directory" {
         $noGitDir = Join-Path $script:baseTemp "no_git_project"
         New-Item -ItemType Directory -Path $noGitDir -Force | Out-Null
         $result = Test-GitClean -ProjectPath $noGitDir
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$true for a clean git repository" {
@@ -122,7 +122,7 @@ Describe "Safety Guardrails: Test-GitClean" {
         git -C $cleanRepo commit -m "initial commit" --quiet 2>$null
 
         $result = Test-GitClean -ProjectPath $cleanRepo
-        $result | Should Be $true
+        $result | Should -Be $true
     }
 
     It "returns `$false for a git repository with untracked files" {
@@ -139,7 +139,7 @@ Describe "Safety Guardrails: Test-GitClean" {
         Set-Content -Path (Join-Path $dirtyUntracked "new_untracked.txt") -Value "untracked"
 
         $result = Test-GitClean -ProjectPath $dirtyUntracked
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false for a git repository with modified tracked files" {
@@ -156,7 +156,7 @@ Describe "Safety Guardrails: Test-GitClean" {
         Add-Content -Path (Join-Path $dirtyModified "file.txt") -Value "`nModified line"
 
         $result = Test-GitClean -ProjectPath $dirtyModified
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 
     It "returns `$false for a git repository with staged changes" {
@@ -174,7 +174,7 @@ Describe "Safety Guardrails: Test-GitClean" {
         git -C $dirtyStaged add staged.txt 2>$null
 
         $result = Test-GitClean -ProjectPath $dirtyStaged
-        $result | Should Be $false
+        $result | Should -Be $false
     }
 }
 
@@ -197,7 +197,7 @@ Describe "Safety Guardrails: Command Integration" {
             Mock Find-ProjectPath { @{ Path = $testArchiveDir; Status = 'Active' } }
 
             Dev-Archive -Name "test-proj"
-            Test-Path $testArchiveDir | Should Be $true
+            Test-Path $testArchiveDir | Should -Be $true
         } finally {
             Remove-Item -Recurse -Force $testArchiveDir -ErrorAction SilentlyContinue
         }
@@ -211,7 +211,7 @@ Describe "Safety Guardrails: Command Integration" {
             Mock Read-Host { 'n' }
 
             Dev-Archive -Name "test-proj"
-            Test-Path $testArchiveDir | Should Be $true
+            Test-Path $testArchiveDir | Should -Be $true
         } finally {
             Remove-Item -Recurse -Force $testArchiveDir -ErrorAction SilentlyContinue
         }
@@ -253,8 +253,8 @@ Describe "Safety Guardrails: Command Integration" {
             }
 
             Dev-Pause -Name "my-dirty-project"
-            Test-Path $projectDir | Should Be $true
-            Test-Path (Join-Path $pausedRoot "my-dirty-project") | Should Be $false
+            Test-Path $projectDir | Should -Be $true
+            Test-Path (Join-Path $pausedRoot "my-dirty-project") | Should -Be $false
         } finally {
             Remove-Item -Recurse -Force $activeRoot -ErrorAction SilentlyContinue
             Remove-Item -Recurse -Force $pausedRoot -ErrorAction SilentlyContinue
@@ -284,7 +284,7 @@ Describe "Safety Guardrails: Command Integration" {
             }
 
             Rtb-Clean
-            Test-Path $nodeModulesDir | Should Be $true
+            Test-Path $nodeModulesDir | Should -Be $true
         } finally {
             Remove-Item -Recurse -Force $cleanTestDir -ErrorAction SilentlyContinue
         }
@@ -313,7 +313,7 @@ Describe "Safety Guardrails: Command Integration" {
             Mock Read-Host { 'n' }
 
             Rtb-Clean -Commit
-            Test-Path $nodeModulesDir | Should Be $true
+            Test-Path $nodeModulesDir | Should -Be $true
         } finally {
             Remove-Item -Recurse -Force $cleanTestDir -ErrorAction SilentlyContinue
         }
@@ -346,8 +346,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
                 }
             }
 
-            { rtb clean } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { rtb clean } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
 
         It "executes 'rtb clean -Commit' and prompts for confirmation" {
@@ -363,8 +363,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             }
             Mock -ModuleName rtb Read-Host { 'n' }
 
-            { rtb clean -Commit } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { rtb clean -Commit } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
 
         It "executes 'rtb clean --commit' (GNU style) without parameter binding error" {
@@ -380,8 +380,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             }
             Mock -ModuleName rtb Read-Host { 'n' }
 
-            { rtb clean --commit } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { rtb clean --commit } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
 
         It "executes 'rtb clean 30' with positional day count without type error" {
@@ -396,8 +396,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
                 }
             }
 
-            { rtb clean 30 } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { rtb clean 30 } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
 
         It "executes 'rtb clean 30 -Commit' with positional days and commit flag" {
@@ -413,8 +413,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             }
             Mock -ModuleName rtb Read-Host { 'n' }
 
-            { rtb clean 30 -Commit } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { rtb clean 30 -Commit } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
 
         It "executes 'dev clean -Commit' through dev alias" {
@@ -430,8 +430,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             }
             Mock -ModuleName rtb Read-Host { 'n' }
 
-            { dev clean -Commit } | Should Not Throw
-            Test-Path $nodeModulesDir | Should Be $true
+            { dev clean -Commit } | Should -Not -Throw
+            Test-Path $nodeModulesDir | Should -Be $true
         }
     }
 
@@ -451,7 +451,7 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             Mock Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
             Mock -ModuleName rtb Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-            { rtb archive "archive_proj_1" -Force } | Should Not Throw
+            { rtb archive "archive_proj_1" -Force } | Should -Not -Throw
         }
 
         It "executes 'rtb archive myproj --force' (GNU style) without error" {
@@ -469,7 +469,7 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             Mock Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
             Mock -ModuleName rtb Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-            { rtb archive "archive_proj_2" --force } | Should Not Throw
+            { rtb archive "archive_proj_2" --force } | Should -Not -Throw
         }
 
         It "executes 'dev archive myproj -Force' through dev dispatcher" {
@@ -487,7 +487,7 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
             Mock Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
             Mock -ModuleName rtb Get-DevConfig { [PSCustomObject]@{ backupRoot = $global:rtbDispTemp; cleanDeps = [PSCustomObject]@{ targets = @() } } }
 
-            { dev archive "archive_proj_3" -Force } | Should Not Throw
+            { dev archive "archive_proj_3" -Force } | Should -Not -Throw
         }
     }
 
@@ -540,8 +540,8 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
                 }
             }
 
-            { rtb pause "pause-proj-1" -Force } | Should Not Throw
-            Test-Path (Join-Path $pausedRoot "pause-proj-1") | Should Be $true
+            { rtb pause "pause-proj-1" -Force } | Should -Not -Throw
+            Test-Path (Join-Path $pausedRoot "pause-proj-1") | Should -Be $true
         }
 
         It "executes 'rtb pause myproj -Prune -Force' without parameter error" {
@@ -593,9 +593,9 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
                 }
             }
 
-            { rtb pause "pause-proj-2" -Prune -Force } | Should Not Throw
-            Test-Path (Join-Path $pausedRoot "pause-proj-2") | Should Be $true
-            Test-Path (Join-Path $pausedRoot "pause-proj-2\node_modules") | Should Be $false
+            { rtb pause "pause-proj-2" -Prune -Force } | Should -Not -Throw
+            Test-Path (Join-Path $pausedRoot "pause-proj-2") | Should -Be $true
+            Test-Path (Join-Path $pausedRoot "pause-proj-2\node_modules") | Should -Be $false
         }
 
         It "executes 'dev pause myproj --prune --force' (GNU style) via dev dispatcher" {
@@ -647,9 +647,9 @@ Describe "Safety Guardrails: CLI Dispatcher Integration (rtb / dev)" {
                 }
             }
 
-            { dev pause "pause-proj-3" --prune --force } | Should Not Throw
-            Test-Path (Join-Path $pausedRoot "pause-proj-3") | Should Be $true
-            Test-Path (Join-Path $pausedRoot "pause-proj-3\node_modules") | Should Be $false
+            { dev pause "pause-proj-3" --prune --force } | Should -Not -Throw
+            Test-Path (Join-Path $pausedRoot "pause-proj-3") | Should -Be $true
+            Test-Path (Join-Path $pausedRoot "pause-proj-3\node_modules") | Should -Be $false
         }
     }
 }

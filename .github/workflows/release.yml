@@ -54,6 +54,7 @@ jobs:
       - name: Execute Pester Unit Tests
         shell: pwsh
         run: |
+          $env:RTB_NON_INTERACTIVE = 'true'
           Import-Module './cli/rtb.psd1' -Force
           Invoke-Pester ./cli/tests/ -Passthru
 

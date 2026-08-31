@@ -65,8 +65,10 @@ if ($isStandalone) {
         }
         Write-Host "Extracted RTB components to $userConfigDir" -ForegroundColor Green
     } catch {
-        Write-Host "Warning: Could not download release bundle: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "If running from source, please run from the repository root." -ForegroundColor Gray
+        Write-Host "❌ Error: Could not download release bundle from $($zipUrl): $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "   The release assets may still be publishing on GitHub Actions." -ForegroundColor Yellow
+        Write-Host "   Please check https://github.com/3mr-5aled/rtb/actions or build locally." -ForegroundColor Gray
+        throw "RTB Installation aborted: release bundle not available."
     } finally {
         if (Test-Path $tempZip) { Remove-Item -Force $tempZip -ErrorAction SilentlyContinue }
         if (Test-Path $tempExtract) { Remove-Item -Recurse -Force $tempExtract -ErrorAction SilentlyContinue }
@@ -144,29 +146,32 @@ $profilePaths = @(
     (Join-Path $docsDir "PowerShell\Microsoft.PowerShell_profile.ps1")
 ) | Select-Object -Unique
 
-$moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
+# 4. Configure PowerShell Profiles (only if module was deployed)
+if (Test-Path $cliPsdPath) {
+    $moduleImportLine = "Import-Module '$cliPsdPath' -DisableNameChecking -Force"
 
-foreach ($pPath in $profilePaths) {
-    if (-not $pPath) { continue }
-    if (-not (Test-Path $pPath)) {
-        $parentDir = Split-Path $pPath -Parent
-        if (-not (Test-Path $parentDir)) { New-Item -ItemType Directory -Path $parentDir -Force | Out-Null }
-        New-Item -ItemType File -Path $pPath -Force | Out-Null
+    foreach ($pPath in $profilePaths) {
+        if (-not $pPath) { continue }
+        if (-not (Test-Path $pPath)) {
+            $parentDir = Split-Path $pPath -Parent
+            if (-not (Test-Path $parentDir)) { New-Item -ItemType Directory -Path $parentDir -Force | Out-Null }
+            New-Item -ItemType File -Path $pPath -Force | Out-Null
+        }
+
+        $pLines = Get-Content $pPath -ErrorAction SilentlyContinue
+        $cleanedLines = if ($pLines) {
+            @($pLines | Where-Object {
+                $_ -notmatch 'Import-Module\s+.*?[''"].*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1[''"]' -and
+                $_ -notmatch '#\s*RTB.*?Module'
+            })
+        } else {
+            @()
+        }
+
+        $newContent = ($cleanedLines + @("", "# RTB CLI Module", $moduleImportLine)) -join "`r`n"
+        $newContent.TrimEnd() + "`r`n" | Set-Content -Path $pPath -Encoding UTF8
+        Write-Host "Configured RTB module autoload in profile: $pPath" -ForegroundColor Green
     }
-
-    $pLines = Get-Content $pPath -ErrorAction SilentlyContinue
-    $cleanedLines = if ($pLines) {
-        @($pLines | Where-Object {
-            $_ -notmatch 'Import-Module\s+.*?[''"].*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1[''"]' -and
-            $_ -notmatch '#\s*RTB.*?Module'
-        })
-    } else {
-        @()
-    }
-
-    $newContent = ($cleanedLines + @("", "# RTB CLI Module", $moduleImportLine)) -join "`r`n"
-    $newContent.TrimEnd() + "`r`n" | Set-Content -Path $pPath -Encoding UTF8
-    Write-Host "Configured RTB module autoload in profile: $pPath" -ForegroundColor Green
 }
 
 # 5. Import module in current session

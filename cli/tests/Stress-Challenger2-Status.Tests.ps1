@@ -102,11 +102,11 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Match "^rtb » mega-app \(Active\)"
-                    $plain | Should Match "\[$($script:proj1Branch)\]"
-                    $plain | Should Match "Node\.js"
-                    $plain | Should Match "Rust"
-                    $plain | Should Match "PowerShell"
+                    $plain | Should -Match "^rtb » mega-app \(Active\)"
+                    $plain | Should -Match "\[$($script:proj1Branch)\]"
+                    $plain | Should -Match "Node\.js"
+                    $plain | Should -Match "Rust"
+                    $plain | Should -Match "PowerShell"
                 } finally {
                     Pop-Location
                 }
@@ -118,14 +118,14 @@ InModuleScope rtb {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.project | Should Be "mega-app"
-                    $obj.status | Should Be "Active"
-                    $obj.branch | Should Be $script:proj1Branch
-                    $obj.uncommitted | Should Be 0
-                    $obj.cwd | Should Be $script:deepSub1
-                    ($obj.stack -contains 'Node.js') | Should Be $true
-                    ($obj.stack -contains 'Rust') | Should Be $true
-                    ($obj.stack -contains 'PowerShell') | Should Be $true
+                    $obj.project | Should -Be "mega-app"
+                    $obj.status | Should -Be "Active"
+                    $obj.branch | Should -Be $script:proj1Branch
+                    $obj.uncommitted | Should -Be 0
+                    $obj.cwd | Should -Be $script:deepSub1
+                    ($obj.stack -contains 'Node.js') | Should -Be $true
+                    ($obj.stack -contains 'Rust') | Should -Be $true
+                    ($obj.stack -contains 'PowerShell') | Should -Be $true
                 } finally {
                     Pop-Location
                 }
@@ -138,14 +138,14 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Match "^rtb » folder"
-                    $plain -notmatch "\((Active|Paused|Staging)\)" | Should Be $true
+                    $plain | Should -Match "^rtb » folder"
+                    $plain -notmatch "\((Active|Paused|Staging)\)" | Should -Be $true
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.project | Should Be "folder"
-                    $obj.status | Should BeNullOrEmpty
-                    $obj.cwd | Should Be $script:outsideDir
+                    $obj.project | Should -Be "folder"
+                    $obj.status | Should -BeNullOrEmpty
+                    $obj.cwd | Should -Be $script:outsideDir
                 } finally {
                     Pop-Location
                 }
@@ -156,11 +156,11 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Not BeNullOrEmpty
+                    $plain | Should -Not -BeNullOrEmpty
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.cwd | Should Be "D:\"
+                    $obj.cwd | Should -Be "D:\"
                 } finally {
                     Pop-Location
                 }
@@ -171,11 +171,11 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Not BeNullOrEmpty
+                    $plain | Should -Not -BeNullOrEmpty
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.cwd | Should Be (Get-Item $env:TEMP).FullName
+                    $obj.cwd | Should -Be (Get-Item $env:TEMP).FullName
                 } finally {
                     Pop-Location
                 }
@@ -192,19 +192,19 @@ InModuleScope rtb {
                     foreach ($f in $flags) {
                         $raw = if ($f -eq '-Json') { Rtb-Status -Json } else { Rtb-Status $f }
                         $obj = $raw | ConvertFrom-Json
-                        $obj | Should Not BeNullOrEmpty
-                        $obj.project | Should Be "mega-app"
-                        $obj.status | Should Be "Active"
-                        $obj.branch | Should Be $script:proj1Branch
-                        $obj.uncommitted | Should Be 0
-                        $obj.cwd | Should Be $script:proj1
+                        $obj | Should -Not -BeNullOrEmpty
+                        $obj.project | Should -Be "mega-app"
+                        $obj.status | Should -Be "Active"
+                        $obj.branch | Should -Be $script:proj1Branch
+                        $obj.uncommitted | Should -Be 0
+                        $obj.cwd | Should -Be $script:proj1
 
-                        ($obj.PSObject.Properties.Name -contains 'project') | Should Be $true
-                        ($obj.PSObject.Properties.Name -contains 'status') | Should Be $true
-                        ($obj.PSObject.Properties.Name -contains 'branch') | Should Be $true
-                        ($obj.PSObject.Properties.Name -contains 'uncommitted') | Should Be $true
-                        ($obj.PSObject.Properties.Name -contains 'stack') | Should Be $true
-                        ($obj.PSObject.Properties.Name -contains 'cwd') | Should Be $true
+                        ($obj.PSObject.Properties.Name -contains 'project') | Should -Be $true
+                        ($obj.PSObject.Properties.Name -contains 'status') | Should -Be $true
+                        ($obj.PSObject.Properties.Name -contains 'branch') | Should -Be $true
+                        ($obj.PSObject.Properties.Name -contains 'uncommitted') | Should -Be $true
+                        ($obj.PSObject.Properties.Name -contains 'stack') | Should -Be $true
+                        ($obj.PSObject.Properties.Name -contains 'cwd') | Should -Be $true
                     }
                 } finally {
                     Pop-Location
@@ -218,11 +218,11 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain -notmatch "±" | Should Be $true
+                    $plain -notmatch "±" | Should -Be $true
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.uncommitted | Should Be 0
+                    $obj.uncommitted | Should -Be 0
                 } finally {
                     Pop-Location
                 }
@@ -233,12 +233,12 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Match "±3"
+                    $plain | Should -Match "±3"
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.uncommitted | Should Be 3
-                    $obj.status | Should Be "Paused"
+                    $obj.uncommitted | Should -Be 3
+                    $obj.status | Should -Be "Paused"
                 } finally {
                     Pop-Location
                 }
@@ -251,11 +251,11 @@ InModuleScope rtb {
                     1..4 | ForEach-Object { Set-Content -Path (Join-Path $script:proj2 "stress_file_$_.tmp") -Value "test" }
 
                     $plain = Rtb-Status
-                    $plain | Should Match "±7"
+                    $plain | Should -Match "±7"
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.uncommitted | Should Be 7
+                    $obj.uncommitted | Should -Be 7
 
                     # Clean up the 4 files
                     1..4 | ForEach-Object { Remove-Item (Join-Path $script:proj2 "stress_file_$_.tmp") -Force -ErrorAction SilentlyContinue }
@@ -271,13 +271,13 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Match "\[HEAD@[0-9a-f]+\]"
-                    $plain | Should Match "\(Abandoned\)"
+                    $plain | Should -Match "\[HEAD@[0-9a-f]+\]"
+                    $plain | Should -Match "\(Abandoned\)"
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.branch | Should Match "^HEAD@[0-9a-f]+"
-                    $obj.status | Should Be "Abandoned"
+                    $obj.branch | Should -Match "^HEAD@[0-9a-f]+"
+                    $obj.status | Should -Be "Abandoned"
                 } finally {
                     Pop-Location
                 }
@@ -288,19 +288,19 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $plain = Rtb-Status
-                    $plain | Should Match "^rtb » pygo-app \(Staging\)"
-                    $plain -notmatch "\[" | Should Be $true
-                    $plain | Should Match "Python"
-                    $plain | Should Match "Go"
+                    $plain | Should -Match "^rtb » pygo-app \(Staging\)"
+                    $plain -notmatch "\[" | Should -Be $true
+                    $plain | Should -Match "Python"
+                    $plain | Should -Match "Go"
 
                     $jsonStr = Rtb-Status -Json
                     $obj = $jsonStr | ConvertFrom-Json
-                    $obj.project | Should Be "pygo-app"
-                    $obj.status | Should Be "Staging"
-                    $obj.branch | Should Be ""
-                    $obj.uncommitted | Should Be 0
-                    ($obj.stack -contains 'Python') | Should Be $true
-                    ($obj.stack -contains 'Go') | Should Be $true
+                    $obj.project | Should -Be "pygo-app"
+                    $obj.status | Should -Be "Staging"
+                    $obj.branch | Should -Be ""
+                    $obj.uncommitted | Should -Be 0
+                    ($obj.stack -contains 'Python') | Should -Be $true
+                    ($obj.stack -contains 'Go') | Should -Be $true
                 } finally {
                     Pop-Location
                 }
@@ -313,10 +313,10 @@ InModuleScope rtb {
                 try {
                     Mock Get-RtbConfig { return $script:mockConfig }
                     $rtbOut = rtb status
-                    $rtbOut | Should Match "^rtb » mega-app \(Active\)"
+                    $rtbOut | Should -Match "^rtb » mega-app \(Active\)"
 
                     $devOut = dev status
-                    $devOut | Should Match "^rtb » mega-app \(Active\)"
+                    $devOut | Should -Match "^rtb » mega-app \(Active\)"
                 } finally {
                     Pop-Location
                 }
@@ -328,16 +328,16 @@ InModuleScope rtb {
                     Mock Get-RtbConfig { return $script:mockConfig }
 
                     $j1 = (rtb status -Json) | ConvertFrom-Json
-                    $j1.project | Should Be "mega-app"
+                    $j1.project | Should -Be "mega-app"
 
                     $j2 = (rtb status -j) | ConvertFrom-Json
-                    $j2.project | Should Be "mega-app"
+                    $j2.project | Should -Be "mega-app"
 
                     $j3 = (rtb status --json) | ConvertFrom-Json
-                    $j3.project | Should Be "mega-app"
+                    $j3.project | Should -Be "mega-app"
 
                     $j4 = (dev status -Json) | ConvertFrom-Json
-                    $j4.project | Should Be "mega-app"
+                    $j4.project | Should -Be "mega-app"
                 } finally {
                     Pop-Location
                 }

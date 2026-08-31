@@ -3,45 +3,45 @@ Describe "AI Agent Discovery & CLI Launcher (Rtb-Agent)" {
 
     It "Get-InstalledAgents returns array with expected agent objects and properties" {
         $agents = Get-InstalledAgents
-        $agents | Should Not BeNullOrEmpty
-        $agents.Count | Should Be 8
+        $agents | Should -Not -BeNullOrEmpty
+        $agents.Count | Should -Be 8
 
         $commands = $agents | Select-Object -ExpandProperty command
-        ($commands -contains 'agy') | Should Be $true
-        ($commands -contains 'claude') | Should Be $true
-        ($commands -contains 'gemini') | Should Be $true
-        ($commands -contains 'codex') | Should Be $true
-        ($commands -contains 'cursor') | Should Be $true
-        ($commands -contains 'windsurf') | Should Be $true
-        ($commands -contains 'aider') | Should Be $true
-        ($commands -contains 'openhands') | Should Be $true
+        ($commands -contains 'agy') | Should -Be $true
+        ($commands -contains 'claude') | Should -Be $true
+        ($commands -contains 'gemini') | Should -Be $true
+        ($commands -contains 'codex') | Should -Be $true
+        ($commands -contains 'cursor') | Should -Be $true
+        ($commands -contains 'windsurf') | Should -Be $true
+        ($commands -contains 'aider') | Should -Be $true
+        ($commands -contains 'openhands') | Should -Be $true
 
         foreach ($a in $agents) {
-            $a.name | Should Not BeNullOrEmpty
-            $a.command | Should Not BeNullOrEmpty
-            ($a.installed -eq $true -or $a.installed -eq $false) | Should Be $true
+            $a.name | Should -Not -BeNullOrEmpty
+            $a.command | Should -Not -BeNullOrEmpty
+            ($a.installed -eq $true -or $a.installed -eq $false) | Should -Be $true
         }
     }
 
     It "Rtb-Agent -List returns list of agents" {
         $result = Rtb-Agent -List
-        $result | Should Not BeNullOrEmpty
-        $result.Count | Should Be 8
+        $result | Should -Not -BeNullOrEmpty
+        $result.Count | Should -Be 8
     }
 
     It "Rtb-Agent displays error message when non-existent project is specified" {
         $output = (Rtb-Agent -ProjectName "non_existent_project_99999" *>&1) | Out-String
-        $output | Should Match "Project or path 'non_existent_project_99999' not found"
+        $output | Should -Match "Project or path 'non_existent_project_99999' not found"
     }
 
     It "Rtb-Agent displays error when invalid agent is specified" {
         $output = (Rtb-Agent -Agent "unknown_agent_xyz" *>&1) | Out-String
-        $output | Should Match "Specified agent 'unknown_agent_xyz' is not recognized"
+        $output | Should -Match "Specified agent 'unknown_agent_xyz' is not recognized"
     }
 
     It "Rtb-Agent handles switch parameters like -Agy or -Claude" {
         $output = (Rtb-Agent -Agy -ProjectName "non_existent_project_99999" *>&1) | Out-String
-        $output | Should Match "Project or path 'non_existent_project_99999' not found"
+        $output | Should -Match "Project or path 'non_existent_project_99999' not found"
     }
 
     It "Generates transient .rtb_context.md file in project folder before launch" {
@@ -51,8 +51,8 @@ Describe "AI Agent Discovery & CLI Launcher (Rtb-Agent)" {
         $contextFile = Join-Path $tempDir ".rtb_context.md"
         New-RtbAgentContextFile -ProjectPath $tempDir -ProjectName "test-proj" -Stack @("Rust", "Ratatui") -Status "Active"
 
-        Test-Path $contextFile | Should Be $true
-        (Get-Content $contextFile -Raw) | Should Match "Rust, Ratatui"
+        Test-Path $contextFile | Should -Be $true
+        (Get-Content $contextFile -Raw) | Should -Match "Rust, Ratatui"
 
         Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
     }
