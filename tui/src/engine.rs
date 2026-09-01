@@ -434,6 +434,7 @@ impl RtbEngine {
             }
             Commands::Doctor => Self::execute_doctor(cli),
             Commands::Init { force } => Self::execute_init(force, cli),
+            Commands::Upgrade { check } => crate::upgrade::execute_upgrade(check),
             Commands::Maintenance(m) => Self::execute_maintenance(m, cli),
             Commands::Health => Self::execute_health(cli),
             Commands::Index => Self::execute_index(cli),

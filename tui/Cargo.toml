@@ -29,9 +29,12 @@ rayon = "1.10"
 unicode-width = "0.2"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
+self-replace = "1.5"
+sha2 = "0.10"
+ureq = { version = "2.12", features = ["json"] }
+tempfile = "3"
 
 [dev-dependencies]
-tempfile = "3"
 
 [profile.release]
 opt-level = 3
