@@ -62,6 +62,8 @@ pub enum Commands {
     },
     Info {
         project: String,
+        #[arg(long, short)]
+        json: bool,
     },
     Health,
     Index,
@@ -355,6 +357,12 @@ impl RtbEngine {
             Commands::Status { json } => {
                 Self::execute_status(json, cli)
             }
+            Commands::Info { project, json } => {
+                Self::execute_info(project, json, cli)
+            }
+            Commands::Config => {
+                Self::execute_config(cli)
+            }
             Commands::ShellInit { shell } => {
                 Self::print_shell_init(shell);
                 Ok(0)
@@ -371,6 +379,124 @@ impl RtbEngine {
                 Ok(1)
             }
         }
+    }
+
+    fn execute_info(project_name: String, cmd_json: bool, cli: &Cli) -> Result<i32> {
+        let config = DevConfig::load_from(&cli.config)?;
+        let projects = scan_all_projects(&config);
+
+        let proj = match projects.iter().find(|p| p.name.eq_ignore_ascii_case(&project_name)) {
+            Some(p) => p,
+            None => {
+                eprintln!("Project '{}' not found.", project_name);
+                return Ok(1);
+            }
+        };
+
+        let is_json = cli.json || cmd_json;
+        if is_json {
+            println!("{}", serde_json::to_string_pretty(proj)?);
+            return Ok(0);
+        }
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Project Info: {}", proj.name);
+        println!("══════════════════════════════════════════\n");
+        println!("  Name:            {}", proj.name);
+        println!("  Status:          {}", proj.status.label());
+        println!("  Path:            {}", proj.path.display());
+        println!("  Stack:           {}", proj.stack.join(", "));
+        println!("  Monorepo:        {}", if proj.is_monorepo { "Yes" } else { "No" });
+        println!("  CI/CD:           {}", proj.ci_cd.as_deref().unwrap_or("None"));
+        println!("  Runtime Version: {}", proj.runtime_version.as_deref().unwrap_or("N/A"));
+
+        if let Some(ref git) = proj.git {
+            println!();
+            println!("  Git Info:");
+            println!("    Branch:        {}", git.branch);
+            println!("    Uncommitted:   {}", git.uncommitted);
+            println!("    Unpushed:      {}", git.unpushed);
+            println!("    Has Remote:    {}", git.has_remote);
+            if let Some(ref msg) = git.last_commit_msg {
+                let rel = git.last_commit_relative.as_deref().unwrap_or("");
+                println!("    Last Commit:   {} ({})", msg, rel);
+            }
+        }
+
+        if let Some(ref readme) = proj.readme_preview {
+            println!();
+            println!("  README Preview:");
+            for line in readme.lines() {
+                println!("    {}", line);
+            }
+        }
+        println!();
+        Ok(0)
+    }
+
+    fn execute_config(cli: &Cli) -> Result<i32> {
+        let config_path = Self::resolve_config_path(&cli.config);
+        if !config_path.exists() {
+            if let Some(parent) = config_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let default_config = serde_json::json!({
+                "version": "1.0.0",
+                "projectRoots": {
+                    "active": "",
+                    "paused": "",
+                    "production": ""
+                }
+            });
+            let content = serde_json::to_string_pretty(&default_config)?;
+            std::fs::write(&config_path, content)?;
+        }
+
+        println!("Opening RTB configuration...");
+        println!("  Config file: {}", config_path.display());
+
+        let is_non_interactive = std::env::var("RTB_NON_INTERACTIVE").is_ok()
+            || std::env::var("CI").is_ok()
+            || std::env::var("GITHUB_ACTIONS").is_ok()
+            || !std::io::stdin().is_terminal();
+
+        if is_non_interactive {
+            return Ok(0);
+        }
+
+        let editor = std::env::var("EDITOR").or_else(|_| std::env::var("VISUAL")).ok();
+        if let Some(ed) = editor {
+            let _ = std::process::Command::new(ed).arg(&config_path).status();
+            return Ok(0);
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let code_status = std::process::Command::new("code")
+                .arg(&config_path)
+                .status();
+            if code_status.is_err() || !code_status.unwrap().success() {
+                let _ = std::process::Command::new("notepad.exe")
+                    .arg(&config_path)
+                    .status();
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("open")
+                .arg(&config_path)
+                .status();
+        }
+
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+        {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(&config_path)
+                .status();
+        }
+
+        Ok(0)
     }
 
     fn execute_list(

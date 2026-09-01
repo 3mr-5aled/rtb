@@ -33,8 +33,8 @@ fn test_config_gate_exempt_commands() {
         let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
         // For shell-init it returns 0 (implemented stub); for others 1 with "not yet implemented".
         // Crucially, none of them should produce the Config Gate error message "rtb: not configured".
-        if cmd_name == "shell-init" {
-            assert_eq!(exit_code, 0, "shell-init should exit 0");
+        if cmd_name == "shell-init" || cmd_name == "config" {
+            assert_eq!(exit_code, 0, "{} should exit 0", cmd_name);
         } else {
             assert_eq!(exit_code, 1, "{} should exit 1 (unimplemented)", cmd_name);
         }
@@ -66,7 +66,6 @@ fn test_unimplemented_commands_exit_1() {
 
     let unimplemented = vec![
         vec!["rtb", "init"],
-        vec!["rtb", "config"],
         vec!["rtb", "doctor"],
         vec!["rtb", "clean"],
         vec!["rtb", "build"],
