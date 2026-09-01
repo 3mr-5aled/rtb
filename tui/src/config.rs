@@ -110,6 +110,18 @@ impl DevConfig {
         paths
     }
 
+    pub fn load_from(custom_path: &Option<PathBuf>) -> Result<Self> {
+        if let Some(p) = custom_path {
+            if p.is_file() {
+                let content = std::fs::read_to_string(p)
+                    .with_context(|| format!("Cannot read config from {}", p.display()))?;
+                return serde_json::from_str(&content)
+                    .with_context(|| format!("Failed to parse config file {}", p.display()));
+            }
+        }
+        Self::load()
+    }
+
     pub fn load() -> Result<Self> {
         for path in Self::candidate_paths() {
             if path.is_file() {

@@ -503,7 +503,7 @@ fn get_git_info(path: &Path) -> Option<GitInfo> {
     })
 }
 
-fn run_git(path: &Path, args: &[&str]) -> Option<String> {
+pub fn run_git(path: &Path, args: &[&str]) -> Option<String> {
     std::process::Command::new("git")
         .args(args)
         .current_dir(path)

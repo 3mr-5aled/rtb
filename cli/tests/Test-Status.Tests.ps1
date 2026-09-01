@@ -274,4 +274,39 @@ Describe "Rtb-Status Shell Prompt Integration" {
             }
         }
     }
+
+    Context "Rust parity" {
+        It "invokes Rust binary when available and returns matching JSON contract" {
+            $bin = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
+            if (-not $bin -and $env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
+                $bin = Get-Item $env:_RTB_BIN
+            }
+            if ($bin) {
+                Push-Location $script:testProj
+                try {
+                    $configPath = Join-Path $script:testBase "rtb.config.json"
+                    $rawConfig = @{
+                        version = "1.0.0"
+                        projectRoots = @{
+                            active = $script:activeRoot
+                        }
+                        backupRoot = ""
+                        configRoot = ""
+                        templateDir = ""
+                        cleanDeps = @{ daysInactive = 30; targets = @() }
+                        staleThresholdDays = 60
+                        gitHealth = @{ scanRoots = @() }
+                    } | ConvertTo-Json -Depth 5
+                    Set-Content -Path $configPath -Value $rawConfig
+
+                    $jsonStr = & $bin.Source --config $configPath status --json
+                    $data = $jsonStr | ConvertFrom-Json
+                    $data.project | Should -Be "sample-project"
+                    $data.status | Should -Be "Active"
+                } finally {
+                    Pop-Location
+                }
+            }
+        }
+    }
 }

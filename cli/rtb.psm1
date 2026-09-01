@@ -14,6 +14,27 @@ Get-ChildItem -Path (Join-Path $PSScriptRoot 'src\commands') -Filter '*.ps1' -Er
     . $_.FullName
 }
 
+function Invoke-RtbNativeRedirect {
+    param(
+        [Parameter(Mandatory = $true)][string]$Subcommand,
+        [string[]]$SubArgs
+    )
+    $exe = if ($env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
+        $env:_RTB_BIN
+    } else {
+        (Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue).Source
+    }
+    if ($exe) {
+        if ($SubArgs) {
+            & $exe $Subcommand @SubArgs
+        } else {
+            & $exe $Subcommand
+        }
+        return $true
+    }
+    return $false
+}
+
 # Main entry point
 function rtb {
     [CmdletBinding()]
@@ -78,7 +99,7 @@ function rtb {
         'deploy'      { if ($Arguments) { Dev-Deploy @Arguments } else { Dev-Deploy } }
         'archive'     { if ($Arguments) { Dev-Archive @Arguments } else { Dev-Archive } }
         'unarchive'   { if ($Arguments) { Dev-Unarchive @Arguments } else { Dev-Unarchive } }
-        'list'        { if ($Arguments) { Dev-List @Arguments } else { Dev-List } }
+        'list'        { if (-not (Invoke-RtbNativeRedirect 'list' $Arguments)) { if ($Arguments) { Dev-List @Arguments } else { Dev-List } } }
         'info'        { if ($Arguments) { Rtb-Info @Arguments } else { Rtb-Info } }
         'health'      { if ($Arguments) { Dev-Health @Arguments } else { Dev-Health } }
         'commit'      { if ($Arguments) { Rtb-Commit @Arguments } else { Rtb-Commit } }
@@ -103,7 +124,7 @@ function rtb {
         'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
         'uninstall'   { if ($Arguments) { Rtb-Uninstall @Arguments } else { Rtb-Uninstall } }
         'doctor'      { if ($Arguments) { Rtb-Doctor @Arguments } else { Rtb-Doctor } }
-        'status'      { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } }
+        'status'      { if (-not (Invoke-RtbNativeRedirect 'status' $Arguments)) { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } } }
         'ui'          { Dev-Ui }
         'help'        { Dev-Help }
         default {

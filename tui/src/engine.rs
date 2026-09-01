@@ -4,6 +4,8 @@ use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 
 use crate::config::DevConfig;
+use crate::data::project::ProjectStatus;
+use crate::data::scanner::scan_all_projects;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -39,9 +41,25 @@ pub struct Cli {
 pub enum Commands {
     // --- Inspect ---
     #[command(next_help_heading = "Inspect", visible_alias = "ls")]
-    List,
+    List {
+        #[arg(long)]
+        active: bool,
+        #[arg(long)]
+        paused: bool,
+        #[arg(long)]
+        deployed: bool,
+        #[arg(long)]
+        vibe: bool,
+        #[arg(long)]
+        all: bool,
+        #[arg(long)]
+        json: bool,
+    },
     #[command(visible_alias = "st")]
-    Status,
+    Status {
+        #[arg(long, short)]
+        json: bool,
+    },
     Info {
         project: String,
     },
@@ -277,8 +295,8 @@ impl RtbEngine {
 
     fn command_name(cmd: &Commands) -> &'static str {
         match cmd {
-            Commands::List => "list",
-            Commands::Status => "status",
+            Commands::List { .. } => "list",
+            Commands::Status { .. } => "status",
             Commands::Info { .. } => "info",
             Commands::Health => "health",
             Commands::Index => "index",
@@ -311,8 +329,14 @@ impl RtbEngine {
         }
     }
 
-    fn execute_command(cmd: Commands, _cli: &Cli) -> Result<i32> {
+    fn execute_command(cmd: Commands, cli: &Cli) -> Result<i32> {
         match cmd {
+            Commands::List { active, paused, deployed, vibe, all, json } => {
+                Self::execute_list(active, paused, deployed, vibe, all, json, cli)
+            }
+            Commands::Status { json } => {
+                Self::execute_status(json, cli)
+            }
             Commands::ShellInit { shell } => {
                 Self::print_shell_init(shell);
                 Ok(0)
@@ -329,6 +353,224 @@ impl RtbEngine {
                 Ok(1)
             }
         }
+    }
+
+    fn execute_list(
+        active: bool,
+        paused: bool,
+        deployed: bool,
+        vibe: bool,
+        _all: bool,
+        cmd_json: bool,
+        cli: &Cli,
+    ) -> Result<i32> {
+        let config = DevConfig::load_from(&cli.config)?;
+        let mut projects = scan_all_projects(&config);
+
+        if active || paused || deployed || vibe {
+            projects.retain(|p| {
+                if active && p.status == ProjectStatus::Active { return true; }
+                if paused && p.status == ProjectStatus::Paused { return true; }
+                if deployed && (p.status == ProjectStatus::Production || p.status == ProjectStatus::Staging) { return true; }
+                if vibe && p.status == ProjectStatus::Vibe { return true; }
+                false
+            });
+        }
+
+        let is_json = cli.json || cmd_json;
+        if is_json {
+            println!("{}", serde_json::to_string_pretty(&projects)?);
+            return Ok(0);
+        }
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Project List");
+        println!("══════════════════════════════════════════\n");
+
+        let categories = [
+            ("Active", ProjectStatus::Active, "📁"),
+            ("Paused", ProjectStatus::Paused, "⏸️"),
+            ("Production", ProjectStatus::Production, "🚀"),
+            ("Staging", ProjectStatus::Staging, "🚀"),
+            ("Vibe", ProjectStatus::Vibe, "✨"),
+            ("Sandbox", ProjectStatus::Sandbox, "🔬"),
+            ("Planning", ProjectStatus::Planning, "📝"),
+            ("Testing", ProjectStatus::Testing, "🧪"),
+            ("Abandoned", ProjectStatus::Abandoned, "❌"),
+        ];
+
+        let mut total = 0;
+        for (cat_name, status, default_emoji) in &categories {
+            let cat_projs: Vec<&crate::data::project::Project> =
+                projects.iter().filter(|p| &p.status == status).collect();
+            if cat_projs.is_empty() {
+                continue;
+            }
+
+            println!("  {} {} ({})", default_emoji, cat_name, cat_projs.len());
+            for p in &cat_projs {
+                total += 1;
+                let last_mod = p.last_modified_str();
+                println!("    {}  ({})", p.name, last_mod);
+            }
+            println!();
+        }
+
+        println!("  Total: {} projects", total);
+        Ok(0)
+    }
+
+    fn execute_status(cmd_json: bool, cli: &Cli) -> Result<i32> {
+        let is_json = cli.json || cmd_json;
+        let cwd = std::env::current_dir()?;
+        let config = DevConfig::load_from(&cli.config).ok();
+
+        let mut project_name: Option<String> = None;
+        let mut project_status: Option<String> = None;
+        let mut project_root_path: Option<PathBuf> = None;
+
+        if let Some(ref cfg) = config {
+            let roots = vec![
+                ("Active", &cfg.project_roots.active),
+                ("Paused", &cfg.project_roots.paused),
+                ("Production", &cfg.project_roots.production),
+                ("Staging", &cfg.project_roots.staging),
+                ("Vibe", &cfg.project_roots.vibe),
+                ("Sandbox", &cfg.project_roots.sandbox),
+                ("Planning", &cfg.project_roots.planning),
+                ("Testing", &cfg.project_roots.testing),
+                ("Abandoned", &cfg.project_roots.abandoned),
+            ];
+
+            for (status_label, root_path_str) in roots {
+                if root_path_str.is_empty() { continue; }
+                let root_path = PathBuf::from(root_path_str);
+                if let Ok(rel) = cwd.strip_prefix(&root_path) {
+                    if let Some(first_comp) = rel.components().next() {
+                        let name = first_comp.as_os_str().to_string_lossy().to_string();
+                        if !name.is_empty() {
+                            project_name = Some(name.clone());
+                            project_status = Some(status_label.to_string());
+                            project_root_path = Some(root_path.join(name));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut branch = String::new();
+        let mut uncommitted: u32 = 0;
+        let mut git_root: Option<PathBuf> = None;
+
+        let mut check = Some(cwd.as_path());
+        while let Some(path) = check {
+            if path.join(".git").exists() {
+                git_root = Some(path.to_path_buf());
+                if let Some(b) = crate::data::scanner::run_git(path, &["branch", "--show-current"]) {
+                    let b_trim = b.trim();
+                    if !b_trim.is_empty() {
+                        branch = b_trim.to_string();
+                    } else if let Some(head) = crate::data::scanner::run_git(path, &["rev-parse", "--short", "HEAD"]) {
+                        if !head.trim().is_empty() {
+                            branch = format!("HEAD@{}", head.trim());
+                        }
+                    }
+                }
+                if let Some(porcelain) = crate::data::scanner::run_git(path, &["status", "--porcelain"]) {
+                    uncommitted = porcelain.lines().filter(|l| !l.trim().is_empty()).count() as u32;
+                }
+                break;
+            }
+            check = path.parent();
+        }
+
+        let mut search_paths = vec![cwd.clone()];
+        if let Some(ref prp) = project_root_path {
+            if prp.exists() && !search_paths.contains(prp) {
+                search_paths.push(prp.clone());
+            }
+        }
+        if let Some(ref gr) = git_root {
+            if gr.exists() && !search_paths.contains(gr) {
+                search_paths.push(gr.clone());
+            }
+        }
+
+        let mut stack: Vec<String> = Vec::new();
+        for p in search_paths {
+            if !p.exists() { continue; }
+            if p.join("package.json").exists() && !stack.contains(&"Node.js".to_string()) {
+                stack.push("Node.js".into());
+            }
+            if (p.join("Cargo.toml").exists() || p.join("tui/Cargo.toml").exists()) && !stack.contains(&"Rust".to_string()) {
+                stack.push("Rust".into());
+            }
+            if p.join("go.mod").exists() && !stack.contains(&"Go".to_string()) {
+                stack.push("Go".into());
+            }
+            if (p.join("pyproject.toml").exists() || p.join("requirements.txt").exists() || p.join("uv.lock").exists() || p.join("poetry.lock").exists()) && !stack.contains(&"Python".to_string()) {
+                stack.push("Python".into());
+            }
+            if (p.join("rtb.psm1").exists() || p.join("rtb.psd1").exists() || p.join("cli/rtb.psm1").exists() || p.join("dev.psm1").exists()) && !stack.contains(&"PowerShell".to_string()) {
+                stack.push("PowerShell".into());
+            }
+            let has_dotnet = std::fs::read_dir(&p).ok().map(|entries| {
+                entries.flatten().any(|e| {
+                    let n = e.file_name().to_string_lossy().to_lowercase();
+                    n.ends_with(".csproj") || n.ends_with(".sln")
+                })
+            }).unwrap_or(false);
+            if has_dotnet && !stack.contains(&".NET".to_string()) {
+                stack.push(".NET".into());
+            }
+        }
+
+        let display_name = project_name
+            .or_else(|| cwd.file_name().map(|n| n.to_string_lossy().to_string()))
+            .unwrap_or_else(|| cwd.to_string_lossy().to_string());
+
+        if is_json {
+            #[derive(serde::Serialize)]
+            struct StatusJson {
+                project: String,
+                status: Option<String>,
+                branch: String,
+                uncommitted: u32,
+                stack: Vec<String>,
+                cwd: String,
+            }
+
+            let sj = StatusJson {
+                project: display_name,
+                status: project_status,
+                branch,
+                uncommitted,
+                stack,
+                cwd: cwd.to_string_lossy().to_string(),
+            };
+            println!("{}", serde_json::to_string_pretty(&sj)?);
+            return Ok(0);
+        }
+
+        let status_part = match project_status {
+            Some(ref s) => format!(" ({})", s),
+            None => "".to_string(),
+        };
+        let git_part = if !branch.is_empty() {
+            let un_str = if uncommitted > 0 { format!(" ±{}", uncommitted) } else { "".to_string() };
+            format!(" [{}{}]", branch, un_str)
+        } else {
+            "".to_string()
+        };
+        let stack_part = if !stack.is_empty() {
+            format!(" {}", stack.join(","))
+        } else {
+            "".to_string()
+        };
+
+        println!("rtb » {}{}{}{}", display_name, status_part, git_part, stack_part);
+        Ok(0)
     }
 
     fn print_shell_init(shell: ShellChoice) {
