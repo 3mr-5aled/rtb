@@ -67,8 +67,7 @@ fn test_unimplemented_commands_exit_1() {
     let unimplemented = vec![
         vec!["rtb", "init"],
         vec!["rtb", "doctor"],
-        vec!["rtb", "clean"],
-        vec!["rtb", "build"],
+        vec!["rtb", "agent"],
     ];
 
     for args in unimplemented {

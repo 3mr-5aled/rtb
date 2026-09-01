@@ -67,8 +67,16 @@ pub enum Commands {
     },
     Health,
     Index,
-    Deps,
-    Workspace,
+    Deps {
+        project: Option<String>,
+        #[arg(long, short)]
+        json: bool,
+    },
+    Workspace {
+        project: Option<String>,
+        #[arg(long, short)]
+        json: bool,
+    },
 
     // --- Lifecycle ---
     #[command(next_help_heading = "Lifecycle")]
@@ -111,12 +119,22 @@ pub enum Commands {
 
     // --- Dev ---
     #[command(next_help_heading = "Dev")]
-    Run,
-    Build,
-    Test,
+    Run {
+        project: Option<String>,
+    },
+    Build {
+        project: Option<String>,
+    },
+    Test {
+        project: Option<String>,
+    },
     Clean {
         #[arg(long)]
         dry_run: bool,
+        #[arg(long, short = 'c')]
+        commit: bool,
+        #[arg(long, short = 'd')]
+        days: Option<u64>,
     },
     Commit {
         #[arg(short)]
@@ -332,17 +350,17 @@ impl RtbEngine {
             Commands::Info { .. } => "info",
             Commands::Health => "health",
             Commands::Index => "index",
-            Commands::Deps => "deps",
-            Commands::Workspace => "workspace",
+            Commands::Deps { .. } => "deps",
+            Commands::Workspace { .. } => "workspace",
             Commands::New { .. } => "new",
             Commands::Pause { .. } => "pause",
             Commands::Resume { .. } => "resume",
             Commands::Deploy { .. } => "deploy",
             Commands::Archive { .. } => "archive",
             Commands::Unarchive { .. } => "unarchive",
-            Commands::Run => "run",
-            Commands::Build => "build",
-            Commands::Test => "test",
+            Commands::Run { .. } => "run",
+            Commands::Build { .. } => "build",
+            Commands::Test { .. } => "test",
             Commands::Clean { .. } => "clean",
             Commands::Commit { .. } => "commit",
             Commands::Open { .. } => "open",
@@ -392,6 +410,24 @@ impl RtbEngine {
             }
             Commands::Unarchive { project } => {
                 Self::execute_unarchive(project, cli)
+            }
+            Commands::Run { project } => {
+                Self::execute_run(project, cli)
+            }
+            Commands::Build { project } => {
+                Self::execute_build(project, cli)
+            }
+            Commands::Test { project } => {
+                Self::execute_test(project, cli)
+            }
+            Commands::Clean { dry_run, commit, days } => {
+                Self::execute_clean(dry_run, commit, days, cli)
+            }
+            Commands::Deps { project, json } => {
+                Self::execute_deps(project, json, cli)
+            }
+            Commands::Workspace { project, json } => {
+                Self::execute_workspace(project, json, cli)
             }
             Commands::ShellInit { shell } => {
                 Self::print_shell_init(shell);
@@ -1273,6 +1309,610 @@ function global:rtb {{
         eprintln!("  Unarchive FAILED.");
         Ok(1)
     }
+
+    fn resolve_project_or_cwd(project_name: Option<&str>, cli: &Cli) -> Result<PathBuf> {
+        let cwd = std::env::current_dir()?;
+        if let Some(name) = project_name {
+            if let Ok(p) = std::fs::canonicalize(name) {
+                if p.is_dir() {
+                    return Ok(p);
+                }
+            }
+            if let Ok(config) = DevConfig::load_from(&cli.config) {
+                let projects = scan_all_projects(&config);
+                if let Some(p) = projects.iter().find(|p| p.name.eq_ignore_ascii_case(name)) {
+                    return Ok(p.path.clone());
+                }
+            }
+            let kebab = to_kebab_case(name);
+            let candidate = cwd.join(&kebab);
+            if candidate.is_dir() {
+                return Ok(candidate);
+            }
+            eprintln!("Project '{}' not found.", name);
+            anyhow::bail!("Project not found");
+        }
+        Ok(cwd)
+    }
+
+    fn get_cmd(cmd: &str) -> String {
+        if cfg!(windows) {
+            match cmd {
+                "npm" => "npm.cmd".to_string(),
+                "npx" => "npx.cmd".to_string(),
+                "pnpm" => "pnpm.cmd".to_string(),
+                "yarn" => "yarn.cmd".to_string(),
+                _ => cmd.to_string(),
+            }
+        } else {
+            cmd.to_string()
+        }
+    }
+
+    fn execute_run(project: Option<String>, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+        let folder_name = target_path
+            .file_name()
+            .unwrap_or(target_path.as_os_str())
+            .to_string_lossy();
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Run Project ({})", folder_name);
+        println!("══════════════════════════════════════════\n");
+
+        let pkg_path = target_path.join("package.json");
+        if pkg_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if json["scripts"]["dev"].is_string() {
+                        println!("Running 'npm run dev' in {}...", target_path.display());
+                        let status = std::process::Command::new(Self::get_cmd("npm"))
+                            .args(&["run", "dev"])
+                            .current_dir(&target_path)
+                            .status();
+                        return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+                    } else if json["scripts"]["start"].is_string() {
+                        println!("Running 'npm start' in {}...", target_path.display());
+                        let status = std::process::Command::new(Self::get_cmd("npm"))
+                            .arg("start")
+                            .current_dir(&target_path)
+                            .status();
+                        return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+                    }
+                }
+            }
+        }
+
+        if target_path.join("Cargo.toml").exists() {
+            println!("Running 'cargo run' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("cargo"))
+                .arg("run")
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("go.mod").exists() {
+            println!("Running 'go run .' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("go"))
+                .args(&["run", "."])
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("main.py").exists() {
+            println!("Running 'python main.py' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("python"))
+                .args(&["main.py"])
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        eprintln!(
+            "No runnable script or main entrypoint detected in {}.",
+            target_path.display()
+        );
+        Ok(1)
+    }
+
+    fn execute_build(project: Option<String>, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+        let folder_name = target_path
+            .file_name()
+            .unwrap_or(target_path.as_os_str())
+            .to_string_lossy();
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Build Project ({})", folder_name);
+        println!("══════════════════════════════════════════\n");
+
+        let pkg_path = target_path.join("package.json");
+        if pkg_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if json["scripts"]["build"].is_string() {
+                        println!("Running 'npm run build' in {}...", target_path.display());
+                        let status = std::process::Command::new(Self::get_cmd("npm"))
+                            .args(&["run", "build"])
+                            .current_dir(&target_path)
+                            .status();
+                        return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+                    }
+                }
+            }
+        }
+
+        if target_path.join("Cargo.toml").exists() {
+            println!("Running 'cargo build --release' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("cargo"))
+                .args(&["build", "--release"])
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("go.mod").exists() {
+            println!("Running 'go build' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("go"))
+                .arg("build")
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        eprintln!("No build configuration detected in {}.", target_path.display());
+        Ok(1)
+    }
+
+    fn execute_test(project: Option<String>, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+        let folder_name = target_path
+            .file_name()
+            .unwrap_or(target_path.as_os_str())
+            .to_string_lossy();
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Test Project ({})", folder_name);
+        println!("══════════════════════════════════════════\n");
+
+        let pkg_path = target_path.join("package.json");
+        if pkg_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if json["scripts"]["test"].is_string() {
+                        println!("Running 'npm test' in {}...", target_path.display());
+                        let status = std::process::Command::new(Self::get_cmd("npm"))
+                            .arg("test")
+                            .current_dir(&target_path)
+                            .status();
+                        return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+                    }
+                }
+            }
+        }
+
+        if target_path.join("Cargo.toml").exists() {
+            println!("Running 'cargo test' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("cargo"))
+                .arg("test")
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("pytest.ini").exists() || target_path.join("pyproject.toml").exists() {
+            println!("Running 'pytest' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("pytest"))
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("cli/tests").exists() {
+            println!("Running 'Invoke-Pester' in {}/cli/tests...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("pwsh"))
+                .args(&["-Command", "Invoke-Pester cli/tests/"])
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        if target_path.join("tests").exists() {
+            println!("Running 'Invoke-Pester' in {}...", target_path.display());
+            let status = std::process::Command::new(Self::get_cmd("pwsh"))
+                .args(&["-Command", "Invoke-Pester tests/"])
+                .current_dir(&target_path)
+                .status();
+            return Ok(status.map(|s| s.code().unwrap_or(1)).unwrap_or(1));
+        }
+
+        eprintln!("No test configuration detected in {}.", target_path.display());
+        Ok(1)
+    }
+
+    fn execute_deps(project: Option<String>, cmd_json: bool, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+        let is_json = cli.json || cmd_json;
+
+        #[derive(serde::Serialize)]
+        struct DepInfo {
+            package: String,
+            spec: String,
+            dep_type: String,
+            status: String,
+        }
+
+        let mut deps: Vec<DepInfo> = Vec::new();
+
+        // 1. package.json
+        let pkg_path = target_path.join("package.json");
+        if pkg_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(obj) = json["dependencies"].as_object() {
+                        for (k, v) in obj {
+                            deps.push(DepInfo {
+                                package: k.clone(),
+                                spec: v.as_str().unwrap_or("").to_string(),
+                                dep_type: "npm/pnpm/yarn".to_string(),
+                                status: "Declared".to_string(),
+                            });
+                        }
+                    }
+                    if let Some(obj) = json["devDependencies"].as_object() {
+                        for (k, v) in obj {
+                            deps.push(DepInfo {
+                                package: k.clone(),
+                                spec: v.as_str().unwrap_or("").to_string(),
+                                dep_type: "npm/pnpm (dev)".to_string(),
+                                status: "Declared".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Cargo.toml
+        let cargo_path = target_path.join("Cargo.toml");
+        if cargo_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&cargo_path) {
+                let mut in_deps = false;
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("[dependencies]") || trimmed.starts_with("[dev-dependencies]") {
+                        in_deps = true;
+                        continue;
+                    }
+                    if trimmed.starts_with('[') {
+                        in_deps = false;
+                        continue;
+                    }
+                    if in_deps && !trimmed.is_empty() && !trimmed.starts_with('#') {
+                        let parts: Vec<&str> = trimmed.splitn(2, '=').map(|s| s.trim()).collect();
+                        if parts.len() == 2 {
+                            let name = parts[0];
+                            let spec = parts[1].trim_matches('"');
+                            deps.push(DepInfo {
+                                package: name.to_string(),
+                                spec: spec.to_string(),
+                                dep_type: "Cargo (Rust)".to_string(),
+                                status: "Declared".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. pyproject.toml / requirements.txt
+        let pyproject_path = target_path.join("pyproject.toml");
+        if pyproject_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pyproject_path) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if (trimmed.starts_with('"') || trimmed.starts_with('\''))
+                        && (trimmed.contains("==") || trimmed.contains(">=") || trimmed.contains("~="))
+                    {
+                        let clean = trimmed.trim_matches(|c| c == '"' || c == '\'' || c == ',');
+                        deps.push(DepInfo {
+                            package: clean.to_string(),
+                            spec: "latest".to_string(),
+                            dep_type: "Python (pyproject)".to_string(),
+                            status: "Declared".to_string(),
+                        });
+                    }
+                }
+            }
+        } else {
+            let req_path = target_path.join("requirements.txt");
+            if req_path.is_file() {
+                if let Ok(content) = std::fs::read_to_string(&req_path) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if !trimmed.is_empty() && !trimmed.starts_with('#') {
+                            deps.push(DepInfo {
+                                package: trimmed.to_string(),
+                                spec: "latest".to_string(),
+                                dep_type: "Python (requirements)".to_string(),
+                                status: "Declared".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        if is_json {
+            println!("{}", serde_json::to_string_pretty(&deps)?);
+            return Ok(0);
+        }
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Dependency Inspector ({})", target_path.display());
+        println!("══════════════════════════════════════════\n");
+
+        if deps.is_empty() {
+            println!("  No dependencies found in {}", target_path.display());
+            return Ok(0);
+        }
+
+        println!("  Found {} declared dependencies:\n", deps.len());
+        println!("  {:<30} {:<20} {:<20}", "PACKAGE", "SPEC", "TYPE");
+        println!("  {}", "─".repeat(72));
+        for d in &deps {
+            println!("  {:<30} {:<20} {:<20}", d.package, d.spec, d.dep_type);
+        }
+        println!();
+        Ok(0)
+    }
+
+    fn execute_workspace(project: Option<String>, cmd_json: bool, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+        let is_json = cli.json || cmd_json;
+
+        #[derive(serde::Serialize)]
+        struct WorkspacePackageInfo {
+            package_pattern: String,
+            package_type: String,
+        }
+
+        #[derive(serde::Serialize)]
+        struct WorkspaceInfo {
+            project_path: String,
+            workspace_type: String,
+            is_monorepo: bool,
+            packages: Vec<WorkspacePackageInfo>,
+        }
+
+        let mut workspace_packages: Vec<WorkspacePackageInfo> = Vec::new();
+        let mut workspace_type = "Single Package / Standard Repository".to_string();
+
+        // 1. pnpm-workspace.yaml
+        let pnpm_ws = target_path.join("pnpm-workspace.yaml");
+        if pnpm_ws.is_file() {
+            workspace_type = "pnpm Workspaces".to_string();
+            if let Ok(content) = std::fs::read_to_string(&pnpm_ws) {
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("- ") || trimmed.starts_with("'- ") {
+                        let pat = trimmed.trim_start_matches('-').trim().trim_matches(|c| c == '\'' || c == '"');
+                        if !pat.is_empty() && pat != "packages:" {
+                            workspace_packages.push(WorkspacePackageInfo {
+                                package_pattern: pat.to_string(),
+                                package_type: "pnpm".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. package.json workspaces
+        let pkg_path = target_path.join("package.json");
+        if pkg_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(ws_arr) = json["workspaces"].as_array() {
+                        workspace_type = "npm/yarn Workspaces".to_string();
+                        for item in ws_arr {
+                            if let Some(s) = item.as_str() {
+                                workspace_packages.push(WorkspacePackageInfo {
+                                    package_pattern: s.to_string(),
+                                    package_type: "npm/yarn".to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Cargo.toml workspace
+        let cargo_path = target_path.join("Cargo.toml");
+        if cargo_path.is_file() {
+            if let Ok(content) = std::fs::read_to_string(&cargo_path) {
+                let mut in_ws = false;
+                for line in content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.starts_with("[workspace]") {
+                        in_ws = true;
+                        workspace_type = "Cargo Workspace (Rust)".to_string();
+                        continue;
+                    }
+                    if trimmed.starts_with('[') {
+                        in_ws = false;
+                        continue;
+                    }
+                    if in_ws && (trimmed.starts_with('"') || trimmed.starts_with('\'')) {
+                        let pat = trimmed.trim_matches(|c| c == '"' || c == '\'' || c == ',');
+                        workspace_packages.push(WorkspacePackageInfo {
+                            package_pattern: pat.to_string(),
+                            package_type: "Cargo".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        let is_monorepo = !workspace_packages.is_empty();
+        let info = WorkspaceInfo {
+            project_path: target_path.to_string_lossy().to_string(),
+            workspace_type: workspace_type.clone(),
+            is_monorepo,
+            packages: workspace_packages,
+        };
+
+        if is_json {
+            println!("{}", serde_json::to_string_pretty(&info)?);
+            return Ok(0);
+        }
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Monorepo Workspace Inspector ({})", target_path.display());
+        println!("══════════════════════════════════════════\n");
+        println!("  Monorepo Type: {}", workspace_type);
+
+        if !info.packages.is_empty() {
+            println!("  Declared Workspace Patterns:");
+            for p in &info.packages {
+                println!("    - {} ({})", p.package_pattern, p.package_type);
+            }
+        } else {
+            println!("  No active monorepo workspace configurations detected.");
+        }
+        println!();
+        Ok(0)
+    }
+
+    fn execute_clean(
+        dry_run: bool,
+        commit: bool,
+        days: Option<u64>,
+        cli: &Cli,
+    ) -> Result<i32> {
+        let config = DevConfig::load_from(&cli.config)?;
+        let resolved_days = days.unwrap_or(config.stale_threshold_days);
+        let is_dry_run = dry_run || !commit;
+
+        let search_paths = vec![
+            PathBuf::from(&config.project_roots.active),
+            PathBuf::from(&config.project_roots.paused),
+            PathBuf::from(&config.project_roots.vibe),
+            PathBuf::from(&config.project_roots.sandbox),
+        ];
+
+        let targets = if config.clean_deps.targets.is_empty() {
+            vec![
+                "node_modules".to_string(),
+                "target".to_string(),
+                ".venv".to_string(),
+                "dist".to_string(),
+                "build".to_string(),
+            ]
+        } else {
+            config.clean_deps.targets.clone()
+        };
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Dependency Pruning ({}d threshold)", resolved_days);
+        println!("══════════════════════════════════════════\n");
+
+        if is_dry_run {
+            println!("  [DRY RUN MODE] No files will be deleted. Use '--commit' to perform deletion.\n");
+        }
+
+        let cutoff_time = std::time::SystemTime::now()
+            .checked_sub(std::time::Duration::from_secs(resolved_days * 86400))
+            .unwrap_or(std::time::SystemTime::now());
+
+        struct FlaggedItem {
+            path: PathBuf,
+            _size_bytes: u64,
+            _size_mb: f64,
+        }
+
+        let mut flagged: Vec<FlaggedItem> = Vec::new();
+        let mut total_bytes: u64 = 0;
+
+        for root in search_paths {
+            if !root.exists() {
+                continue;
+            }
+            if let Ok(entries) = std::fs::read_dir(&root) {
+                for entry in entries.flatten() {
+                    let proj_dir = entry.path();
+                    if !proj_dir.is_dir() { continue; }
+                    for target_name in &targets {
+                        let dep_dir = proj_dir.join(target_name);
+                        if dep_dir.is_dir() {
+                            let modified = std::fs::metadata(&dep_dir)
+                                .and_then(|m| m.modified())
+                                .unwrap_or(std::time::SystemTime::now());
+                            if modified < cutoff_time {
+                                let size = dir_size(&dep_dir);
+                                total_bytes += size;
+                                let mb = size as f64 / 1_048_576.0;
+                                println!("  {} ({:.1} MB)", dep_dir.display(), mb);
+                                flagged.push(FlaggedItem {
+                                    path: dep_dir,
+                                    _size_bytes: size,
+                                    _size_mb: mb,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let gb = total_bytes as f64 / 1_073_741_824.0;
+        let suffix = if is_dry_run { "(dry run)" } else { "flagged" };
+        println!("\n  Flagged: {} folders | Space: {:.2} GB {}", flagged.len(), gb, suffix);
+
+        if !is_dry_run && !flagged.is_empty() {
+            for item in &flagged {
+                if std::fs::remove_dir_all(&item.path).is_ok() {
+                    println!("    -> DELETED: {}", item.path.display());
+                }
+            }
+            println!("\n  Clean complete. Space recovered: {:.2} GB", gb);
+        }
+
+        Ok(0)
+    }
+}
+
+fn dir_size(path: &std::path::Path) -> u64 {
+    let mut total = 0;
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                total += dir_size(&p);
+            } else if let Ok(meta) = entry.metadata() {
+                total += meta.len();
+            }
+        }
+    }
+    total
 }
 
 fn to_kebab_case(name: &str) -> String {

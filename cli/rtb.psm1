@@ -49,7 +49,7 @@ function rtb {
     }
 
     # Hard-redirect ported commands to native Rust binary if available
-    $portedNativeCommands = @('list', 'status', 'info', 'config', 'new', 'pause', 'resume', 'deploy', 'archive', 'unarchive')
+    $portedNativeCommands = @('list', 'status', 'info', 'config', 'new', 'pause', 'resume', 'deploy', 'archive', 'unarchive', 'run', 'build', 'test', 'clean', 'deps', 'workspace')
     if ($Command.ToLower() -in $portedNativeCommands) {
         $nativeExe = Get-RtbNativeBinary
         if ($nativeExe) {
