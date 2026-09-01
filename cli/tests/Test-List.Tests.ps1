@@ -6,6 +6,7 @@ Describe "Rtb-List Project Discovery" {
     BeforeAll {
         . (Join-Path $PSScriptRoot '..\src\utils\helpers.ps1')
         . (Join-Path $PSScriptRoot '..\src\commands\list.ps1')
+        Get-Module rtb | Remove-Module -Force -ErrorAction SilentlyContinue
         Import-Module (Join-Path $PSScriptRoot '..\rtb.psd1') -Force
 
         $script:testBase = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_list_test_$([Guid]::NewGuid().ToString('N'))"
@@ -86,7 +87,8 @@ Describe "Rtb-List Project Discovery" {
                 } | ConvertTo-Json -Depth 5
                 Set-Content -Path $configPath -Value $rawConfig
 
-                $jsonStr = & $bin.Source --config $configPath list --json
+                $binPath = if ($bin.Source) { $bin.Source } else { $bin.FullName }
+                $jsonStr = & $binPath --config $configPath list --json
                 $data = $jsonStr | ConvertFrom-Json
                 $data | Should -Not -BeNullOrEmpty
                 $names = $data | ForEach-Object { $_.name }

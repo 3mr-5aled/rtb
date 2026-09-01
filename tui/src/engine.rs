@@ -203,7 +203,25 @@ impl RtbEngine {
         I: IntoIterator<Item = T>,
         T: Into<std::ffi::OsString> + Clone,
     {
-        let matches = match Cli::try_parse_from(args) {
+        let normalized_args: Vec<std::ffi::OsString> = args
+            .into_iter()
+            .map(|arg| {
+                let os_str: std::ffi::OsString = arg.into();
+                if let Some(s) = os_str.to_str() {
+                    if s.eq_ignore_ascii_case("-json") || s == "-J" {
+                        return std::ffi::OsString::from("--json");
+                    }
+                    if s.eq_ignore_ascii_case("-active") { return std::ffi::OsString::from("--active"); }
+                    if s.eq_ignore_ascii_case("-paused") { return std::ffi::OsString::from("--paused"); }
+                    if s.eq_ignore_ascii_case("-deployed") { return std::ffi::OsString::from("--deployed"); }
+                    if s.eq_ignore_ascii_case("-vibe") { return std::ffi::OsString::from("--vibe"); }
+                    if s.eq_ignore_ascii_case("-all") { return std::ffi::OsString::from("--all"); }
+                }
+                os_str
+            })
+            .collect();
+
+        let matches = match Cli::try_parse_from(normalized_args) {
             Ok(m) => m,
             Err(e) => {
                 e.print()?;

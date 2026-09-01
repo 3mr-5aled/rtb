@@ -14,25 +14,13 @@ Get-ChildItem -Path (Join-Path $PSScriptRoot 'src\commands') -Filter '*.ps1' -Er
     . $_.FullName
 }
 
-function Invoke-RtbNativeRedirect {
-    param(
-        [Parameter(Mandatory = $true)][string]$Subcommand,
-        [string[]]$SubArgs
-    )
-    $exe = if ($env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
-        $env:_RTB_BIN
-    } else {
-        (Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue).Source
+function Get-RtbNativeBinary {
+    if ($env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
+        return $env:_RTB_BIN
     }
-    if ($exe) {
-        if ($SubArgs) {
-            & $exe $Subcommand @SubArgs
-        } else {
-            & $exe $Subcommand
-        }
-        return $true
-    }
-    return $false
+    $cmd = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return $null
 }
 
 # Main entry point
@@ -60,8 +48,22 @@ function rtb {
         return
     }
 
+    # Hard-redirect ported commands to native Rust binary if available
+    $portedNativeCommands = @('list', 'status')
+    if ($Command.ToLower() -in $portedNativeCommands) {
+        $nativeExe = Get-RtbNativeBinary
+        if ($nativeExe) {
+            if ($Arguments) {
+                & $nativeExe $Command.ToLower() @Arguments
+            } else {
+                & $nativeExe $Command.ToLower()
+            }
+            return
+        }
+    }
+
     # Config Gate for data-dependent commands
-    $freeCommands = @('help', 'init', 'config', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
+    $freeCommands = @('help', 'init', 'config', 'doctor', 'status', 'uninstall', '--version', '-v', '--help', '-h')
     if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
         $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
         $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
@@ -99,7 +101,7 @@ function rtb {
         'deploy'      { if ($Arguments) { Dev-Deploy @Arguments } else { Dev-Deploy } }
         'archive'     { if ($Arguments) { Dev-Archive @Arguments } else { Dev-Archive } }
         'unarchive'   { if ($Arguments) { Dev-Unarchive @Arguments } else { Dev-Unarchive } }
-        'list'        { if (-not (Invoke-RtbNativeRedirect 'list' $Arguments)) { if ($Arguments) { Dev-List @Arguments } else { Dev-List } } }
+        'list'        { if ($Arguments) { Dev-List @Arguments } else { Dev-List } }
         'info'        { if ($Arguments) { Rtb-Info @Arguments } else { Rtb-Info } }
         'health'      { if ($Arguments) { Dev-Health @Arguments } else { Dev-Health } }
         'commit'      { if ($Arguments) { Rtb-Commit @Arguments } else { Rtb-Commit } }
@@ -124,7 +126,7 @@ function rtb {
         'upgrade'     { if ($Arguments) { Rtb-Upgrade @Arguments } else { Rtb-Upgrade } }
         'uninstall'   { if ($Arguments) { Rtb-Uninstall @Arguments } else { Rtb-Uninstall } }
         'doctor'      { if ($Arguments) { Rtb-Doctor @Arguments } else { Rtb-Doctor } }
-        'status'      { if (-not (Invoke-RtbNativeRedirect 'status' $Arguments)) { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } } }
+        'status'      { if ($Arguments) { Rtb-Status @Arguments } else { Rtb-Status } }
         'ui'          { Dev-Ui }
         'help'        { Dev-Help }
         default {
