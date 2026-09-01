@@ -293,7 +293,7 @@ Import-Module 'SomeOtherModule'
                 param($Uri, $OutFile)
                 if ($Uri -match 'rtb-cli\.zip') {
                     Copy-Item $mockZipPath $OutFile -Force
-                } elseif ($Uri -match 'rtbtui') {
+                } elseif ($Uri -match 'rtb-windows-amd64') {
                     '# Mock Binary' | Set-Content $OutFile
                 }
             }

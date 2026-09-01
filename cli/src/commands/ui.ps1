@@ -8,11 +8,11 @@ function Dev-Ui {
     }
 
     $candidates = @(
-        (Get-Command 'rtbtui' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
-        (Join-Path $userBin 'rtbtui.exe'),
-        (Join-Path $userBin 'devtui.exe'),
-        (Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtbtui.exe'),
-        (Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtbtui.exe')
+        (Get-Command 'rtb' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source),
+        (Join-Path $userBin 'rtb.exe'),
+        (Join-Path $userBin 'dev.exe'),
+        (Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtb.exe'),
+        (Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtb.exe')
     )
 
     $binary = $null
@@ -24,7 +24,7 @@ function Dev-Ui {
     }
 
     if (-not $binary) {
-        Write-Host '  rtbtui binary not found.' -ForegroundColor Red
+        Write-Host '  rtb binary not found.' -ForegroundColor Red
         Write-Host '  Build it with: cargo build --release inside tui/, or run .\install.ps1' -ForegroundColor Gray
         return
     }
