@@ -181,7 +181,7 @@ require (
 
                 # 2. shell-init pwsh
                 $shellOut = (& $binPath shell-init pwsh) -join "`n"
-                $shellOut | Should -Match "function global:goto"
+                $shellOut | Should -Match "function global:rtb"
 
                 # 3. _goto-resolve
                 $projDir = Join-Path $script:baseTemp "parity_resolve_proj"
