@@ -363,15 +363,15 @@ function global:Install-Steps {
     }
 
     # Step 3: TUI Binary (Non-critical)
-    Write-Step 3 $TOTAL 'Installing rtbtui binary'
+    Write-Step 3 $TOTAL 'Installing rtb binary'
     if ($isStandalone) {
-        $binUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-windows-amd64.exe'
-        $tmpBin = Join-Path ([System.IO.Path]::GetTempPath()) "rtbtui-$(Get-Random).exe"
-        $ctx = Start-Spinner 'Downloading rtbtui.exe'
+        $binUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-windows-amd64.exe'
+        $tmpBin = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-$(Get-Random).exe"
+        $ctx = Start-Spinner 'Downloading rtb.exe'
         try {
             Invoke-WebRequest -Uri $binUrl -OutFile $tmpBin -UseBasicParsing -TimeoutSec 180 -EA Stop
-            Copy-Item $tmpBin "$script:scriptsDir\rtbtui.exe" -Force
-            Copy-Item $tmpBin "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+            Copy-Item $tmpBin "$script:scriptsDir\rtb.exe" -Force
+            Copy-Item $tmpBin "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
             Stop-Spinner $ctx $true
         } catch {
             Stop-Spinner $ctx $false
@@ -383,14 +383,14 @@ function global:Install-Steps {
         $tuiDir = Join-Path $repoRoot 'tui'
         $cargo = Get-Command cargo -ErrorAction SilentlyContinue
         if ($cargo -and (Test-Path (Join-Path $tuiDir 'Cargo.toml'))) {
-            $ctx = Start-Spinner 'Building rtbtui with Cargo'
+            $ctx = Start-Spinner 'Building rtb with Cargo'
             Push-Location $tuiDir
             try {
                 cargo build --release 2>&1 | Out-Null
-                $bin = Join-Path $tuiDir 'target\release\rtbtui.exe'
+                $bin = Join-Path $tuiDir 'target\release\rtb.exe'
                 if (Test-Path $bin) {
-                    Copy-Item $bin "$script:scriptsDir\rtbtui.exe" -Force
-                    Copy-Item $bin "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+                    Copy-Item $bin "$script:scriptsDir\rtb.exe" -Force
+                    Copy-Item $bin "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
                     Stop-Spinner $ctx $true
                 } else {
                     Stop-Spinner $ctx $false
@@ -403,10 +403,10 @@ function global:Install-Steps {
                 Pop-Location
             }
         } else {
-            $pre = Join-Path $tuiDir 'target\release\rtbtui.exe'
+            $pre = Join-Path $tuiDir 'target\release\rtb.exe'
             if (Test-Path $pre) {
-                Copy-Item $pre "$script:scriptsDir\rtbtui.exe" -Force
-                Copy-Item $pre "$script:scriptsDir\devtui.exe" -Force -ErrorAction SilentlyContinue
+                Copy-Item $pre "$script:scriptsDir\rtb.exe" -Force
+                Copy-Item $pre "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
                 Write-Warn 'cargo not found - copied prebuilt binary.'
             } else {
                 Write-Warn "cargo not found and no prebuilt binary - 'rtb ui' will not work."

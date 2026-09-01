@@ -335,50 +335,50 @@ install_steps() {
     fi
 
     # Step 3: TUI Binary (Non-critical)
-    write_step 3 $TOTAL 'Installing rtbtui binary'
+    write_step 3 $TOTAL 'Installing rtb binary'
     if [ "$IS_STANDALONE" = "1" ]; then
-        BIN_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-${OS_SLUG}-${ARCH_SLUG}"
-        start_spinner "Downloading rtbtui ($OS_SLUG/$ARCH_SLUG)"
-        if curl -fsSL --max-time 180 "$BIN_URL" -o "$BIN_DIR/rtbtui" 2>/dev/null || wget -q "$BIN_URL" -O "$BIN_DIR/rtbtui" 2>/dev/null; then
-            chmod +x "$BIN_DIR/rtbtui"
-            cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-            stop_spinner 1 'Installed rtbtui binary'
+        BIN_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-${OS_SLUG}-${ARCH_SLUG}"
+        start_spinner "Downloading rtb ($OS_SLUG/$ARCH_SLUG)"
+        if curl -fsSL --max-time 180 "$BIN_URL" -o "$BIN_DIR/rtb" 2>/dev/null || wget -q "$BIN_URL" -O "$BIN_DIR/rtb" 2>/dev/null; then
+            chmod +x "$BIN_DIR/rtb"
+            cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
+            stop_spinner 1 'Installed rtb binary'
         elif [ "$OS_SLUG" = "macos" ] && [ "$ARCH_SLUG" = "arm64" ]; then
-            FALLBACK_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-macos-amd64"
-            if curl -fsSL --max-time 180 "$FALLBACK_URL" -o "$BIN_DIR/rtbtui" 2>/dev/null; then
-                chmod +x "$BIN_DIR/rtbtui"
-                cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-                stop_spinner 1 'Installed rtbtui binary (x86_64 via Rosetta 2)'
+            FALLBACK_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-macos-amd64"
+            if curl -fsSL --max-time 180 "$FALLBACK_URL" -o "$BIN_DIR/rtb" 2>/dev/null; then
+                chmod +x "$BIN_DIR/rtb"
+                cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
+                stop_spinner 1 'Installed rtb binary (x86_64 via Rosetta 2)'
             else
-                stop_spinner 0 'Download rtbtui binary'
+                stop_spinner 0 'Download rtb binary'
                 write_warn "TUI binary download failed - 'rtb ui' unavailable, CLI is fine."
             fi
         else
-            stop_spinner 0 'Download rtbtui binary'
+            stop_spinner 0 'Download rtb binary'
             write_warn "TUI binary download failed - 'rtb ui' unavailable, CLI is fine."
         fi
     else
         TUI_DIR="$SCRIPT_DIR/tui"
         if command -v cargo >/dev/null 2>&1 && [ -f "$TUI_DIR/Cargo.toml" ]; then
-            start_spinner 'Building rtbtui with Cargo'
+            start_spinner 'Building rtb with Cargo'
             if (cd "$TUI_DIR" && cargo build --release >/dev/null 2>&1); then
-                if [ -f "$TUI_DIR/target/release/rtbtui" ]; then
-                    cp "$TUI_DIR/target/release/rtbtui" "$BIN_DIR/rtbtui"
-                    chmod +x "$BIN_DIR/rtbtui"
-                    cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-                    stop_spinner 1 'Built and installed rtbtui binary'
+                if [ -f "$TUI_DIR/target/release/rtb" ]; then
+                    cp "$TUI_DIR/target/release/rtb" "$BIN_DIR/rtb"
+                    chmod +x "$BIN_DIR/rtb"
+                    cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
+                    stop_spinner 1 'Built and installed rtb binary'
                 else
-                    stop_spinner 0 'Build rtbtui'
+                    stop_spinner 0 'Build rtb'
                     write_warn 'Cargo build succeeded but binary not found in target/release.'
                 fi
             else
-                stop_spinner 0 'Build rtbtui'
+                stop_spinner 0 'Build rtb'
                 write_warn 'Cargo build failed - retaining existing binary if present.'
             fi
-        elif [ -f "$TUI_DIR/target/release/rtbtui" ]; then
-            cp "$TUI_DIR/target/release/rtbtui" "$BIN_DIR/rtbtui"
-            chmod +x "$BIN_DIR/rtbtui"
-            cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
+        elif [ -f "$TUI_DIR/target/release/rtb" ]; then
+            cp "$TUI_DIR/target/release/rtb" "$BIN_DIR/rtb"
+            chmod +x "$BIN_DIR/rtb"
+            cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
             write_warn 'cargo not found - copied prebuilt binary.'
         else
             write_warn "cargo not found and no prebuilt binary - 'rtb ui' will not work."
