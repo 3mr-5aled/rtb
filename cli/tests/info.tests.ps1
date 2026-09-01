@@ -67,4 +67,40 @@ Describe "Extended Project Intelligence & CLI --json" {
         $parsed.name | Should -Be $script:projectName
         ($parsed.is_monorepo -ne $null) | Should -Be $true
     }
+
+    Context "Rust parity" {
+        It "invokes Rust binary when available and returns detailed metadata object in JSON mode" {
+            $bin = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
+            if (-not $bin -and $env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
+                $bin = Get-Item $env:_RTB_BIN
+            }
+            if (-not $bin) {
+                $targetBin = Join-Path $PSScriptRoot "..\..\tui\target\debug\rtb.exe"
+                if (Test-Path $targetBin) { $bin = Get-Item $targetBin }
+            }
+            if ($bin) {
+                $configPath = Join-Path $script:tempTestDir "rtb.config.json"
+                $rawConfig = @{
+                    version = "1.0.0"
+                    projectRoots = @{
+                        active = $script:activeRoot
+                    }
+                    backupRoot = ""
+                    configRoot = ""
+                    templateDir = ""
+                    cleanDeps = @{ daysInactive = 30; targets = @() }
+                    staleThresholdDays = 60
+                    gitHealth = @{ scanRoots = @() }
+                } | ConvertTo-Json -Depth 5
+                Set-Content -Path $configPath -Value $rawConfig
+
+                $binPath = if ($bin.Source) { $bin.Source } else { $bin.FullName }
+                $jsonStr = & $binPath --config $configPath info $script:projectName --json | Out-String
+                $data = $jsonStr | ConvertFrom-Json
+                $data.name | Should -Be $script:projectName
+                ($data.is_monorepo -ne $null) | Should -Be $true
+            }
+        }
+    }
 }
+
