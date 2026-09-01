@@ -200,42 +200,39 @@ Describe "Setup Wizard (install.ps1)" {
         It "Step 1 creates target directories on disk" {
             Install-Steps
             Test-Path $script:userConfigDir | Should -Be $true
-            Test-Path $script:moduleHome | Should -Be $true
             Test-Path $script:scriptsDir | Should -Be $true
         }
 
-        It "Step 2 copies local CLI module files and scripts" {
+        It "Step 2 deploys rtb binary" {
             Install-Steps
-            Test-Path (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
-            Test-Path (Join-Path $script:moduleHome 'rtb.psm1') | Should -Be $true
-            Test-Path (Join-Path $script:userConfigDir 'uninstall.ps1') | Should -Be $true
+            Test-Path (Join-Path $script:scriptsDir 'rtb.exe') | Should -Be $true
         }
 
-        It "Step 4 updates environment PATH safely" {
+        It "Step 3 updates environment PATH safely" {
             Install-Steps
             Test-Path $script:scriptsDir | Should -Be $true
             ($env:PATH -split ';') | Should -Contain $script:scriptsDir
         }
 
-        It "Step 5 injects Import-Module into target profile" {
+        It "Step 4 injects shell-init into target profile" {
             Install-Steps
             Test-Path $script:testProfile | Should -Be $true
             $content = Get-Content $script:testProfile -Raw
-            $content | Should -Match '# RTB CLI Module'
-            $content | Should -Match "Import-Module '.*?rtb\.psd1' -DisableNameChecking -Force"
+            $content | Should -Match '# RTB Shell Integration'
+            $content | Should -Match 'Invoke-Expression \(& rtb shell-init pwsh\)'
         }
 
-        It "Step 5 is idempotent and does not duplicate import blocks on repeated runs" {
+        It "Step 4 is idempotent and does not duplicate integration blocks on repeated runs" {
             Install-Steps
             Install-Steps
             $lines = Get-Content $script:testProfile
-            $matchCount = ($lines | Where-Object { $_ -match '# RTB CLI Module' }).Count
+            $matchCount = ($lines | Where-Object { $_ -match '# RTB Shell Integration' }).Count
             $matchCount | Should -Be 1
         }
     }
 
     Context "Profile Cleanup & Legacy Import Removal" {
-        It "removes legacy dev-tools and old rtb import statements before adding current import" {
+        It "removes legacy dev-tools and old rtb import statements before adding current integration" {
             $cleanSandbox = Join-Path $script:testBase "sandbox_clean_$([Guid]::NewGuid().ToString('N'))"
             New-Item -ItemType Directory -Path $cleanSandbox -Force | Out-Null
             $cleanProfile = Join-Path $cleanSandbox 'profile_with_legacy.ps1'
@@ -267,34 +264,38 @@ Import-Module 'SomeOtherModule'
             $resultContent | Should -Not -Match 'C:\\old\\path\\dev-tools'
             $resultContent | Should -Not -Match 'D:\\legacy\\rtb-command-tool'
             $resultContent | Should -Match 'SomeOtherModule'
-            $resultContent | Should -Match '# RTB CLI Module'
+            $resultContent | Should -Match '# RTB Shell Integration'
+            $resultContent | Should -Match 'Invoke-Expression \(& rtb shell-init pwsh\)'
+        }
+
+        It "silently removes Phase 2 module directory if present" {
+            $phase2Sandbox = Join-Path $script:testBase "sandbox_phase2_$([Guid]::NewGuid().ToString('N'))"
+            $oldModuleHome = Join-Path $phase2Sandbox 'module'
+            New-Item -ItemType Directory -Path $oldModuleHome -Force | Out-Null
+            '# Dummy psd1' | Set-Content (Join-Path $oldModuleHome 'rtb.psd1')
+
+            $script:userConfigDir = $phase2Sandbox
+            $script:moduleHome = $oldModuleHome
+            $script:scriptsDir = Join-Path $phase2Sandbox 'bin'
+            $script:resolvedProfiles = @(Join-Path $phase2Sandbox 'profile.ps1')
+            $script:QUIET = $true
+            $script:scriptRoot = $script:repoRoot
+            $script:isStandaloneOverride = $false
+
+            Install-Steps
+            Test-Path $oldModuleHome | Should -Be $false
         }
     }
 
     Context "Standalone Mode Simulation" {
-        It "simulates standalone zip download and extraction when running outside repo" {
+        It "simulates standalone binary download when running outside repo" {
             $standaloneSandbox = Join-Path $script:testBase "sandbox_standalone_$([Guid]::NewGuid().ToString('N'))"
             New-Item -ItemType Directory -Path $standaloneSandbox -Force | Out-Null
 
-            # Create a mock zip containing synthetic cli/rtb.psd1
-            $mockSourceDir = Join-Path $standaloneSandbox 'mock_src'
-            $mockCliDir = Join-Path $mockSourceDir 'cli'
-            New-Item -ItemType Directory -Path $mockCliDir -Force | Out-Null
-            '# Mock PSD1' | Set-Content (Join-Path $mockCliDir 'rtb.psd1')
-            '# Mock PSM1' | Set-Content (Join-Path $mockCliDir 'rtb.psm1')
-            '# Mock Logo' | Set-Content (Join-Path $mockSourceDir 'logo.txt')
-            '# Mock Uninstall' | Set-Content (Join-Path $mockSourceDir 'uninstall.ps1')
-
-            $mockZipPath = Join-Path $standaloneSandbox 'mock-rtb-cli.zip'
-            Compress-Archive -Path "$mockSourceDir\*" -DestinationPath $mockZipPath -Force
-
-            # Mock Invoke-WebRequest to copy mockZipPath instead of hitting network
             Mock Invoke-WebRequest {
                 param($Uri, $OutFile)
-                if ($Uri -match 'rtb-cli\.zip') {
-                    Copy-Item $mockZipPath $OutFile -Force
-                } elseif ($Uri -match 'rtb-windows-amd64') {
-                    '# Mock Binary' | Set-Content $OutFile
+                if ($Uri -match 'rtb-windows-amd64') {
+                    '# Mock Binary Content' | Set-Content $OutFile
                 }
             }
 
@@ -306,42 +307,7 @@ Import-Module 'SomeOtherModule'
             $script:isStandaloneOverride = $true
 
             Install-Steps
-            Test-Path (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
-            Test-Path (Join-Path $script:moduleHome 'rtb.psm1') | Should -Be $true
-            Test-Path (Join-Path $script:userConfigDir 'uninstall.ps1') | Should -Be $true
-        }
-    }
-
-    Context "Resilience & Non-Critical Error Handling" {
-        It "continues installation gracefully when TUI binary fails to download in standalone mode" {
-            $resilienceSandbox = Join-Path $script:testBase "sandbox_resilience_$([Guid]::NewGuid().ToString('N'))"
-            New-Item -ItemType Directory -Path $resilienceSandbox -Force | Out-Null
-
-            $mockSourceDir = Join-Path $resilienceSandbox 'mock_src'
-            $mockCliDir = Join-Path $mockSourceDir 'cli'
-            New-Item -ItemType Directory -Path $mockCliDir -Force | Out-Null
-            '# Mock PSD1' | Set-Content (Join-Path $mockCliDir 'rtb.psd1')
-            $mockZipPath = Join-Path $resilienceSandbox 'mock-rtb-cli.zip'
-            Compress-Archive -Path "$mockSourceDir\*" -DestinationPath $mockZipPath -Force
-
-            Mock Invoke-WebRequest {
-                param($Uri, $OutFile)
-                if ($Uri -match 'rtb-cli\.zip') {
-                    Copy-Item $mockZipPath $OutFile -Force
-                } else {
-                    throw [System.Net.WebException]::new("404 Not Found")
-                }
-            }
-
-            $script:userConfigDir = Join-Path $resilienceSandbox 'installed'
-            $script:moduleHome = Join-Path $script:userConfigDir 'module'
-            $script:scriptsDir = Join-Path $script:userConfigDir 'bin'
-            $script:resolvedProfiles = @(Join-Path $resilienceSandbox 'profile.ps1')
-            $script:QUIET = $true
-            $script:isStandaloneOverride = $true
-
-            { Install-Steps } | Should -Not -Throw
-            Test-Path (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
+            Test-Path (Join-Path $script:scriptsDir 'rtb.exe') | Should -Be $true
         }
     }
 
@@ -361,8 +327,7 @@ Import-Module 'SomeOtherModule'
             $proc.WaitForExit(30000) | Should -Be $true
             $proc.ExitCode | Should -Be 0
 
-            Test-Path (Join-Path $quietSandbox 'module\rtb.psd1') | Should -Be $true
-            Test-Path (Join-Path $quietSandbox 'bin') | Should -Be $true
+            Test-Path (Join-Path $quietSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
         }
     }
 }

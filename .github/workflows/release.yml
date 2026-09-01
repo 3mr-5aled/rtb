@@ -129,17 +129,6 @@ jobs:
       - name: Assemble Release Bundle and Checksums
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path staging -Force | Out-Null
-          Copy-Item -Path "cli" -Destination "staging\cli" -Recurse -Force
-          Copy-Item -Path "release-assets\windows\rtb.exe" -Destination "staging\rtb.exe" -Force
-          if (Test-Path "logo.txt") {
-            Copy-Item -Path "logo.txt" -Destination "staging\logo.txt" -Force
-          }
-          if (Test-Path "uninstall.ps1") {
-            Copy-Item -Path "uninstall.ps1" -Destination "staging\uninstall.ps1" -Force
-          }
-          Compress-Archive -Path "staging\*" -DestinationPath "rtb-cli.zip" -Force
-
           # Move standalone binaries for release attachment
           Move-Item -Path "release-assets\windows\rtb.exe" -Destination "rtb-windows-amd64.exe" -Force
           Move-Item -Path "release-assets\linux\rtb" -Destination "rtb-linux-amd64" -Force
@@ -157,7 +146,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            rtb-cli.zip
             rtb-windows-amd64.exe
             rtb-windows-amd64.exe.sha256
             rtb-linux-amd64
