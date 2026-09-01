@@ -145,6 +145,7 @@ mod tests {
 
     #[test]
     fn test_session_state_save_load() {
+        let _ = std::fs::remove_file(SessionState::session_state_path());
         let state = SessionState {
             active_tab: 3,
             selected_project_name: Some("test-project".into()),
