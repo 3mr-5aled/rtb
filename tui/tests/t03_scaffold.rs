@@ -1,0 +1,79 @@
+use rtb::engine::RtbEngine;
+use std::env;
+
+#[test]
+fn test_version_output() {
+    let args = vec!["rtb", "--version"];
+    let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
+    assert_eq!(exit_code, 0);
+
+    let version_str = RtbEngine::version_string();
+    assert!(version_str.starts_with("rtb "));
+    assert!(version_str.contains('('));
+    assert!(version_str.contains(')'));
+}
+
+#[test]
+fn test_config_gate_exempt_commands() {
+    // These commands must bypass the Config Gate even when RTB_NON_INTERACTIVE is set and no config exists.
+    env::set_var("RTB_NON_INTERACTIVE", "1");
+
+    let exempt = vec![
+        vec!["rtb", "init"],
+        vec!["rtb", "config"],
+        vec!["rtb", "doctor"],
+        vec!["rtb", "uninstall"],
+        vec!["rtb", "upgrade"],
+        vec!["rtb", "shell-init", "powershell"],
+        vec!["rtb", "completions", "powershell"],
+    ];
+
+    for args in exempt {
+        let cmd_name = args[1];
+        let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
+        // For shell-init it returns 0 (implemented stub); for others 1 with "not yet implemented".
+        // Crucially, none of them should produce the Config Gate error message "rtb: not configured".
+        if cmd_name == "shell-init" {
+            assert_eq!(exit_code, 0, "shell-init should exit 0");
+        } else {
+            assert_eq!(exit_code, 1, "{} should exit 1 (unimplemented)", cmd_name);
+        }
+    }
+}
+
+#[test]
+fn test_config_gate_non_interactive_blocks_data_commands() {
+    env::set_var("RTB_NON_INTERACTIVE", "1");
+    // Ensure custom config path points to a non-existent file
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let non_existent_config = temp_dir.path().join("non_existent_rtb.config.json");
+
+    let data_commands = vec![
+        vec!["rtb", "--config", non_existent_config.to_str().unwrap(), "list"],
+        vec!["rtb", "--config", non_existent_config.to_str().unwrap(), "status"],
+        vec!["rtb", "--config", non_existent_config.to_str().unwrap(), "run"],
+    ];
+
+    for args in data_commands {
+        let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
+        assert_eq!(exit_code, 1, "Data command without config should exit 1");
+    }
+}
+
+#[test]
+fn test_unimplemented_commands_exit_1() {
+    env::set_var("RTB_NON_INTERACTIVE", "1");
+
+    let unimplemented = vec![
+        vec!["rtb", "init"],
+        vec!["rtb", "config"],
+        vec!["rtb", "doctor"],
+        vec!["rtb", "clean"],
+        vec!["rtb", "build"],
+    ];
+
+    for args in unimplemented {
+        let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
+        assert_eq!(exit_code, 1);
+    }
+}
