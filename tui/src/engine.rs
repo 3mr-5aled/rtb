@@ -160,7 +160,7 @@ pub enum Commands {
         check: bool,
     },
     Uninstall {
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     Maintenance(MaintenanceArgs),
@@ -435,6 +435,7 @@ impl RtbEngine {
             Commands::Doctor => Self::execute_doctor(cli),
             Commands::Init { force } => Self::execute_init(force, cli),
             Commands::Upgrade { check } => crate::upgrade::execute_upgrade(check),
+            Commands::Uninstall { yes } => crate::uninstall::execute_uninstall(yes),
             Commands::Maintenance(m) => Self::execute_maintenance(m, cli),
             Commands::Health => Self::execute_health(cli),
             Commands::Index => Self::execute_index(cli),

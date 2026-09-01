@@ -5,3 +5,4 @@ pub mod engine;
 pub mod handlers;
 pub mod ui;
 pub mod upgrade;
+pub mod uninstall;

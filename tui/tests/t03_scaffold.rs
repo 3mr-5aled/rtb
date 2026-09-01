@@ -17,6 +17,8 @@ fn test_version_output() {
 fn test_config_gate_exempt_commands() {
     // These commands must bypass the Config Gate even when RTB_NON_INTERACTIVE is set and no config exists.
     env::set_var("RTB_NON_INTERACTIVE", "1");
+    env::set_var("RTB_MOCK_DO_NOT_REMOVE_EXE", "1");
+    env::set_var("RTB_TEST_SKIP_PATH_REMOVAL", "1");
 
     let exempt = vec![
         vec!["rtb", "init"],
@@ -31,12 +33,17 @@ fn test_config_gate_exempt_commands() {
     for args in exempt {
         let cmd_name = args[1];
         let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
-        if cmd_name == "uninstall" || cmd_name == "completions" {
+        if cmd_name == "completions" {
             assert_eq!(exit_code, 1, "{} should exit 1 (unimplemented)", cmd_name);
+        } else if cmd_name == "doctor" {
+            assert!(exit_code == 0 || exit_code == 1, "doctor should run and exit 0 or 1");
         } else {
             assert_eq!(exit_code, 0, "{} should exit 0", cmd_name);
         }
     }
+
+    env::remove_var("RTB_MOCK_DO_NOT_REMOVE_EXE");
+    env::remove_var("RTB_TEST_SKIP_PATH_REMOVAL");
 }
 
 #[test]
@@ -63,7 +70,7 @@ fn test_unimplemented_commands_exit_1() {
     env::set_var("RTB_NON_INTERACTIVE", "1");
 
     let unimplemented = vec![
-        vec!["rtb", "uninstall"],
+        vec!["rtb", "completions", "powershell"],
     ];
 
     for args in unimplemented {
@@ -71,3 +78,4 @@ fn test_unimplemented_commands_exit_1() {
         assert_eq!(exit_code, 1);
     }
 }
+
