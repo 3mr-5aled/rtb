@@ -2070,7 +2070,13 @@ function global:rtb {{
             .current_dir(&target_path)
             .status();
 
-        Ok(status.map(|s| s.code().unwrap_or(0)).unwrap_or(0))
+        match status {
+            Ok(s) => Ok(s.code().unwrap_or(1)),
+            Err(e) => {
+                eprintln!("Failed to launch agent process '{}': {}", target_agent, e);
+                Ok(1)
+            }
+        }
     }
 }
 

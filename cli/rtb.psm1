@@ -44,12 +44,12 @@ function rtb {
                 if ($manifest -and $manifest.ModuleVersion) { $ver = $manifest.ModuleVersion }
             } catch {}
         }
-        Write-Host "RTB (ﺐﺘّﺭ) CLI v$ver" -ForegroundColor Green
+        Write-Host "RTB (رتّب) CLI v$ver" -ForegroundColor Green
         return
     }
 
     # Hard-redirect ported commands to native Rust binary if available
-    $portedNativeCommands = @('list', 'status', 'info', 'config', 'new', 'pause', 'resume', 'deploy', 'archive', 'unarchive', 'run', 'build', 'test', 'clean', 'deps', 'workspace', 'agent')
+    $portedNativeCommands = @('list', 'status', 'info', 'config', 'new', 'pause', 'resume', 'deploy', 'archive', 'unarchive', 'run', 'build', 'test', 'clean', 'deps', 'workspace', 'agent', 'agy', 'claude', 'gemini', 'codex')
     if ($Command.ToLower() -in $portedNativeCommands) {
         $nativeExe = Get-RtbNativeBinary
         if ($nativeExe) {
