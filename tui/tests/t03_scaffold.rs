@@ -31,7 +31,7 @@ fn test_config_gate_exempt_commands() {
     for args in exempt {
         let cmd_name = args[1];
         let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
-        if cmd_name == "uninstall" || cmd_name == "upgrade" || cmd_name == "completions" {
+        if cmd_name == "uninstall" || cmd_name == "completions" {
             assert_eq!(exit_code, 1, "{} should exit 1 (unimplemented)", cmd_name);
         } else {
             assert_eq!(exit_code, 0, "{} should exit 0", cmd_name);
@@ -64,7 +64,6 @@ fn test_unimplemented_commands_exit_1() {
 
     let unimplemented = vec![
         vec!["rtb", "uninstall"],
-        vec!["rtb", "upgrade"],
     ];
 
     for args in unimplemented {
