@@ -699,7 +699,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rtbtui"
+name = "rtb"
 version = "0.4.0"
 dependencies = [
  "anyhow",
