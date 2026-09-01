@@ -137,7 +137,10 @@ pub enum Commands {
         days: Option<u64>,
     },
     Commit {
-        #[arg(short)]
+        #[arg(value_name = "MESSAGE")]
+        positional_message: Option<String>,
+
+        #[arg(short = 'm', long = "message")]
         message: Option<String>,
     },
     Open {
@@ -147,7 +150,10 @@ pub enum Commands {
     // --- System ---
     #[command(next_help_heading = "System")]
     Doctor,
-    Init,
+    Init {
+        #[arg(long, short = 'f')]
+        force: bool,
+    },
     Config,
     Upgrade {
         #[arg(long)]
@@ -316,7 +322,7 @@ impl RtbEngine {
 
     pub fn needs_config(cmd: &Commands) -> bool {
         match cmd {
-            Commands::Init
+            Commands::Init { .. }
             | Commands::Config
             | Commands::Doctor
             | Commands::Uninstall { .. }
@@ -368,7 +374,7 @@ impl RtbEngine {
             Commands::Commit { .. } => "commit",
             Commands::Open { .. } => "open",
             Commands::Doctor => "doctor",
-            Commands::Init => "init",
+            Commands::Init { .. } => "init",
             Commands::Config => "config",
             Commands::Upgrade { .. } => "upgrade",
             Commands::Uninstall { .. } => "uninstall",
@@ -426,6 +432,15 @@ impl RtbEngine {
             Commands::Clean { dry_run, commit, days } => {
                 Self::execute_clean(dry_run, commit, days, cli)
             }
+            Commands::Doctor => Self::execute_doctor(cli),
+            Commands::Init { force } => Self::execute_init(force, cli),
+            Commands::Maintenance(m) => Self::execute_maintenance(m, cli),
+            Commands::Health => Self::execute_health(cli),
+            Commands::Index => Self::execute_index(cli),
+            Commands::Open { project } => Self::execute_open(project, cli),
+            Commands::Commit { positional_message, message } => {
+                Self::execute_commit(message.or(positional_message), cli)
+            }
             Commands::Deps { project, json } => {
                 Self::execute_deps(project, json, cli)
             }
@@ -442,8 +457,18 @@ impl RtbEngine {
                 if !args.is_empty() {
                     let cmd_name = &args[0];
                     let remaining = if args.len() > 1 { Some(args[1].clone()) } else { None };
+                    let lower = cmd_name.to_lowercase();
+                    if lower == "backup" {
+                        return Self::execute_maintenance(MaintenanceArgs { command: Some(MaintenanceCommands::Backup) }, cli);
+                    }
+                    if lower == "env" {
+                        return Self::execute_maintenance(MaintenanceArgs { command: Some(MaintenanceCommands::Env) }, cli);
+                    }
+                    if lower == "guard" {
+                        return Self::execute_maintenance(MaintenanceArgs { command: Some(MaintenanceCommands::Guard) }, cli);
+                    }
                     if matches!(
-                        cmd_name.to_lowercase().as_str(),
+                        lower.as_str(),
                         "agy" | "claude" | "gemini" | "codex" | "cursor" | "windsurf" | "aider" | "openhands"
                     ) || crate::data::agents::is_command_installed(cmd_name) {
                         return Self::execute_agent(Some(cmd_name.clone()), remaining, false, false, cli);
@@ -1947,6 +1972,623 @@ function global:rtb {{
         }
 
         Ok(0)
+    }
+
+    fn execute_doctor(cli: &Cli) -> Result<i32> {
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » System Doctor");
+        println!("══════════════════════════════════════════\n");
+
+        let mut all_good = true;
+
+        let write_check = |pass: bool, label: &str, detail: &str| {
+            if pass {
+                println!("  ✅ {}", label);
+            } else {
+                println!("  ❌ {}", label);
+                if !detail.is_empty() {
+                    println!("     → {}", detail);
+                }
+            }
+        };
+
+        // 1. Config Check
+        println!("  Config");
+        let user_config_dir = dirs::config_dir()
+            .map(|d| d.join("rtb"))
+            .unwrap_or_else(|| PathBuf::from(".config/rtb"));
+        let user_config_file = user_config_dir.join("rtb.config.json");
+
+        let config_res = DevConfig::load_from(&cli.config);
+        let config_passed = config_res.is_ok();
+        let resolved_config_path = Self::resolve_config_path(&cli.config);
+        let config_label = if config_passed {
+            format!("rtb.config.json ({})", resolved_config_path.display())
+        } else {
+            "rtb.config.json found and parseable".to_string()
+        };
+        let detail_msg = format!("Run 'rtb init' to create your config at {}", user_config_file.display());
+        write_check(config_passed, &config_label, if config_passed { "" } else { &detail_msg });
+        if !config_passed {
+            all_good = false;
+        }
+
+        // 2. Project Roots Check (9 roots)
+        println!("\n  Project Roots");
+        if let Ok(ref cfg) = config_res {
+            let root_map = [
+                ("active", &cfg.project_roots.active, "📁", "Active"),
+                ("paused", &cfg.project_roots.paused, "⏸️", "Paused"),
+                ("planning", &cfg.project_roots.planning, "📋", "Planning"),
+                ("testing", &cfg.project_roots.testing, "🧪", "Testing"),
+                ("production", &cfg.project_roots.production, "🚀", "Production"),
+                ("staging", &cfg.project_roots.staging, "🚀", "Staging"),
+                ("vibe", &cfg.project_roots.vibe, "✨", "Vibe"),
+                ("sandbox", &cfg.project_roots.sandbox, "📦", "Sandbox"),
+                ("abandoned", &cfg.project_roots.abandoned, "🪦", "Abandoned"),
+            ];
+
+            for (key, path_str, emoji, label_name) in root_map {
+                let exists = !path_str.is_empty() && PathBuf::from(path_str).exists();
+                let label = if !path_str.is_empty() {
+                    format!("{} {} ({}) → {}", emoji, label_name, key, path_str)
+                } else {
+                    format!("{} → (not configured)", key)
+                };
+                let detail = format!("Directory does not exist. Create it or update projectRoots.{} in your config.", key);
+                write_check(exists, &label, if exists { "" } else { &detail });
+                if !exists {
+                    all_good = false;
+                }
+            }
+        } else {
+            write_check(false, "Cannot check project roots (invalid or missing config)", "Fix rtb.config.json or run 'rtb init --force'");
+            all_good = false;
+        }
+
+        // 3. Required Tools
+        println!("\n  Required Tools");
+        let git_found = crate::data::agents::is_command_installed("git");
+        write_check(git_found, "git in PATH", if git_found { "" } else { "Install git and ensure it is on your PATH" });
+        if !git_found {
+            all_good = false;
+        }
+
+        // 4. Optional Tools
+        println!("\n  Optional Tools");
+        let optionals = [
+            ("node", "Node.js (for JavaScript/TypeScript projects)"),
+            ("cargo", "Cargo / Rust (for Rust projects and rtb build)"),
+            ("python", "Python (for Python projects)"),
+            ("tar", "tar (for rtb archive/unarchive)"),
+        ];
+        for (tool, desc) in optionals {
+            let found = crate::data::agents::is_command_installed(tool);
+            let icon = if found { "  ✅" } else { "  ⚠ " };
+            println!("{} {}", icon, desc);
+        }
+
+        // 5. AI Agents
+        println!("\n  AI Agents");
+        let known_agents = ["agy", "claude", "gemini", "codex", "cursor", "windsurf", "aider", "openhands"];
+        let found_agents: Vec<&str> = known_agents.iter().copied().filter(|a| crate::data::agents::is_command_installed(a)).collect();
+        if !found_agents.is_empty() {
+            println!("  ✅ Installed: {}", found_agents.join(", "));
+        } else {
+            println!("  ⚠  No AI agents found in PATH");
+        }
+
+        // 6. TUI Binary
+        println!("\n  TUI Binary");
+        let exe_found = std::env::current_exe().is_ok();
+        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("rtb"));
+        write_check(exe_found, &format!("rtb binary installed ({})", exe_path.display()), "");
+
+        // 7. Summary
+        println!("\n══════════════════════════════════════════");
+        if all_good {
+            println!("  ✅ All checks passed — RTB is healthy!");
+        } else {
+            println!("  ❌ Some checks failed — see above for details.");
+        }
+        println!("══════════════════════════════════════════");
+
+        Ok(if all_good { 0 } else { 1 })
+    }
+
+    fn execute_init(force: bool, cli: &Cli) -> Result<i32> {
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Interactive Setup Wizard");
+        println!("══════════════════════════════════════════\n");
+
+        let user_home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let user_config_dir = dirs::config_dir()
+            .map(|d| d.join("rtb"))
+            .unwrap_or_else(|| user_home_dir.join(".config").join("rtb"));
+        let user_config_file = if let Some(ref p) = cli.config {
+            p.clone()
+        } else {
+            user_config_dir.join("rtb.config.json")
+        };
+
+        if user_config_file.exists() && !force {
+            println!("  Configuration already exists at:");
+            println!("    {}", user_config_file.display());
+            println!("  Run 'rtb config' to open and edit your configuration in your default editor.");
+            println!("  Use 'rtb init --force' to overwrite and re-run the setup wizard.");
+            println!();
+            return Ok(0);
+        }
+
+        if let Some(parent) = user_config_file.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let is_non_interactive = std::env::var("RTB_NON_INTERACTIVE").is_ok()
+            || std::env::var("CI").is_ok()
+            || std::env::var("GITHUB_ACTIONS").is_ok()
+            || !std::io::stdin().is_terminal();
+
+        let chosen_root = if is_non_interactive {
+            let d_drive = PathBuf::from("D:\\02-Projects");
+            if d_drive.exists() { d_drive } else { user_home_dir.join("Projects") }
+        } else {
+            println!("  Step 1: Workspace Root Location");
+            println!("  Where do you want to keep and manage your projects?");
+
+            let default_root = user_home_dir.join("Projects");
+            let candidate_list = [
+                default_root.clone(),
+                user_home_dir.join("dev"),
+                user_home_dir.join("code"),
+                user_home_dir.join("repos"),
+                user_home_dir.join("workspace"),
+                user_home_dir.join("src"),
+                PathBuf::from("D:\\02-Projects"),
+                PathBuf::from("D:\\Projects"),
+                PathBuf::from("D:\\dev"),
+            ];
+
+            let existing_candidates: Vec<PathBuf> = candidate_list.iter().filter(|p| p.exists()).cloned().collect();
+            let mut selected_root: Option<PathBuf> = None;
+
+            if !existing_candidates.is_empty() {
+                println!("\n  Detected existing project directories:");
+                for (idx, candidate) in existing_candidates.iter().enumerate() {
+                    println!("    [{}] {}", idx + 1, candidate.display());
+                }
+                println!("    [C] Enter custom path");
+                print!("\n  Select an option [1-{} or C] (Default: 1): ", existing_candidates.len());
+                let _ = std::io::stdout().flush();
+
+                let mut input = String::new();
+                if std::io::stdin().read_line(&mut input).is_ok() {
+                    let trimmed = input.trim();
+                    if trimmed.is_empty() || trimmed == "1" {
+                        selected_root = Some(existing_candidates[0].clone());
+                    } else if let Ok(n) = trimmed.parse::<usize>() {
+                        if n >= 1 && n <= existing_candidates.len() {
+                            selected_root = Some(existing_candidates[n - 1].clone());
+                        }
+                    }
+                }
+            }
+
+            if let Some(r) = selected_root {
+                r
+            } else {
+                print!("  Enter your projects root path (Default: {}): ", default_root.display());
+                let _ = std::io::stdout().flush();
+                let mut input = String::new();
+                let _ = std::io::stdin().read_line(&mut input);
+                let trimmed = input.trim().trim_matches(|c| c == '"' || c == '\'');
+                if trimmed.is_empty() {
+                    default_root
+                } else {
+                    PathBuf::from(trimmed)
+                }
+            }
+        };
+
+        println!("  Selected root: {}", chosen_root.display());
+        std::fs::create_dir_all(&chosen_root)?;
+
+        // Build projectRoots
+        let active_path = chosen_root.join("02-Projects").join("01-Development").join("01-Active");
+        let paused_path = chosen_root.join("02-Projects").join("01-Development").join("04-Paused");
+        let planning_path = chosen_root.join("02-Projects").join("01-Development").join("02-Planning");
+        let testing_path = chosen_root.join("02-Projects").join("01-Development").join("03-Testing");
+        let abandoned_path = chosen_root.join("02-Projects").join("01-Development").join("05-Abandoned");
+        let prod_path = chosen_root.join("02-Projects").join("02-Deployed").join("01-Production");
+        let staging_path = chosen_root.join("02-Projects").join("02-Deployed").join("02-Staging");
+        let vibe_path = chosen_root.join("02-Projects").join("03-Vibe-Coding");
+        let sandbox_path = chosen_root.join("01-SandBox");
+
+        for p in &[&active_path, &paused_path, &planning_path, &testing_path, &abandoned_path, &prod_path, &staging_path, &vibe_path, &sandbox_path] {
+            let _ = std::fs::create_dir_all(p);
+        }
+
+        let backup_root = chosen_root.join("08-Backup");
+        let config_root = chosen_root.join("05-Config");
+        let template_dir = chosen_root.join("05-Config").join("templates");
+
+        let new_config = serde_json::json!({
+            "version": "1.0.0",
+            "projectRoots": {
+                "active": { "path": active_path.to_string_lossy(), "label": "Active", "emoji": "📁" },
+                "paused": { "path": paused_path.to_string_lossy(), "label": "Paused", "emoji": "⏸️" },
+                "planning": { "path": planning_path.to_string_lossy(), "label": "Planning", "emoji": "📋" },
+                "testing": { "path": testing_path.to_string_lossy(), "label": "Testing", "emoji": "🧪" },
+                "abandoned": { "path": abandoned_path.to_string_lossy(), "label": "Abandoned", "emoji": "🪦" },
+                "production": { "path": prod_path.to_string_lossy(), "label": "Production", "emoji": "🚀" },
+                "staging": { "path": staging_path.to_string_lossy(), "label": "Staging", "emoji": "🚀" },
+                "vibe": { "path": vibe_path.to_string_lossy(), "label": "Vibe Coding", "emoji": "✨" },
+                "sandbox": { "path": sandbox_path.to_string_lossy(), "label": "Sandbox", "emoji": "📦" }
+            },
+            "backupRoot": backup_root.to_string_lossy(),
+            "configRoot": config_root.to_string_lossy(),
+            "templateDir": template_dir.to_string_lossy(),
+            "cleanDeps": {
+                "daysInactive": 60,
+                "targets": ["node_modules", ".venv", ".next", "__pycache__", "dist", "build", "target"]
+            },
+            "staleThresholdDays": 90,
+            "gitHealth": {
+                "scanRoots": [
+                    chosen_root.join("02-Projects").to_string_lossy(),
+                    sandbox_path.to_string_lossy()
+                ]
+            }
+        });
+
+        let content = serde_json::to_string_pretty(&new_config)?;
+        std::fs::write(&user_config_file, content)?;
+
+        println!("\n  ✓ RTB configuration successfully initialized!");
+        println!("    Configuration file: {}", user_config_file.display());
+        println!("    Workspace root    : {}", chosen_root.display());
+        println!("    💡 To customize emojis, labels, or paths, run 'rtb config' anytime.");
+        println!("\n  Ready to build! Run 'rtb help' or launch the TUI with 'rtb ui'.");
+
+        Ok(0)
+    }
+
+    fn execute_maintenance(m_args: MaintenanceArgs, _cli: &Cli) -> Result<i32> {
+        let script_name = match m_args.command {
+            Some(MaintenanceCommands::Backup) => "backup-configs.ps1".to_string(),
+            Some(MaintenanceCommands::Env) => "backup-env-files.ps1".to_string(),
+            Some(MaintenanceCommands::Guard) => "guard-d-drive.ps1".to_string(),
+            Some(MaintenanceCommands::Run { script }) => {
+                if script.ends_with(".ps1") { script } else { format!("{}.ps1", script) }
+            }
+            None => "weekly-maintenance.ps1".to_string(),
+        };
+
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Maintenance: {}", script_name);
+        println!("══════════════════════════════════════════\n");
+
+        let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+        let candidate_paths = [
+            exe_dir.as_ref().map(|d| d.join("scripts").join(&script_name)),
+            exe_dir.as_ref().map(|d| d.join("cli").join("scripts").join(&script_name)),
+            Some(cwd.join("scripts").join(&script_name)),
+            Some(cwd.join("cli").join("scripts").join(&script_name)),
+            dirs::config_dir().map(|d| d.join("rtb").join("bin").join(&script_name)),
+        ];
+
+        let mut resolved_script: Option<PathBuf> = None;
+        for cand in candidate_paths.into_iter().flatten() {
+            if cand.is_file() {
+                resolved_script = Some(cand);
+                break;
+            }
+        }
+
+        let script_path = match resolved_script {
+            Some(p) => p,
+            None => {
+                eprintln!("Maintenance script '{}' not found.", script_name);
+                return Ok(1);
+            }
+        };
+
+        let pwsh_bin = if crate::data::agents::is_command_installed("pwsh") {
+            "pwsh"
+        } else {
+            "powershell"
+        };
+
+        let status = std::process::Command::new(pwsh_bin)
+            .arg("-NoProfile")
+            .arg("-File")
+            .arg(&script_path)
+            .status();
+
+        match status {
+            Ok(s) => Ok(s.code().unwrap_or(1)),
+            Err(e) => {
+                eprintln!("Failed to execute script '{}': {}", script_path.display(), e);
+                Ok(1)
+            }
+        }
+    }
+
+    fn execute_health(cli: &Cli) -> Result<i32> {
+        let config = DevConfig::load_from(&cli.config).ok();
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Git Repository Health");
+        println!("══════════════════════════════════════════\n");
+
+        let scan_roots = if let Some(ref cfg) = config {
+            if !cfg.git_health.scan_roots.is_empty() {
+                cfg.git_health.scan_roots.clone()
+            } else {
+                vec![
+                    cfg.project_roots.active.clone(),
+                    cfg.project_roots.paused.clone(),
+                ]
+            }
+        } else {
+            vec![".".to_string()]
+        };
+
+        let stale_threshold = config.as_ref().map(|c| c.stale_threshold_days).unwrap_or(90);
+
+        let mut scanned = 0;
+        let mut issues = 0;
+
+        fn walk_git_repos(dir: &std::path::Path, repos: &mut Vec<PathBuf>) {
+            if !dir.is_dir() { return; }
+            if dir.join(".git").exists() {
+                repos.push(dir.to_path_buf());
+                return;
+            }
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_dir() {
+                        let file_name = entry.file_name().to_string_lossy().to_string();
+                        if file_name == "node_modules" || file_name == ".venv" || file_name == "target" || file_name == ".git" {
+                            continue;
+                        }
+                        walk_git_repos(&p, repos);
+                    }
+                }
+            }
+        }
+
+        let mut repos = Vec::new();
+        for root_str in scan_roots {
+            if root_str.is_empty() { continue; }
+            let root_path = PathBuf::from(root_str);
+            if root_path.exists() {
+                walk_git_repos(&root_path, &mut repos);
+            }
+        }
+
+        let now = chrono::Local::now();
+
+        for repo in repos {
+            scanned += 1;
+            let mut repo_issues = Vec::new();
+
+            let porcelain = crate::data::scanner::run_git(&repo, &["status", "--porcelain"]);
+            if let Some(ref p) = porcelain {
+                let count = p.lines().filter(|l| !l.trim().is_empty()).count();
+                if count > 0 {
+                    repo_issues.push(format!("UNCOMMITTED ({} files)", count));
+                }
+            }
+
+            let unpushed = crate::data::scanner::run_git(&repo, &["log", "--branches", "--not", "--remotes", "--oneline"]);
+            if let Some(ref u) = unpushed {
+                let count = u.lines().filter(|l| !l.trim().is_empty()).count();
+                if count > 0 {
+                    repo_issues.push(format!("UNPUSHED ({})", count));
+                }
+            }
+
+            let last_rel = crate::data::scanner::run_git(&repo, &["log", "-1", "--format=%cr"])
+                .unwrap_or_default()
+                .trim()
+                .to_string();
+
+            let last_date_str = crate::data::scanner::run_git(&repo, &["log", "-1", "--format=%ai"]);
+            if let Some(d_str) = last_date_str {
+                let trimmed = d_str.trim();
+                if let Ok(parsed) = chrono::DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S %z") {
+                    let days = (now.signed_duration_since(parsed.with_timezone(&chrono::Local))).num_days();
+                    if days > stale_threshold as i64 {
+                        repo_issues.push(format!("STALE ({} days)", days));
+                    }
+                }
+            }
+
+            let remote = crate::data::scanner::run_git(&repo, &["remote"]);
+            if remote.as_deref().unwrap_or("").trim().is_empty() {
+                repo_issues.push("NO REMOTE".to_string());
+            }
+
+            if !repo_issues.is_empty() {
+                issues += 1;
+                println!("\n  {}", repo.display());
+                if !last_rel.is_empty() {
+                    println!("    Last commit: {}", last_rel);
+                }
+                for issue in repo_issues {
+                    println!("    ⚠ {}", issue);
+                }
+            }
+        }
+
+        println!("\n  Scanned: {} repos | Issues: {}", scanned, issues);
+        Ok(0)
+    }
+
+    fn execute_index(cli: &Cli) -> Result<i32> {
+        let config = DevConfig::load_from(&cli.config)?;
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Project Index Generator");
+        println!("══════════════════════════════════════════\n");
+
+        let projects = scan_all_projects(&config);
+        let date_str = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+
+        let mut output = format!(
+            "# Project Index\n\n> Generated {}\n\n| Project | Status | Stack | Last Modified |\n|:---|:---|:---|:---|\n",
+            date_str
+        );
+
+        let total = projects.len();
+        for p in &projects {
+            let stack_str = if p.stack.is_empty() {
+                "-".to_string()
+            } else {
+                p.stack.join(", ")
+            };
+            let last_mod = p.last_modified_str();
+            output.push_str(&format!(
+                "| {} | {} | {} | {} |\n",
+                p.name,
+                p.status.label(),
+                stack_str,
+                last_mod
+            ));
+        }
+
+        output.push_str(&format!("\n---\n*Total: {} projects*\n", total));
+
+        let active_path = PathBuf::from(&config.project_roots.active);
+        let out_path = if active_path.exists() {
+            active_path.parent().unwrap_or(&active_path).join("PROJECT-INDEX.md")
+        } else {
+            PathBuf::from("PROJECT-INDEX.md")
+        };
+
+        std::fs::write(&out_path, output)?;
+        println!("  Generated index: {} projects → {}", total, out_path.display());
+        Ok(0)
+    }
+
+    fn execute_open(project: Option<String>, cli: &Cli) -> Result<i32> {
+        let target_path = match Self::resolve_project_or_cwd(project.as_deref(), cli) {
+            Ok(p) => p,
+            Err(_) => return Ok(1),
+        };
+
+        let folder_name = target_path
+            .file_name()
+            .unwrap_or(target_path.as_os_str())
+            .to_string_lossy();
+
+        println!("Opening project '{}' in file explorer...", folder_name);
+        println!("  Path: {}", target_path.display());
+
+        let is_non_interactive = std::env::var("RTB_NON_INTERACTIVE").is_ok()
+            || std::env::var("CI").is_ok()
+            || std::env::var("GITHUB_ACTIONS").is_ok();
+
+        if is_non_interactive {
+            return Ok(0);
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("explorer.exe")
+                .arg(&target_path)
+                .status();
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("open")
+                .arg(&target_path)
+                .status();
+        }
+
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+        {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(&target_path)
+                .status();
+        }
+
+        Ok(0)
+    }
+
+    fn execute_commit(message: Option<String>, _cli: &Cli) -> Result<i32> {
+        println!("══════════════════════════════════════════");
+        println!("  rtb (رتّب) » Git Commit & Push");
+        println!("══════════════════════════════════════════\n");
+
+        let cwd = std::env::current_dir()?;
+        if !cwd.join(".git").exists() {
+            eprintln!("  Error: Current directory is not a Git repository.");
+            return Ok(1);
+        }
+
+        let status = match crate::data::scanner::run_git(&cwd, &["status", "--short"]) {
+            Some(s) if !s.trim().is_empty() => s,
+            _ => {
+                println!("  Working tree is clean. Nothing to commit.");
+                return Ok(0);
+            }
+        };
+
+        println!("  Changed Files:");
+        for line in status.lines() {
+            if !line.trim().is_empty() {
+                println!("    {}", line.trim());
+            }
+        }
+        println!();
+
+        let commit_msg = if let Some(m) = message {
+            m
+        } else {
+            let is_non_interactive = std::env::var("RTB_NON_INTERACTIVE").is_ok()
+                || std::env::var("CI").is_ok()
+                || std::env::var("GITHUB_ACTIONS").is_ok()
+                || !std::io::stdin().is_terminal();
+
+            if is_non_interactive {
+                "update: sync workspace changes".to_string()
+            } else {
+                print!("  Enter Commit Message: ");
+                let _ = std::io::stdout().flush();
+                let mut input = String::new();
+                let _ = std::io::stdin().read_line(&mut input);
+                let trimmed = input.trim();
+                if trimmed.is_empty() {
+                    "update: sync workspace changes".to_string()
+                } else {
+                    trimmed.to_string()
+                }
+            }
+        };
+
+        println!("  Staging files (git add .)...");
+        let _ = crate::data::scanner::run_git(&cwd, &["add", "."]);
+
+        println!("  Running git commit...");
+        let commit_res = std::process::Command::new(Self::get_cmd("git"))
+            .args(&["commit", "-m", &commit_msg])
+            .current_dir(&cwd)
+            .status();
+
+        match commit_res {
+            Ok(s) if s.success() => {
+                println!("  Successfully committed with message: '{}'", commit_msg);
+                Ok(0)
+            }
+            _ => {
+                eprintln!("  Git commit failed.");
+                Ok(1)
+            }
+        }
     }
 
     fn execute_goto_resolve(query: Option<String>, cli: &Cli) -> Result<i32> {
