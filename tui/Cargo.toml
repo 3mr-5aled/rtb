@@ -1,6 +1,6 @@
 [package]
 name = "rtb"
-version = "0.4.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Amr Khaled <3mr-5aled>"]
 description = "RTB (رتّب) Interactive Terminal Operations Center"
