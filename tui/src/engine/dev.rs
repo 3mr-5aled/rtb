@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::io::Write;
+use std::io::{IsTerminal, Write};
 use std::path::PathBuf;
 use crate::config::DevConfig;
 use crate::engine::Cli;
