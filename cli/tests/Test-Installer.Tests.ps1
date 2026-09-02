@@ -327,7 +327,7 @@ Import-Module 'SomeOtherModule'
             $proc.WaitForExit(30000) | Should -Be $true
             $proc.ExitCode | Should -Be 0
 
-            Test-Path (Join-Path $quietSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
+            Test-Path (Join-Path $quietSandbox 'bin\rtb.exe') | Should -Be $true
         }
     }
 }
