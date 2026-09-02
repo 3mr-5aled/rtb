@@ -7,6 +7,7 @@ InModuleScope rtb {
         BeforeAll {
             $script:stressTemp = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_stress_ch2_$([Guid]::NewGuid().ToString('N'))"
             New-Item -ItemType Directory -Path $script:stressTemp -Force | Out-Null
+            Mock Test-RtbConfigured { $true }
         }
 
         AfterAll {
