@@ -17,54 +17,72 @@ pub fn execute_goto_resolve(query: Option<String>, cli: &Cli) -> Result<i32> {
         return Ok(1);
     }
 
-    // 1. Exact match
-    if let Some(p) = projects.iter().find(|p| p.name.to_lowercase() == target) {
-        println!("{}", p.path.display());
-        return Ok(0);
-    }
-
-    // 2. Substring matches
-    let matches: Vec<_> = projects
-        .iter()
-        .filter(|p| p.name.to_lowercase().contains(&target))
-        .collect();
-
-    if matches.len() == 1 {
-        println!("{}", matches[0].path.display());
-        return Ok(0);
-    } else if matches.len() > 1 {
-        if std::io::stdin().is_terminal() {
-            eprintln!("Multiple projects match '{}':", target);
-            for (idx, p) in matches.iter().enumerate() {
-                eprintln!("  [{}] {} ({})", idx + 1, p.name, p.path.display());
-            }
-            eprint!("Select project (1-{}): ", matches.len());
-            let _ = std::io::stderr().flush();
-
-            let mut input = String::new();
-            if std::io::stdin().read_line(&mut input).is_ok() {
-                if let Ok(choice) = input.trim().parse::<usize>() {
-                    if choice >= 1 && choice <= matches.len() {
-                        println!("{}", matches[choice - 1].path.display());
-                        return Ok(0);
-                    }
-                }
-            }
-            eprintln!("Invalid selection.");
-            return Ok(1);
+    // Tiered scoring:
+    // Exact: 100, Prefix: 75, Substring: 50, Path substring: 25
+    let mut scored: Vec<(&crate::data::project::Project, u32)> = Vec::new();
+    for p in &projects {
+        let name_lower = p.name.to_lowercase();
+        let path_lower = p.path.to_string_lossy().to_lowercase();
+        let score = if name_lower == target {
+            100
+        } else if name_lower.starts_with(&target) {
+            75
+        } else if name_lower.contains(&target) {
+            50
+        } else if path_lower.contains(&target) {
+            25
         } else {
-            let names: Vec<String> = matches.iter().map(|p| p.name.clone()).collect();
-            eprintln!(
-                "rtb: multiple projects found matching '{}': {}",
-                target,
-                names.join(", ")
-            );
-            return Ok(1);
+            0
+        };
+
+        if score > 0 {
+            scored.push((p, score));
         }
     }
 
-    eprintln!("rtb: no project found matching '{}'", target);
-    Ok(1)
+    scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.name.cmp(&b.0.name)));
+
+    if scored.is_empty() {
+        eprintln!("rtb: no project found matching '{}'", target);
+        return Ok(1);
+    }
+
+    let top_score = scored[0].1;
+    let top_matches: Vec<_> = scored.iter().filter(|(_, s)| *s == top_score).collect();
+
+    if top_matches.len() == 1 {
+        println!("{}", top_matches[0].0.path.display());
+        return Ok(0);
+    }
+
+    if std::io::stdin().is_terminal() {
+        eprintln!("Multiple projects match '{}':", target);
+        for (idx, (p, score)) in scored.iter().enumerate() {
+            eprintln!("  [{}] {} ({}) [Score: {}]", idx + 1, p.name, p.path.display(), score);
+        }
+        eprint!("Select project (1-{}): ", scored.len());
+        let _ = std::io::stderr().flush();
+
+        let mut input = String::new();
+        if std::io::stdin().read_line(&mut input).is_ok() {
+            if let Ok(choice) = input.trim().parse::<usize>() {
+                if choice >= 1 && choice <= scored.len() {
+                    println!("{}", scored[choice - 1].0.path.display());
+                    return Ok(0);
+                }
+            }
+        }
+        eprintln!("Invalid selection.");
+        return Ok(1);
+    } else {
+        let names: Vec<String> = top_matches.iter().map(|(p, _)| p.name.clone()).collect();
+        eprintln!(
+            "rtb: multiple projects found matching '{}': {}",
+            target,
+            names.join(", ")
+        );
+        return Ok(1);
+    }
 }
 
 pub fn execute_agent(
@@ -105,7 +123,7 @@ pub fn execute_agent(
     }
 
     if list {
-        let agents = crate::data::agents::get_installed_agents();
+        let agents = crate::data::agents::AgentOrchestrator::discover();
         println!("══════════════════════════════════════════");
         println!("  rtb (رتّب) » Installed AI Agents");
         println!("══════════════════════════════════════════\n");
@@ -119,7 +137,7 @@ pub fn execute_agent(
 
     let target_agent = match agent_name {
         Some(n) => n,
-        None => match crate::data::agents::get_default_agent() {
+        None => match crate::data::agents::AgentOrchestrator::default_agent() {
             Some(a) => a.command,
             None => {
                 eprintln!("No installed AI agents found in PATH.");
@@ -128,7 +146,7 @@ pub fn execute_agent(
         },
     };
 
-    if !crate::data::agents::is_command_installed(&target_agent) {
+    if !crate::data::agents::AgentOrchestrator::is_installed(&target_agent) {
         eprintln!("Agent '{}' not found in PATH.", target_agent);
         return Ok(1);
     }
@@ -155,7 +173,7 @@ pub fn execute_agent(
         }
     });
 
-    let _ = crate::data::agents::create_agent_context_file(&proj);
+    let _ = crate::data::agents::AgentOrchestrator::generate_context(&proj);
 
     println!("══════════════════════════════════════════");
     println!("  rtb (رتّب) » Launching AI Agent ({})", target_agent);
@@ -163,13 +181,8 @@ pub fn execute_agent(
     println!("  Context generated: {}", target_path.join(".rtb_context.md").display());
     println!("  Launching process '{}' in {}...\n", target_agent, target_path.display());
 
-    let cmd_to_run = get_cmd(&target_agent);
-    let status = std::process::Command::new(cmd_to_run)
-        .current_dir(&target_path)
-        .status();
-
-    match status {
-        Ok(s) => Ok(s.code().unwrap_or(1)),
+    match crate::data::agents::AgentOrchestrator::launch(&target_agent, &target_path) {
+        Ok(code) => Ok(code),
         Err(e) => {
             eprintln!("Failed to launch agent process '{}': {}", target_agent, e);
             Ok(1)

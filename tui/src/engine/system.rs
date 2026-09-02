@@ -352,6 +352,66 @@ pub fn execute_doctor(cli: &Cli) -> Result<i32> {
     Ok(0)
 }
 
+pub struct MaintenanceTaskRegistry;
+
+impl MaintenanceTaskRegistry {
+    pub fn resolve_script(script_name: &str, custom_config: &Option<PathBuf>) -> Option<PathBuf> {
+        let cfg = DevConfig::load_from(custom_config).ok();
+        let config_scripts_dir = cfg.as_ref().and_then(|c| {
+            if c.config_root.trim().is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(&c.config_root).join("scripts"))
+            }
+        });
+
+        let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+        let candidate_paths = [
+            config_scripts_dir.as_ref().map(|d| d.join(script_name)),
+            exe_dir.as_ref().map(|d| d.join("scripts").join(script_name)),
+            exe_dir.as_ref().map(|d| d.join("cli").join("scripts").join(script_name)),
+            Some(cwd.join("scripts").join(script_name)),
+            Some(cwd.join("cli").join("scripts").join(script_name)),
+            dirs::config_dir().map(|d| d.join("rtb").join("bin").join(script_name)),
+            dirs::config_dir().map(|d| d.join("rtb").join("scripts").join(script_name)),
+        ];
+
+        candidate_paths.into_iter().flatten().find(|p| p.is_file())
+    }
+
+    pub fn execute(script_name: &str, custom_config: &Option<PathBuf>) -> Result<i32> {
+        let script_path = match Self::resolve_script(script_name, custom_config) {
+            Some(p) => p,
+            None => {
+                eprintln!("Maintenance script '{}' not found.", script_name);
+                return Ok(1);
+            }
+        };
+
+        let pwsh_bin = if crate::data::agents::is_command_installed("pwsh") {
+            "pwsh"
+        } else {
+            "powershell"
+        };
+
+        let status = std::process::Command::new(pwsh_bin)
+            .arg("-NoProfile")
+            .arg("-File")
+            .arg(&script_path)
+            .status();
+
+        match status {
+            Ok(s) => Ok(s.code().unwrap_or(1)),
+            Err(e) => {
+                eprintln!("Failed to execute script '{}': {}", script_path.display(), e);
+                Ok(1)
+            }
+        }
+    }
+}
+
 pub fn execute_maintenance(m_args: MaintenanceArgs, cli: &Cli) -> Result<i32> {
     let cmd = m_args.command.unwrap_or(MaintenanceCommands::Run {
         script: "maintenance.ps1".to_string(),
@@ -374,63 +434,7 @@ pub fn execute_maintenance(m_args: MaintenanceArgs, cli: &Cli) -> Result<i32> {
     println!("  rtb (رتّب) » Maintenance: {}", script_name);
     println!("══════════════════════════════════════════\n");
 
-    let cfg = DevConfig::load_from(&cli.config).ok();
-    let config_scripts_dir = cfg.as_ref().and_then(|c| {
-        if c.config_root.trim().is_empty() {
-            None
-        } else {
-            Some(PathBuf::from(&c.config_root).join("scripts"))
-        }
-    });
-
-    let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-
-    let candidate_paths = [
-        config_scripts_dir.as_ref().map(|d| d.join(&script_name)),
-        exe_dir.as_ref().map(|d| d.join("scripts").join(&script_name)),
-        exe_dir.as_ref().map(|d| d.join("cli").join("scripts").join(&script_name)),
-        Some(cwd.join("scripts").join(&script_name)),
-        Some(cwd.join("cli").join("scripts").join(&script_name)),
-        dirs::config_dir().map(|d| d.join("rtb").join("bin").join(&script_name)),
-        dirs::config_dir().map(|d| d.join("rtb").join("scripts").join(&script_name)),
-    ];
-
-    let mut resolved_script: Option<PathBuf> = None;
-    for cand in candidate_paths.into_iter().flatten() {
-        if cand.is_file() {
-            resolved_script = Some(cand);
-            break;
-        }
-    }
-
-    let script_path = match resolved_script {
-        Some(p) => p,
-        None => {
-            eprintln!("Maintenance script '{}' not found.", script_name);
-            return Ok(1);
-        }
-    };
-
-    let pwsh_bin = if crate::data::agents::is_command_installed("pwsh") {
-        "pwsh"
-    } else {
-        "powershell"
-    };
-
-    let status = std::process::Command::new(pwsh_bin)
-        .arg("-NoProfile")
-        .arg("-File")
-        .arg(&script_path)
-        .status();
-
-    match status {
-        Ok(s) => Ok(s.code().unwrap_or(1)),
-        Err(e) => {
-            eprintln!("Failed to execute script '{}': {}", script_path.display(), e);
-            Ok(1)
-        }
-    }
+    MaintenanceTaskRegistry::execute(&script_name, &cli.config)
 }
 
 pub fn print_shell_init(shell: ShellChoice) {
