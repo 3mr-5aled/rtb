@@ -19,13 +19,27 @@ fn test_config_gate_exempt_commands() {
     env::set_var("RTB_NON_INTERACTIVE", "1");
     env::set_var("RTB_MOCK_DO_NOT_REMOVE_EXE", "1");
     env::set_var("RTB_TEST_SKIP_PATH_REMOVAL", "1");
+    let temp = tempfile::tempdir().expect("tempdir");
+    let mock_dir = temp.path().join("mock_release");
+    std::fs::create_dir_all(&mock_dir).expect("create mock_dir");
+    let release_json = serde_json::json!({
+        "tag_name": "v1.0.0",
+        "html_url": "https://github.com/3mr-5aled/rtb/releases/tag/v1.0.0",
+        "assets": []
+    });
+    std::fs::write(
+        mock_dir.join("release.json"),
+        serde_json::to_string(&release_json).expect("serialize release json"),
+    )
+    .expect("write release json");
+    env::set_var("RTB_MOCK_RELEASE_DIR", mock_dir.to_str().expect("mock_dir utf8"));
 
     let exempt = vec![
         vec!["rtb", "init"],
         vec!["rtb", "config"],
         vec!["rtb", "doctor"],
         vec!["rtb", "uninstall"],
-        vec!["rtb", "upgrade"],
+        vec!["rtb", "upgrade", "--check"],
         vec!["rtb", "shell-init", "powershell"],
         vec!["rtb", "completions", "powershell"],
     ];
@@ -44,6 +58,7 @@ fn test_config_gate_exempt_commands() {
 
     env::remove_var("RTB_MOCK_DO_NOT_REMOVE_EXE");
     env::remove_var("RTB_TEST_SKIP_PATH_REMOVAL");
+    env::remove_var("RTB_MOCK_RELEASE_DIR");
 }
 
 #[test]
@@ -101,4 +116,3 @@ fn test_unimplemented_commands_exit_1() {
         assert_eq!(exit_code, 1);
     }
 }
-
