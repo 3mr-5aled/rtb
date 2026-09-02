@@ -44,13 +44,11 @@ Describe "Setup Wizard Adversarial Stress Tests (Challenger 1)" {
             { Install-Steps } | Should -Not -Throw
 
             Test-Path -LiteralPath $script:userConfigDir | Should -Be $true
-            Test-Path -LiteralPath (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
-            Test-Path -LiteralPath (Join-Path $script:scriptsDir 'logo.txt') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $script:scriptsDir 'rtb.exe') | Should -Be $true
             Test-Path -LiteralPath $profilePath | Should -Be $true
 
             $profContent = Get-Content -LiteralPath $profilePath -Raw
-            $expectedEscapedPsd = [regex]::Escape((Join-Path $script:moduleHome 'rtb.psd1'))
-            $profContent | Should -Match "Import-Module '$expectedEscapedPsd'"
+            $profContent | Should -Match "Invoke-Expression \(& rtb shell-init pwsh\)"
         }
 
         It "handles installation paths with Unicode, RTL/Arabic, CJK, and accented characters" {
@@ -68,12 +66,11 @@ Describe "Setup Wizard Adversarial Stress Tests (Challenger 1)" {
             { Install-Steps } | Should -Not -Throw
 
             Test-Path -LiteralPath $script:userConfigDir | Should -Be $true
-            Test-Path -LiteralPath (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $script:scriptsDir 'rtb.exe') | Should -Be $true
             Test-Path -LiteralPath $profilePath | Should -Be $true
 
             $profContent = Get-Content -LiteralPath $profilePath -Raw -Encoding UTF8
-            $expectedEscapedPsd = [regex]::Escape((Join-Path $script:moduleHome 'rtb.psd1'))
-            $profContent | Should -Match "Import-Module '$expectedEscapedPsd'"
+            $profContent | Should -Match "Invoke-Expression \(& rtb shell-init pwsh\)"
         }
 
         It "handles deeply nested directories (10+ levels deep) where parent directories do not exist" {
@@ -93,7 +90,7 @@ Describe "Setup Wizard Adversarial Stress Tests (Challenger 1)" {
             { Install-Steps } | Should -Not -Throw
 
             Test-Path -LiteralPath $script:userConfigDir | Should -Be $true
-            Test-Path -LiteralPath (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $script:scriptsDir 'rtb.exe') | Should -Be $true
             Test-Path -LiteralPath $deepProfile | Should -Be $true
         }
     }
@@ -113,7 +110,7 @@ Describe "Setup Wizard Adversarial Stress Tests (Challenger 1)" {
             { Install-Steps } | Should -Not -Throw
             Test-Path -LiteralPath $nonExistentProfile | Should -Be $true
             $content = Get-Content -LiteralPath $nonExistentProfile -Raw
-            $content | Should -Match '# RTB CLI Module'
+            $content | Should -Match '# RTB Shell Integration'
         }
 
         It "handles completely empty (0-byte) profile cleanly" {
@@ -130,8 +127,8 @@ Describe "Setup Wizard Adversarial Stress Tests (Challenger 1)" {
 
             { Install-Steps } | Should -Not -Throw
             $content = Get-Content -LiteralPath $emptyProfile -Raw
-            $content | Should -Match '# RTB CLI Module'
-            $content | Should -Match "Import-Module '.*?rtb\.psd1'"
+            $content | Should -Match '# RTB Shell Integration'
+            $content | Should -Match "Invoke-Expression \(& rtb shell-init pwsh\)"
         }
 
         It "cleans up multiple mixed legacy formats while preserving arbitrary user functions and environment vars" {
@@ -180,9 +177,9 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $cleaned | Should -Not -Match 'E:\\another\\dev-cli'
             $cleaned | Should -Not -Match 'F:\\legacy\\rtb'
 
-            # Ensure exactly ONE # RTB CLI Module comment block
+            # Ensure exactly ONE # RTB Shell Integration comment block
             $lines = Get-Content -LiteralPath $dirtyProfile
-            $commentCount = ($lines | Where-Object { $_ -match '#\s*RTB CLI Module' }).Count
+            $commentCount = ($lines | Where-Object { $_ -match '#\s*RTB Shell Integration' }).Count
             $commentCount | Should -Be 1
         }
 
@@ -203,8 +200,8 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             }
 
             $lines = Get-Content -LiteralPath $idempotentProfile
-            $headerCount = ($lines | Where-Object { $_ -match '#\s*RTB CLI Module' }).Count
-            $importCount = ($lines | Where-Object { $_ -match "Import-Module '.*?rtb\.psd1'" }).Count
+            $headerCount = ($lines | Where-Object { $_ -match '#\s*RTB Shell Integration' }).Count
+            $importCount = ($lines | Where-Object { $_ -match "Invoke-Expression \(& rtb shell-init pwsh\)" }).Count
 
             $headerCount | Should -Be 1
             $importCount | Should -Be 1
@@ -213,7 +210,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
     }
 
     Context "Stress Dimension 3: Standalone Simulation & Network Resilience" {
-        It "throws cleanly when standalone zip download fails (fatal error)" {
+        It "throws cleanly when standalone binary download fails (fatal error)" {
             $fatalSandbox = Join-Path $script:stressBase "sandbox_fatal_net"
             New-Item -ItemType Directory -Path $fatalSandbox -Force | Out-Null
 
@@ -229,38 +226,6 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $script:isStandaloneOverride = $true
 
             { Install-Steps } | Should -Throw
-        }
-
-        It "continues gracefully when TUI binary download throws 404 / WebException" {
-            $tuiFailSandbox = Join-Path $script:stressBase "sandbox_tui_net_fail"
-            New-Item -ItemType Directory -Path $tuiFailSandbox -Force | Out-Null
-
-            # Create synthetic mock zip for CLI module
-            $mockSrc = Join-Path $tuiFailSandbox 'mock_src'
-            $mockCli = Join-Path $mockSrc 'cli'
-            New-Item -ItemType Directory -Path $mockCli -Force | Out-Null
-            '# Mock PSD1' | Set-Content (Join-Path $mockCli 'rtb.psd1')
-            $mockZip = Join-Path $tuiFailSandbox 'mock-cli.zip'
-            Compress-Archive -Path "$mockSrc\*" -DestinationPath $mockZip -Force
-
-            Mock Invoke-WebRequest {
-                param($Uri, $OutFile)
-                if ($Uri -match 'rtb-cli\.zip') {
-                    Copy-Item $mockZip $OutFile -Force
-                } else {
-                    throw [System.Net.WebException]::new("404 Not Found")
-                }
-            }
-
-            $script:userConfigDir = $tuiFailSandbox
-            $script:moduleHome = Join-Path $tuiFailSandbox 'module'
-            $script:scriptsDir = Join-Path $tuiFailSandbox 'bin'
-            $script:resolvedProfiles = @(Join-Path $tuiFailSandbox 'p.ps1')
-            $script:QUIET = $true
-            $script:isStandaloneOverride = $true
-
-            { Install-Steps } | Should -Not -Throw
-            Test-Path -LiteralPath (Join-Path $script:moduleHome 'rtb.psd1') | Should -Be $true
         }
     }
 
@@ -282,7 +247,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'module\rtb.psd1') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
         }
 
         It "executes in fresh subprocess with RTB_NON_INTERACTIVE=true environment variable" {
@@ -302,7 +267,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'module\rtb.psd1') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
         }
 
         It "executes in fresh subprocess with CI=true environment variable" {
@@ -322,7 +287,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'module\rtb.psd1') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
         }
     }
 

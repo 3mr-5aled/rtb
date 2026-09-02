@@ -106,7 +106,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
         $res | Should -Be $false
     }
 
-    It "fails when rtbtui binary is missing" {
+    It "fails when rtb binary is missing" {
         $validRoots = [PSCustomObject]@{
             active     = $script:tempBase
             paused     = $script:tempBase
@@ -120,9 +120,9 @@ Describe "Rtb-Doctor Diagnostic Command" {
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
         Mock Get-Command { return [PSCustomObject]@{ Name = 'git' } } -ParameterFilter { $Name -eq 'git' }
-        Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'rtbtui' }
-        Mock Test-Path { return $false } -ParameterFilter { $Path -like '*rtbtui*' }
-        Mock Test-Path { return $true } -ParameterFilter { $Path -notlike '*rtbtui*' }
+        Mock Get-Command { return $null } -ParameterFilter { $Name -eq 'rtb' }
+        Mock Test-Path { return $false } -ParameterFilter { $Path -like '*rtb*' }
+        Mock Test-Path { return $true } -ParameterFilter { $Path -notlike '*rtb*' }
         $res = Rtb-Doctor
         $res | Should -Be $false
     }
@@ -140,7 +140,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
             abandoned  = $script:tempBase
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
-        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
+        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtb') }
         Mock Get-Command { return $null } -ParameterFilter { $Name -in @('node', 'cargo', 'python', 'tar') }
         $res = Rtb-Doctor
         $res | Should -Be $true
@@ -159,7 +159,7 @@ Describe "Rtb-Doctor Diagnostic Command" {
             abandoned  = $script:tempBase
         }
         Mock Get-RtbConfig { return [PSCustomObject]@{ projectRoots = $validRoots } }
-        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtbtui') }
+        Mock Get-Command { return [PSCustomObject]@{ Name = $Name; Source = $Name } } -ParameterFilter { $Name -in @('git', 'rtb') }
         Mock Get-Command { return $null } -ParameterFilter { $Name -in @('agy','claude','gemini','codex','cursor','windsurf','aider','openhands') }
         $res = Rtb-Doctor
         $res | Should -Be $true

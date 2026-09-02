@@ -109,9 +109,9 @@ function Rtb-Upgrade {
             Copy-Item -Path "$extractedCli\*" -Destination $moduleDir -Recurse -Force
         }
 
-        $extractedTui = Join-Path $tempExtract 'rtbtui.exe'
+        $extractedTui = Join-Path $tempExtract 'rtb.exe'
         if (Test-Path $extractedTui) {
-            Copy-Item -Path $extractedTui -Destination "$binDir\rtbtui.exe" -Force
+            Copy-Item -Path $extractedTui -Destination "$binDir\rtb.exe" -Force
         }
 
         $extractedLogo = Join-Path $tempExtract 'logo.txt'

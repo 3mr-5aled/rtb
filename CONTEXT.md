@@ -32,7 +32,7 @@ AI agent discovery, context generation, and process execution engine.
 
 **Module Home**: The directory where the PowerShell CLI module (`rtb.psd1`, `rtb.psm1`, `src/`) lives after installation. In standalone mode: `%APPDATA%\rtb\module\`. In repo mode: `<repo>/cli/`. The `$PROFILE` `Import-Module` line always points here.
 
-**Release Bundle** (`rtb-cli.zip`): The canonical GitHub Release asset produced by CI. Contains the full CLI module folder, `rtbtui.exe`, `logo.txt`, and `uninstall.ps1`. This is the only artifact a standalone installer downloads.
+**Release Bundle** (`rtb-cli.zip`): The canonical GitHub Release asset produced by CI. Contains the full CLI module folder, `rtb.exe`, `logo.txt`, and `uninstall.ps1`. This is the only artifact a standalone installer downloads.
 
 **User Configuration**: The `rtb.config.json` file at `%APPDATA%\rtb\rtb.config.json`. A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
 

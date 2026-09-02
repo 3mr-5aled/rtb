@@ -1,12 +1,16 @@
 [package]
-name = "rtbtui"
-version = "0.4.0"
+name = "rtb"
+version = "1.0.0"
 edition = "2021"
 authors = ["Amr Khaled <3mr-5aled>"]
 description = "RTB (رتّب) Interactive Terminal Operations Center"
 
+[lib]
+name = "rtb"
+path = "src/lib.rs"
+
 [[bin]]
-name = "rtbtui"
+name = "rtb"
 path = "src/main.rs"
 
 [dependencies]
@@ -23,6 +27,14 @@ color-eyre = "0.6"
 anyhow = "1"
 rayon = "1.10"
 unicode-width = "0.2"
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+self-replace = "1.5"
+sha2 = "0.10"
+ureq = { version = "2.12", features = ["json"] }
+tempfile = "3"
+
+[dev-dependencies]
 
 [profile.release]
 opt-level = 3

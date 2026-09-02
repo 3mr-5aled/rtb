@@ -249,8 +249,7 @@ show_summary() {
 
     printf '\n'
     printf '  %s%s✔ RTB installed successfully!%s\n\n' "$b" "$g" "$r"
-    printf '  %sInstall path:%s  %s\n' "$c" "$r" "$ipath"
-    printf '  %sPowerShell:%s    %s\n\n' "$c" "$r" "$(command -v pwsh || echo 'pwsh')"
+    printf '  %sInstall path:%s  %s\n\n' "$c" "$r" "$ipath"
     printf '  %sNext steps:%s\n' "$b" "$r"
     printf '    %srtb init%s  %s- configure your project workspace%s\n' "$g" "$r" "$d" "$r"
     printf '    %srtb help%s  %s- explore available commands%s\n' "$g" "$r" "$d" "$r"
@@ -258,7 +257,7 @@ show_summary() {
 }
 
 install_steps() {
-    TOTAL=5
+    TOTAL=3
     XDG_CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
     DEFAULT_DIR="$XDG_CFG/rtb"
     PROMPT_TEXT="  $(esc '32m')?$(esc '0m') Install location $(esc '90m')(Enter to accept)$(esc '0m')\n    $(esc '90m')$DEFAULT_DIR$(esc '0m')\n  › "
@@ -267,181 +266,99 @@ install_steps() {
     MODULE_HOME="$RTB_DIR/module"
     BIN_DIR="${RTB_BIN_DIR:-$RTB_DIR/bin}"
 
-    # Step 1: Directories
-    write_step 1 $TOTAL 'Creating directories'
+    # Step 1: Directories & Phase 2 Cleanup
+    write_step 1 $TOTAL 'Creating directories & cleaning legacy artefacts'
     start_spinner 'Setting up install directories'
-    mkdir -p "$RTB_DIR" "$MODULE_HOME" "$BIN_DIR" || {
+    mkdir -p "$RTB_DIR" "$BIN_DIR" || {
         stop_spinner 0 'Setup install directories'
         write_fail "Cannot create install directories in $RTB_DIR"
     }
-    stop_spinner 1 'Created install directories'
 
-    # Step 2: Module Deployment
-    write_step 2 $TOTAL 'Deploying RTB module'
+    # Phase 2 Cleanup: remove old PowerShell module directory and legacy shell wrapper script if present
+    rm -rf "$MODULE_HOME" 2>/dev/null || true
+    if [ -f "$BIN_DIR/rtb" ] && grep -q "Import-Module" "$BIN_DIR/rtb" 2>/dev/null; then
+        rm -f "$BIN_DIR/rtb"
+    fi
+    stop_spinner 1 'Created install directories & cleaned legacy artefacts'
+
+    # Step 2: Binary Deployment
+    write_step 2 $TOTAL 'Installing rtb binary'
     SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
     IS_STANDALONE=1
-    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/cli/rtb.psd1" ]; then
+    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/tui/Cargo.toml" ]; then
         IS_STANDALONE=0
     fi
 
     if [ "$IS_STANDALONE" = "1" ]; then
-        ZIP_URL='https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
-        TMP_ZIP="/tmp/rtb-$$.zip"
-        TMP_EXT="/tmp/rtb-ext-$$"
-        start_spinner 'Downloading rtb-cli.zip'
-        if curl -fsSL --max-time 120 "$ZIP_URL" -o "$TMP_ZIP" 2>/dev/null || wget -q "$ZIP_URL" -O "$TMP_ZIP" 2>/dev/null; then
-            stop_spinner 1 'Downloaded rtb-cli.zip'
-            start_spinner 'Extracting module files'
-            mkdir -p "$TMP_EXT"
-            if command -v unzip >/dev/null 2>&1; then
-                unzip -q -o "$TMP_ZIP" -d "$TMP_EXT"
-            else
-                pwsh -NoProfile -NonInteractive -Command "Expand-Archive -Path '$TMP_ZIP' -DestinationPath '$TMP_EXT' -Force"
-            fi
-            if [ -d "$TMP_EXT/cli" ]; then
-                cp -r "$TMP_EXT/cli/." "$MODULE_HOME/"
-            fi
-            if [ -f "$TMP_EXT/logo.txt" ]; then
-                cp "$TMP_EXT/logo.txt" "$BIN_DIR/logo.txt"
-            fi
-            if [ -f "$TMP_EXT/uninstall.ps1" ]; then
-                cp "$TMP_EXT/uninstall.ps1" "$BIN_DIR/uninstall.ps1"
-                cp "$TMP_EXT/uninstall.ps1" "$RTB_DIR/uninstall.ps1"
-            fi
-            rm -f "$TMP_ZIP"
-            rm -rf "$TMP_EXT"
-            stop_spinner 1 'Extracted module files'
+        BIN_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-${OS_SLUG}-${ARCH_SLUG}"
+        start_spinner "Downloading rtb ($OS_SLUG/$ARCH_SLUG)"
+        if curl -fsSL --max-time 180 "$BIN_URL" -o "$BIN_DIR/rtb" 2>/dev/null || wget -q "$BIN_URL" -O "$BIN_DIR/rtb" 2>/dev/null; then
+            chmod +x "$BIN_DIR/rtb"
+            cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
+            stop_spinner 1 'Installed rtb binary'
         else
-            stop_spinner 0 'Download rtb-cli.zip'
-            rm -f "$TMP_ZIP"
-            write_fail "Download failed from $ZIP_URL. Check https://github.com/3mr-5aled/rtb/releases"
-        fi
-    else
-        start_spinner 'Copying local CLI module'
-        if [ -d "$SCRIPT_DIR/cli" ]; then
-            cp -r "$SCRIPT_DIR/cli/." "$MODULE_HOME/"
-            if [ -f "$SCRIPT_DIR/logo.txt" ]; then
-                cp "$SCRIPT_DIR/logo.txt" "$BIN_DIR/logo.txt"
-            fi
-            if [ -f "$SCRIPT_DIR/uninstall.ps1" ]; then
-                cp "$SCRIPT_DIR/uninstall.ps1" "$BIN_DIR/uninstall.ps1"
-                cp "$SCRIPT_DIR/uninstall.ps1" "$RTB_DIR/uninstall.ps1"
-            fi
-            stop_spinner 1 'Copied local CLI module'
-        else
-            stop_spinner 0 'Copy local CLI module'
-            write_fail "cli/ directory not found in $SCRIPT_DIR"
-        fi
-    fi
-
-    # Step 3: TUI Binary (Non-critical)
-    write_step 3 $TOTAL 'Installing rtbtui binary'
-    if [ "$IS_STANDALONE" = "1" ]; then
-        BIN_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-${OS_SLUG}-${ARCH_SLUG}"
-        start_spinner "Downloading rtbtui ($OS_SLUG/$ARCH_SLUG)"
-        if curl -fsSL --max-time 180 "$BIN_URL" -o "$BIN_DIR/rtbtui" 2>/dev/null || wget -q "$BIN_URL" -O "$BIN_DIR/rtbtui" 2>/dev/null; then
-            chmod +x "$BIN_DIR/rtbtui"
-            cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-            stop_spinner 1 'Installed rtbtui binary'
-        elif [ "$OS_SLUG" = "macos" ] && [ "$ARCH_SLUG" = "arm64" ]; then
-            FALLBACK_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-macos-amd64"
-            if curl -fsSL --max-time 180 "$FALLBACK_URL" -o "$BIN_DIR/rtbtui" 2>/dev/null; then
-                chmod +x "$BIN_DIR/rtbtui"
-                cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-                stop_spinner 1 'Installed rtbtui binary (x86_64 via Rosetta 2)'
-            else
-                stop_spinner 0 'Download rtbtui binary'
-                write_warn "TUI binary download failed - 'rtb ui' unavailable, CLI is fine."
-            fi
-        else
-            stop_spinner 0 'Download rtbtui binary'
-            write_warn "TUI binary download failed - 'rtb ui' unavailable, CLI is fine."
+            stop_spinner 0 'Download rtb binary'
+            write_fail "Binary download failed from $BIN_URL. Check https://github.com/3mr-5aled/rtb/releases"
         fi
     else
         TUI_DIR="$SCRIPT_DIR/tui"
         if command -v cargo >/dev/null 2>&1 && [ -f "$TUI_DIR/Cargo.toml" ]; then
-            start_spinner 'Building rtbtui with Cargo'
+            start_spinner 'Building rtb with Cargo'
             if (cd "$TUI_DIR" && cargo build --release >/dev/null 2>&1); then
-                if [ -f "$TUI_DIR/target/release/rtbtui" ]; then
-                    cp "$TUI_DIR/target/release/rtbtui" "$BIN_DIR/rtbtui"
-                    chmod +x "$BIN_DIR/rtbtui"
-                    cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
-                    stop_spinner 1 'Built and installed rtbtui binary'
+                if [ -f "$TUI_DIR/target/release/rtb" ]; then
+                    cp "$TUI_DIR/target/release/rtb" "$BIN_DIR/rtb"
+                    chmod +x "$BIN_DIR/rtb"
+                    cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
+                    stop_spinner 1 'Built and installed rtb binary'
                 else
-                    stop_spinner 0 'Build rtbtui'
-                    write_warn 'Cargo build succeeded but binary not found in target/release.'
+                    stop_spinner 0 'Build rtb'
+                    write_fail 'Cargo build succeeded but binary not found in target/release.'
                 fi
             else
-                stop_spinner 0 'Build rtbtui'
-                write_warn 'Cargo build failed - retaining existing binary if present.'
+                stop_spinner 0 'Build rtb'
+                write_fail 'Cargo build failed.'
             fi
-        elif [ -f "$TUI_DIR/target/release/rtbtui" ]; then
-            cp "$TUI_DIR/target/release/rtbtui" "$BIN_DIR/rtbtui"
-            chmod +x "$BIN_DIR/rtbtui"
-            cp "$BIN_DIR/rtbtui" "$BIN_DIR/devtui" 2>/dev/null || true
+        elif [ -f "$TUI_DIR/target/release/rtb" ]; then
+            cp "$TUI_DIR/target/release/rtb" "$BIN_DIR/rtb"
+            chmod +x "$BIN_DIR/rtb"
+            cp "$BIN_DIR/rtb" "$BIN_DIR/dev" 2>/dev/null || true
             write_warn 'cargo not found - copied prebuilt binary.'
         else
-            write_warn "cargo not found and no prebuilt binary - 'rtb ui' will not work."
+            write_fail "cargo not found and no prebuilt binary at $TUI_DIR/target/release/rtb."
         fi
     fi
 
-    # Step 4: Shell Integration (PATH & Launcher Script)
-    write_step 4 $TOTAL 'Configuring shell PATH & wrapper'
-    start_spinner 'Updating shell environment'
+    # Step 3: Shell Integration & PATH Setup
+    write_step 3 $TOTAL 'Configuring shell environment (PATH & goto integration)'
+    start_spinner 'Updating shell configuration'
 
-    # Create standalone executable wrapper script
-    cat << 'EOF' > "$BIN_DIR/rtb"
-#!/usr/bin/env sh
-RTB_PSD1_PATH="__MODULE_HOME__/rtb.psd1"
-exec pwsh -NoProfile -NonInteractive -Command "& { param(\$args) Import-Module '$RTB_PSD1_PATH' -DisableNameChecking; & rtb @args }" "$@"
-EOF
-    sed -i "s|__MODULE_HOME__|$MODULE_HOME|g" "$BIN_DIR/rtb" 2>/dev/null || sed -i '' "s|__MODULE_HOME__|$MODULE_HOME|g" "$BIN_DIR/rtb" 2>/dev/null || true
-    chmod +x "$BIN_DIR/rtb"
-
-    EXPORT_LINE="export PATH=\"\$PATH:$BIN_DIR\""
-    ALIAS_LINE="alias rtb='pwsh -NoProfile -NonInteractive -Command \"Import-Module '\''$MODULE_HOME/rtb.psd1'\'' -DisableNameChecking; rtb\"'"
+    export PATH="$BIN_DIR:$PATH"
 
     inject_rc() {
         rc_file="$1"
-        [ -f "$rc_file" ] || return 0
-        if ! grep -qF "$BIN_DIR" "$rc_file" 2>/dev/null; then
-            printf '\n# RTB CLI\n%s\n%s\n' "$EXPORT_LINE" "$ALIAS_LINE" >> "$rc_file" 2>/dev/null || true
-        fi
+        shell_kind="$2"
+        [ -f "$rc_file" ] || touch "$rc_file" 2>/dev/null || return 0
+
+        # Clean legacy Phase 2 / old RTB lines
+        TMP_RC="/tmp/rtb-rc-$$"
+        grep -v -E "Import-Module.*rtb|alias rtb=|#\s*RTB|rtb shell-init" "$rc_file" > "$TMP_RC" 2>/dev/null || cp "$rc_file" "$TMP_RC"
+        mv "$TMP_RC" "$rc_file" 2>/dev/null || true
+
+        # Append PATH and shell init
+        printf '\n# RTB Shell Integration\nexport PATH="%s:$PATH"\neval "$(rtb shell-init %s)"\n' "$BIN_DIR" "$shell_kind" >> "$rc_file" 2>/dev/null || true
     }
 
-    inject_rc "$HOME/.bashrc"
-    inject_rc "$HOME/.bash_profile"
-    inject_rc "$HOME/.zshrc"
-    inject_rc "$HOME/.profile"
+    inject_rc "$HOME/.bashrc" "bash"
+    inject_rc "$HOME/.bash_profile" "bash"
+    inject_rc "$HOME/.zshrc" "zsh"
+    inject_rc "$HOME/.profile" "bash"
 
-    export PATH="$PATH:$BIN_DIR"
-    stop_spinner 1 'Shell configuration updated'
-
-    # Step 5: PowerShell Profile Configuration
-    write_step 5 $TOTAL 'Configuring PowerShell profile'
-    PWSH_PROFILE_DIR="${XDG_CFG}/powershell"
-    PWSH_PROFILE="$PWSH_PROFILE_DIR/Microsoft.PowerShell_profile.ps1"
-    MODULE_PSD="$MODULE_HOME/rtb.psd1"
-    if [ -f "$MODULE_PSD" ]; then
-        start_spinner 'Configuring pwsh profile'
-        mkdir -p "$PWSH_PROFILE_DIR"
-        touch "$PWSH_PROFILE"
-        TMP_PROF="/tmp/pwsh-prof-$$"
-        if [ -f "$PWSH_PROFILE" ]; then
-            grep -v -E "Import-Module.*(rtb|dev-tools|dev-cli).*rtb\.psd1|#\s*RTB.*?Module" "$PWSH_PROFILE" > "$TMP_PROF" 2>/dev/null || cp "$PWSH_PROFILE" "$TMP_PROF"
-            mv "$TMP_PROF" "$PWSH_PROFILE"
-        fi
-        printf '\n# RTB CLI Module\nImport-Module '\''%s'\'' -DisableNameChecking -Force\n' "$MODULE_PSD" >> "$PWSH_PROFILE" 2>/dev/null || true
-        stop_spinner 1 'PowerShell profile configured'
-    else
-        write_warn "rtb.psd1 not found in $MODULE_HOME - skipping profile injection."
-    fi
+    stop_spinner 1 'Shell environment configured'
 }
 
 main() {
     show_header
     detect_os_arch
-    ensure_pwsh
     install_steps
     show_summary "$RTB_DIR"
 
@@ -457,8 +374,10 @@ main() {
         case "$init_ans" in
             [Nn]*) ;;
             *)
-                if command -v pwsh >/dev/null 2>&1 && [ -f "$MODULE_PSD" ]; then
-                    pwsh -NoProfile -NonInteractive -Command "Import-Module '$MODULE_PSD' -DisableNameChecking -Force; rtb init" || true
+                if [ -x "$BIN_DIR/rtb" ]; then
+                    "$BIN_DIR/rtb" init || true
+                elif command -v rtb >/dev/null 2>&1; then
+                    rtb init || true
                 fi
                 ;;
         esac

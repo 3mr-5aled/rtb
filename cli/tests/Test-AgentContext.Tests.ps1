@@ -161,4 +161,37 @@ require (
 
         $content | Should -Match "\*\*go\.mod requires:\*\* github\.com/gin-gonic/gin v1\.9\.1, github\.com/google/uuid v1\.4\.0"
     }
+
+    Context "Rust parity" {
+        It "invokes native Rust binary for rtb agent --list, shell-init, and _goto-resolve" {
+            $bin = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
+            if (-not $bin -and $env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
+                $bin = Get-Item $env:_RTB_BIN
+            }
+            if (-not $bin) {
+                $cargoTarget = Join-Path $PSScriptRoot "..\..\tui\target\debug\rtb.exe"
+                if (Test-Path $cargoTarget) { $bin = Get-Item $cargoTarget }
+            }
+            if ($bin) {
+                $binPath = if ($bin.Source) { $bin.Source } else { $bin.FullName }
+
+                # 1. agent --list
+                $listOut = (& $binPath agent --list) -join "`n"
+                $listOut | Should -Match "Installed AI Agents"
+
+                # 2. shell-init pwsh
+                $shellOut = (& $binPath shell-init pwsh) -join "`n"
+                $shellOut | Should -Match "function global:rtb"
+
+                # 3. _goto-resolve
+                $projDir = Join-Path $script:baseTemp "parity_resolve_proj"
+                New-Item -ItemType Directory -Path $projDir -Force | Out-Null
+                $cfgFile = Join-Path $script:baseTemp "rtb.config.json"
+                @{ version = "1.0.0"; projectRoots = @{ active = $script:baseTemp } } | ConvertTo-Json | Set-Content $cfgFile
+
+                $resolved = (& $binPath --config $cfgFile _goto-resolve parity_resolve_proj) -join "`n"
+                $resolved.Trim() | Should -Be $projDir
+            }
+        }
+    }
 }
