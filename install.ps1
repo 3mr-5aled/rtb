@@ -335,10 +335,17 @@ function global:Install-Steps {
             Push-Location $tuiDir
             try {
                 cargo build --release 2>&1 | Out-Null
-                $bin = Join-Path $tuiDir 'target\release\rtb.exe'
-                if (Test-Path $bin) {
-                    Copy-Item $bin "$script:scriptsDir\rtb.exe" -Force
-                    Copy-Item $bin "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
+                $candidates = @(
+                    (Join-Path $tuiDir 'target\release\rtb.exe'),
+                    (Join-Path $tuiDir 'target\release\rtb'),
+                    (Join-Path $repoRoot 'target\release\rtb.exe'),
+                    (Join-Path $repoRoot 'target\release\rtb')
+                )
+                $bin = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+                if ($bin) {
+                    $ext = if ($bin -like '*.exe') { '.exe' } else { '' }
+                    Copy-Item $bin "$script:scriptsDir\rtb$ext" -Force
+                    Copy-Item $bin "$script:scriptsDir\dev$ext" -Force -ErrorAction SilentlyContinue
                     Stop-Spinner $ctx $true
                 } else {
                     Stop-Spinner $ctx $false
@@ -351,13 +358,20 @@ function global:Install-Steps {
                 Pop-Location
             }
         } else {
-            $pre = Join-Path $tuiDir 'target\release\rtb.exe'
-            if (Test-Path $pre) {
-                Copy-Item $pre "$script:scriptsDir\rtb.exe" -Force
-                Copy-Item $pre "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
+            $candidates = @(
+                (Join-Path $tuiDir 'target\release\rtb.exe'),
+                (Join-Path $tuiDir 'target\release\rtb'),
+                (Join-Path $repoRoot 'target\release\rtb.exe'),
+                (Join-Path $repoRoot 'target\release\rtb')
+            )
+            $pre = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($pre) {
+                $ext = if ($pre -like '*.exe') { '.exe' } else { '' }
+                Copy-Item $pre "$script:scriptsDir\rtb$ext" -Force
+                Copy-Item $pre "$script:scriptsDir\dev$ext" -Force -ErrorAction SilentlyContinue
                 Write-Warn 'cargo not found - copied prebuilt binary.'
             } else {
-                Write-Fail "cargo not found and no prebuilt binary at $pre."
+                Write-Fail "cargo not found and no prebuilt binary at target\release."
             }
         }
     }
