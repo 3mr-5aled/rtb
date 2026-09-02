@@ -33,6 +33,7 @@ jobs:
     name: Run Rust Cargo Tests (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-pc-windows-msvc

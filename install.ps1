@@ -403,13 +403,13 @@ function global:Install-Steps {
             $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
             try {
                 $dir = Split-Path $p -Parent
-                if ($dir -and -not (Test-Path $dir)) {
+                if ($dir -and -not (Test-Path -LiteralPath $dir)) {
                     New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 }
-                if (-not (Test-Path $p)) {
+                if (-not (Test-Path -LiteralPath $p)) {
                     New-Item -ItemType File -Path $p -Force | Out-Null
                 }
-                $pLines = Get-Content $p -ErrorAction SilentlyContinue
+                $pLines = Get-Content -LiteralPath $p -ErrorAction SilentlyContinue
                 $clean = if ($pLines) {
                     @($pLines | Where-Object {
                         -not [string]::IsNullOrWhiteSpace($_) -and
@@ -421,7 +421,7 @@ function global:Install-Steps {
                     @()
                 }
                 $newContent = ($clean + @('', '# RTB Shell Integration', $line)) -join "`r`n"
-                $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
+                $newContent.TrimEnd() + "`r`n" | Set-Content -LiteralPath $p -Encoding UTF8
                 Stop-Spinner $ctx $true
             } catch {
                 Stop-Spinner $ctx $false
