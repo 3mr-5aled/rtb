@@ -121,6 +121,11 @@ impl DevConfig {
         paths
     }
 
+    /// Checks whether the configuration is valid and has an active project root path set.
+    pub fn is_configured(&self) -> bool {
+        !self.project_roots.active.trim().is_empty()
+    }
+
     pub fn load_from(custom_path: &Option<PathBuf>) -> Result<Self> {
         if let Some(p) = custom_path {
             if p.is_file() {

@@ -66,6 +66,29 @@ fn test_config_gate_non_interactive_blocks_data_commands() {
 }
 
 #[test]
+fn test_config_gate_blocks_when_active_path_is_empty() {
+    env::set_var("RTB_NON_INTERACTIVE", "1");
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let invalid_config = temp_dir.path().join("invalid_rtb.config.json");
+
+    // Config file exists on disk, but projectRoots.active.path is empty
+    let content = r#"{
+        "version": "1.0.0",
+        "projectRoots": {
+            "active": { "path": "", "label": "Active", "emoji": "⚡" }
+        }
+    }"#;
+    std::fs::write(&invalid_config, content).expect("write invalid config");
+
+    let args = vec!["rtb", "--config", invalid_config.to_str().unwrap(), "list"];
+    let exit_code = RtbEngine::dispatch_args(args).expect("dispatch failed");
+    assert_eq!(
+        exit_code, 1,
+        "Data command with empty active project root must be blocked by Config Gate"
+    );
+}
+
+#[test]
 fn test_unimplemented_commands_exit_1() {
     env::set_var("RTB_NON_INTERACTIVE", "1");
 

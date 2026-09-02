@@ -307,9 +307,12 @@ impl RtbEngine {
                 std::io::stdin().read_line(&mut input)?;
                 let trimmed = input.trim().to_lowercase();
                 if trimmed.is_empty() || trimmed == "y" || trimmed == "yes" {
-                    eprintln!("rtb: command 'init' not yet implemented");
+                    let init_res = Self::execute_init(false, &matches)?;
+                    if init_res != 0 {
+                        return Ok(init_res);
+                    }
                     eprintln!("Run `rtb {}` again to continue.", Self::command_name(&cmd));
-                    return Ok(1);
+                    return Ok(0);
                 } else {
                     return Ok(1);
                 }
@@ -336,10 +339,10 @@ impl RtbEngine {
     }
 
     pub fn config_exists(custom_path: &Option<PathBuf>) -> bool {
-        if let Some(p) = custom_path {
-            return p.is_file();
+        match DevConfig::load_from(custom_path) {
+            Ok(cfg) => cfg.is_configured(),
+            Err(_) => false,
         }
-        DevConfig::candidate_paths().iter().any(|p| p.is_file())
     }
 
     pub fn resolve_config_path(custom_path: &Option<PathBuf>) -> PathBuf {
@@ -2270,15 +2273,26 @@ function global:rtb {{
         println!("  rtb (رتّب) » Maintenance: {}", script_name);
         println!("══════════════════════════════════════════\n");
 
+        let cfg = DevConfig::load_from(&cli.config).ok();
+        let config_scripts_dir = cfg.as_ref().and_then(|c| {
+            if c.config_root.trim().is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(&c.config_root).join("scripts"))
+            }
+        });
+
         let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
         let candidate_paths = [
+            config_scripts_dir.as_ref().map(|d| d.join(&script_name)),
             exe_dir.as_ref().map(|d| d.join("scripts").join(&script_name)),
             exe_dir.as_ref().map(|d| d.join("cli").join("scripts").join(&script_name)),
             Some(cwd.join("scripts").join(&script_name)),
             Some(cwd.join("cli").join("scripts").join(&script_name)),
             dirs::config_dir().map(|d| d.join("rtb").join("bin").join(&script_name)),
+            dirs::config_dir().map(|d| d.join("rtb").join("scripts").join(&script_name)),
         ];
 
         let mut resolved_script: Option<PathBuf> = None;
