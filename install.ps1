@@ -412,6 +412,7 @@ function global:Install-Steps {
                 $pLines = Get-Content $p -ErrorAction SilentlyContinue
                 $clean = if ($pLines) {
                     @($pLines | Where-Object {
+                        -not [string]::IsNullOrWhiteSpace($_) -and
                         $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
                         $_ -notmatch 'Invoke-Expression\s+.*?rtb\s+shell-init' -and
                         $_ -notmatch '#\s*RTB.*?(Module|CLI|Integration)'
