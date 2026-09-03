@@ -335,10 +335,17 @@ function global:Install-Steps {
             Push-Location $tuiDir
             try {
                 cargo build --release 2>&1 | Out-Null
-                $bin = Join-Path $tuiDir 'target\release\rtb.exe'
-                if (Test-Path $bin) {
-                    Copy-Item $bin "$script:scriptsDir\rtb.exe" -Force
-                    Copy-Item $bin "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
+                $candidates = @(
+                    (Join-Path $tuiDir 'target\release\rtb.exe'),
+                    (Join-Path $tuiDir 'target\release\rtb'),
+                    (Join-Path $repoRoot 'target\release\rtb.exe'),
+                    (Join-Path $repoRoot 'target\release\rtb')
+                )
+                $bin = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+                if ($bin) {
+                    $ext = if ($bin -like '*.exe') { '.exe' } else { '' }
+                    Copy-Item $bin "$script:scriptsDir\rtb$ext" -Force
+                    Copy-Item $bin "$script:scriptsDir\dev$ext" -Force -ErrorAction SilentlyContinue
                     Stop-Spinner $ctx $true
                 } else {
                     Stop-Spinner $ctx $false
@@ -351,13 +358,20 @@ function global:Install-Steps {
                 Pop-Location
             }
         } else {
-            $pre = Join-Path $tuiDir 'target\release\rtb.exe'
-            if (Test-Path $pre) {
-                Copy-Item $pre "$script:scriptsDir\rtb.exe" -Force
-                Copy-Item $pre "$script:scriptsDir\dev.exe" -Force -ErrorAction SilentlyContinue
+            $candidates = @(
+                (Join-Path $tuiDir 'target\release\rtb.exe'),
+                (Join-Path $tuiDir 'target\release\rtb'),
+                (Join-Path $repoRoot 'target\release\rtb.exe'),
+                (Join-Path $repoRoot 'target\release\rtb')
+            )
+            $pre = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($pre) {
+                $ext = if ($pre -like '*.exe') { '.exe' } else { '' }
+                Copy-Item $pre "$script:scriptsDir\rtb$ext" -Force
+                Copy-Item $pre "$script:scriptsDir\dev$ext" -Force -ErrorAction SilentlyContinue
                 Write-Warn 'cargo not found - copied prebuilt binary.'
             } else {
-                Write-Fail "cargo not found and no prebuilt binary at $pre."
+                Write-Fail "cargo not found and no prebuilt binary at target\release."
             }
         }
     }
@@ -389,15 +403,16 @@ function global:Install-Steps {
             $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
             try {
                 $dir = Split-Path $p -Parent
-                if ($dir -and -not (Test-Path $dir)) {
+                if ($dir -and -not (Test-Path -LiteralPath $dir)) {
                     New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 }
-                if (-not (Test-Path $p)) {
+                if (-not (Test-Path -LiteralPath $p)) {
                     New-Item -ItemType File -Path $p -Force | Out-Null
                 }
-                $pLines = Get-Content $p -ErrorAction SilentlyContinue
-                $clean = if ($pLines) {
+                $pLines = Get-Content -LiteralPath $p -ErrorAction SilentlyContinue
+                [array]$clean = if ($pLines) {
                     @($pLines | Where-Object {
+                        -not [string]::IsNullOrWhiteSpace($_) -and
                         $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
                         $_ -notmatch 'Invoke-Expression\s+.*?rtb\s+shell-init' -and
                         $_ -notmatch '#\s*RTB.*?(Module|CLI|Integration)'
@@ -406,7 +421,7 @@ function global:Install-Steps {
                     @()
                 }
                 $newContent = ($clean + @('', '# RTB Shell Integration', $line)) -join "`r`n"
-                $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
+                [System.IO.File]::WriteAllText($p, ($newContent.TrimEnd() + "`r`n"), [System.Text.Encoding]::UTF8)
                 Stop-Spinner $ctx $true
             } catch {
                 Stop-Spinner $ctx $false

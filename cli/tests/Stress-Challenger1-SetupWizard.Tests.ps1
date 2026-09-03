@@ -247,7 +247,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'bin\rtb.exe') | Should -Be $true
         }
 
         It "executes in fresh subprocess with RTB_NON_INTERACTIVE=true environment variable" {
@@ -267,7 +267,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'bin\rtb.exe') | Should -Be $true
         }
 
         It "executes in fresh subprocess with CI=true environment variable" {
@@ -287,7 +287,7 @@ Import-Module 'F:\legacy\rtb\module\rtb.psd1' -DisableNameChecking -Force
             $completed = $proc.WaitForExit(30000)
             $completed | Should -Be $true
             $proc.ExitCode | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $procSandbox 'AppData\Roaming\rtb\bin\rtb.exe') | Should -Be $true
+            Test-Path -LiteralPath (Join-Path $procSandbox 'bin\rtb.exe') | Should -Be $true
         }
     }
 
