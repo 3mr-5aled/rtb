@@ -14,10 +14,14 @@ function Get-RtbConfig {
     $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb/rtb.config.json' } else { $null }
 
     $paths = @(
+        $env:RTB_CONFIG,
         $appDataPath,
         (Join-Path $dotConfigDir 'rtb.config.json'),
-        (Join-Path $PSScriptRoot '..\..\..\config\rtb.config.json'),
+        (Join-Path (Get-Location) 'config\rtb.config.json'),
+        (Join-Path (Get-Location) 'config\dev.config.json'),
+        (Join-Path $PSScriptRoot '..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\config\rtb.config.json'),
+        (Join-Path $PSScriptRoot '..\..\..\config\rtb.config.json'),
         (Join-Path $PSScriptRoot '..\..\..\config\dev.config.json')
     )
     foreach ($p in $paths) {

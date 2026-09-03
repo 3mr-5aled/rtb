@@ -51,6 +51,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup RTB Test Configuration
+        shell: pwsh
+        run: |
+          $configDir = Join-Path $env:USERPROFILE '.config\rtb'
+          if (-not (Test-Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+          }
+          $testActive = Join-Path ([System.IO.Path]::GetTempPath()) 'rtb-ci-active'
+          $testPaused = Join-Path ([System.IO.Path]::GetTempPath()) 'rtb-ci-paused'
+          New-Item -ItemType Directory -Path $testActive -Force | Out-Null
+          New-Item -ItemType Directory -Path $testPaused -Force | Out-Null
+          @{
+            version = "1.0.0"
+            projectRoots = @{
+              active = @{ path = $testActive; label = "Active"; emoji = "📁" }
+              paused = @{ path = $testPaused; label = "Paused"; emoji = "⏸️" }
+            }
+            backupRoot = [System.IO.Path]::GetTempPath()
+            cleanDeps = @{ targets = @("node_modules") }
+          } | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $configDir 'rtb.config.json') -Encoding UTF8
+
       - name: Execute Pester Unit Tests
         shell: pwsh
         run: |
