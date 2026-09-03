@@ -58,15 +58,49 @@ jobs:
           Import-Module './cli/rtb.psd1' -Force
           Invoke-Pester ./cli/tests/ -Passthru
 
+  core-tests:
+    name: Run Core TypeScript CLI Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: core/package-lock.json
+
+      - name: Install dependencies & run tests
+        run: |
+          cd core
+          npm ci
+          npm run test
+          npm run build
+
   publish-release:
     name: Package and Publish GitHub Release
-    needs: [build-and-release, pester-tests]
+    needs: [build-and-release, pester-tests, core-tests]
     runs-on: windows-latest
     permissions:
       contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Core CLI Bundle
+        shell: pwsh
+        run: |
+          cd core
+          npm ci
+          npm run build
+          cd ..
 
       - name: Download Windows Binary Artifact
         uses: actions/download-artifact@v4
@@ -86,11 +120,13 @@ jobs:
           name: rtbtui-macos-amd64
           path: release-assets/macos
 
-      - name: Assemble Release Bundle (rtb-cli.zip)
+      - name: Assemble Release Bundle (rtb-cli.zip & rtb-cli.js)
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path staging -Force | Out-Null
           Copy-Item -Path "cli" -Destination "staging\cli" -Recurse -Force
+          Copy-Item -Path "core\dist\index.js" -Destination "staging\rtb.js" -Force
+          Copy-Item -Path "core\dist\index.js" -Destination "rtb-cli.js" -Force
           Copy-Item -Path "release-assets\windows\rtbtui.exe" -Destination "staging\rtbtui.exe" -Force
           if (Test-Path "logo.txt") {
             Copy-Item -Path "logo.txt" -Destination "staging\logo.txt" -Force
@@ -110,6 +146,7 @@ jobs:
         with:
           files: |
             rtb-cli.zip
+            rtb-cli.js
             rtbtui-windows-amd64.exe
             rtbtui-linux-amd64
             rtbtui-macos-amd64
