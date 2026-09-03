@@ -9,6 +9,12 @@ import { registerGotoCommand } from './commands/goto.js';
 import { registerListCommand } from './commands/list.js';
 import { registerIndexCommand } from './commands/project-index.js';
 import { registerShellInitCommand } from './commands/shell-init.js';
+import { registerNewCommand } from './commands/new.js';
+import { registerPauseCommand } from './commands/pause.js';
+import { registerResumeCommand } from './commands/resume.js';
+import { registerArchiveCommand } from './commands/archive.js';
+import { registerUnarchiveCommand } from './commands/unarchive.js';
+import { registerCleanCommand } from './commands/clean.js';
 import { outputError } from './utils/output.js';
 
 export const EXEMPT_COMMANDS = new Set([
@@ -107,6 +113,12 @@ export function createCli(argv: string[] = process.argv): Command {
   registerListCommand(program, getContext);
   registerIndexCommand(program, getContext);
   registerShellInitCommand(program, getContext);
+  registerNewCommand(program, getContext);
+  registerPauseCommand(program, getContext);
+  registerResumeCommand(program, getContext);
+  registerArchiveCommand(program, getContext);
+  registerUnarchiveCommand(program, getContext);
+  registerCleanCommand(program, getContext);
 
   return program;
 }
