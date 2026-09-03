@@ -16,7 +16,7 @@ function Rtb-Upgrade {
     Write-RtbHeader "Self-Upgrade Engine"
 
     # 1. Resolve current installed version from rtb.psd1
-    $currentVersion = '0.4.0'
+    $currentVersion = '0.5.0'
     $psdCandidates = @(
         (Join-Path $PSScriptRoot '..\..\rtb.psd1'),
         (Join-Path $env:APPDATA 'rtb\module\rtb.psd1')

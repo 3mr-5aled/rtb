@@ -27,7 +27,7 @@ function rtb {
 
     if (-not $Command -or $Command -eq '--help' -or $Command -eq '-h') { $Command = 'help' }
     if ($Command -eq '--version' -or $Command -eq '-v') {
-        $ver = '0.4.0'
+        $ver = '0.5.0'
         $psdPath = Join-Path $PSScriptRoot 'rtb.psd1'
         if (Test-Path $psdPath) {
             try {
