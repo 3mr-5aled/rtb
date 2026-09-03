@@ -75,7 +75,7 @@ function Rtb-Doctor {
     Write-Host '  Optional Tools' -ForegroundColor Cyan
     $optionals = @(
         @{ Name = 'node';   Label = 'Node.js (for JavaScript/TypeScript projects)' },
-        @{ Name = 'cargo';  Label = 'Cargo / Rust (for Rust projects and rtb build)' },
+        @{ Name = 'cargo';  Label = 'Cargo / Rust (for Rust projects and rtbtui build)' },
         @{ Name = 'python'; Label = 'Python (for Python projects)' },
         @{ Name = 'tar';    Label = 'tar (for rtb archive/unarchive)' }
     )
@@ -100,13 +100,13 @@ function Rtb-Doctor {
     # 6. TUI Binary
     Write-Host ''
     Write-Host '  TUI Binary' -ForegroundColor Cyan
-    $tuiCmd = Get-Command -Name 'rtb' -CommandType Application -ErrorAction SilentlyContinue
-    $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtb.exe' } else { $null }
+    $tuiCmd = Get-Command -Name 'rtbtui' -ErrorAction SilentlyContinue
+    $appDataBinary = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin\rtbtui.exe' } else { $null }
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-    $userConfigBinary = Join-Path $userHomeDir '.config\rtb\bin\rtb.exe'
+    $userConfigBinary = Join-Path $userHomeDir '.config\rtb\bin\rtbtui.exe'
 
-    $localTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtb.exe'
-    $localDebugTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtb.exe'
+    $localTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\release\rtbtui.exe'
+    $localDebugTarget = Join-Path $PSScriptRoot '..\..\..\tui\target\debug\rtbtui.exe'
     $localBuilt = (Test-Path $localTarget) -or (Test-Path $localDebugTarget)
 
     $installedBinaryPath = if ($tuiCmd -and ($tuiCmd.Source -or $tuiCmd.Name)) {
@@ -120,17 +120,17 @@ function Rtb-Doctor {
     }
 
     if ($installedBinaryPath) {
-        & $WriteCheck $true "rtb binary installed ($installedBinaryPath)"
+        & $WriteCheck $true "rtbtui binary installed ($installedBinaryPath)"
         $binDir = Split-Path $installedBinaryPath -Parent
         if ($env:PATH -notlike "*$binDir*") {
             $env:PATH = "$binDir;$env:PATH"
         }
     } elseif ($localBuilt) {
         $builtPath = if (Test-Path $localTarget) { $localTarget } else { $localDebugTarget }
-        & $WriteCheck $false "rtb binary built locally ($builtPath) but not installed" "Run '.\install.ps1' to install rtb"
+        & $WriteCheck $false "rtbtui binary built locally ($builtPath) but not installed" "Run '.\install.ps1' to install rtbtui"
         $allGood = $false
     } else {
-        & $WriteCheck $false 'rtb binary installed' "Build with: cargo build --release -p rtb, then run '.\install.ps1'"
+        & $WriteCheck $false 'rtbtui binary installed' "Build with: cargo build --release -p rtbtui, then run '.\install.ps1'"
         $allGood = $false
     }
 

@@ -63,46 +63,6 @@ pub fn get_default_agent() -> Option<AgentInfo> {
     all.into_iter().find(|a| a.installed)
 }
 
-pub struct AgentOrchestrator;
-
-impl AgentOrchestrator {
-    pub fn discover() -> Vec<AgentInfo> {
-        get_installed_agents()
-    }
-
-    pub fn is_installed(agent_cmd: &str) -> bool {
-        is_command_installed(agent_cmd)
-    }
-
-    pub fn default_agent() -> Option<AgentInfo> {
-        get_default_agent()
-    }
-
-    pub fn generate_context(project: &Project) -> Option<std::path::PathBuf> {
-        create_agent_context_file(project)
-    }
-
-    pub fn launch(agent_cmd: &str, project_path: &std::path::Path) -> std::io::Result<i32> {
-        let cmd_to_run = if cfg!(windows) {
-            match agent_cmd {
-                "npm" => "npm.cmd",
-                "npx" => "npx.cmd",
-                "pnpm" => "pnpm.cmd",
-                "yarn" => "yarn.cmd",
-                _ => agent_cmd,
-            }
-        } else {
-            agent_cmd
-        };
-
-        let status = Command::new(cmd_to_run)
-            .current_dir(project_path)
-            .status()?;
-
-        Ok(status.code().unwrap_or(1))
-    }
-}
-
 pub fn create_agent_context_file(project: &Project) -> Option<std::path::PathBuf> {
     let context_path = project.path.join(".rtb_context.md");
     let stack_str = if project.stack.is_empty() || (project.stack.len() == 1 && project.stack[0] == "-") {

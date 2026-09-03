@@ -28,33 +28,5 @@ Describe "Get-RtbConfig and Test-RtbConfigured" {
         Mock Invoke-Item {}
         { Rtb-Config } | Should -Not -Throw
     }
-
-    Context "Rust parity" {
-        It "invokes Rust binary when available and creates default config scaffold" {
-            $bin = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
-            if (-not $bin -and $env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
-                $bin = Get-Item $env:_RTB_BIN
-            }
-            if (-not $bin) {
-                $targetBin = Join-Path $PSScriptRoot "..\..\tui\target\debug\rtb.exe"
-                if (Test-Path $targetBin) { $bin = Get-Item $targetBin }
-            }
-            if ($bin) {
-                $tempConfigDir = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_cfg_test_$([Guid]::NewGuid().ToString('N'))"
-                New-Item -ItemType Directory -Path $tempConfigDir -Force | Out-Null
-                try {
-                    $configPath = Join-Path $tempConfigDir "rtb.config.json"
-                    $binPath = if ($bin.Source) { $bin.Source } else { $bin.FullName }
-                    $env:RTB_NON_INTERACTIVE = "1"
-                    & $binPath --config $configPath config
-                    $LASTEXITCODE | Should -Be 0
-                    (Test-Path $configPath) | Should -Be $true
-                } finally {
-                    Remove-Item -Recurse -Force $tempConfigDir -ErrorAction SilentlyContinue
-                }
-            }
-        }
-    }
 }
-
 

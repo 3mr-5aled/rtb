@@ -23,7 +23,6 @@ InModuleScope rtb {
             New-Item -ItemType Directory -Path $script:proj4 -Force | Out-Null
 
             $script:origLoc = (Get-Location).Path
-            Mock Test-RtbConfigured { $true }
         }
 
         AfterAll {

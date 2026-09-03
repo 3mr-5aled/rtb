@@ -80,9 +80,7 @@ impl SessionState {
     pub fn session_state_path() -> PathBuf {
         #[cfg(test)]
         {
-            let thread_id = format!("{:?}", std::thread::current().id());
-            let clean_id: String = thread_id.chars().filter(|c| c.is_alphanumeric()).collect();
-            return std::env::temp_dir().join(format!("rtb_unit_test_state_{}_{}.json", std::process::id(), clean_id));
+            return std::env::temp_dir().join("rtb_unit_test_state.json");
         }
 
         #[cfg(not(test))]
@@ -147,7 +145,6 @@ mod tests {
 
     #[test]
     fn test_session_state_save_load() {
-        let _ = std::fs::remove_file(SessionState::session_state_path());
         let state = SessionState {
             active_tab: 3,
             selected_project_name: Some("test-project".into()),

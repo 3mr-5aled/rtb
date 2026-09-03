@@ -14,15 +14,6 @@ Get-ChildItem -Path (Join-Path $PSScriptRoot 'src\commands') -Filter '*.ps1' -Er
     . $_.FullName
 }
 
-function Get-RtbNativeBinary {
-    if ($env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
-        return $env:_RTB_BIN
-    }
-    $cmd = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    return $null
-}
-
 # Main entry point
 function rtb {
     [CmdletBinding()]
@@ -44,26 +35,12 @@ function rtb {
                 if ($manifest -and $manifest.ModuleVersion) { $ver = $manifest.ModuleVersion }
             } catch {}
         }
-        Write-Host "RTB (رتّب) CLI v$ver" -ForegroundColor Green
+        Write-Host "RTB (ﺐﺘّﺭ) CLI v$ver" -ForegroundColor Green
         return
     }
 
-    # Hard-redirect ported commands to native Rust binary if available
-    $portedNativeCommands = @('list', 'status', 'info', 'config', 'new', 'pause', 'resume', 'deploy', 'archive', 'unarchive', 'run', 'build', 'test', 'clean', 'deps', 'workspace', 'agent', 'agy', 'claude', 'gemini', 'codex', 'doctor', 'init', 'maintenance', 'health', 'index', 'open', 'commit', 'backup', 'env', 'guard', 'upgrade')
-    if ($Command.ToLower() -in $portedNativeCommands) {
-        $nativeExe = Get-RtbNativeBinary
-        if ($nativeExe) {
-            if ($Arguments) {
-                & $nativeExe $Command.ToLower() @Arguments
-            } else {
-                & $nativeExe $Command.ToLower()
-            }
-            return
-        }
-    }
-
     # Config Gate for data-dependent commands
-    $freeCommands = @('help', 'init', 'config', 'doctor', 'status', 'uninstall', '--version', '-v', '--help', '-h')
+    $freeCommands = @('help', 'init', 'config', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
     if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
         $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
         $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }

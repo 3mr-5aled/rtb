@@ -2,25 +2,17 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct DevConfig {
-    #[serde(default)]
     pub version: String,
-    #[serde(default)]
     pub project_roots: ProjectRoots,
-    #[serde(default)]
     pub backup_root: String,
-    #[serde(default)]
     pub config_root: String,
-    #[serde(default)]
     pub template_dir: String,
-    #[serde(default)]
     pub clean_deps: CleanDepsConfig,
-    #[serde(default)]
     pub stale_threshold_days: u64,
-    #[serde(default)]
     pub git_health: GitHealthConfig,
 }
 
@@ -69,21 +61,18 @@ pub struct ProjectRoots {
     pub sandbox: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct CleanDepsConfig {
-    #[serde(default)]
     pub days_inactive: u64,
-    #[serde(default)]
     pub targets: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct GitHealthConfig {
-    #[serde(default)]
     pub scan_roots: Vec<String>,
 }
 
@@ -119,21 +108,6 @@ impl DevConfig {
         paths.push(PathBuf::from("../config/rtb.config.json"));
 
         paths
-    }
-
-    /// Checks whether the configuration is valid and has an active project root path set.
-    pub fn is_configured(&self) -> bool {
-        !self.project_roots.active.trim().is_empty()
-    }
-
-    pub fn load_from(custom_path: &Option<PathBuf>) -> Result<Self> {
-        if let Some(p) = custom_path {
-            let content = std::fs::read_to_string(p)
-                .with_context(|| format!("Cannot read config from {}", p.display()))?;
-            return serde_json::from_str(&content)
-                .with_context(|| format!("Failed to parse config file {}", p.display()));
-        }
-        Self::load()
     }
 
     pub fn load() -> Result<Self> {

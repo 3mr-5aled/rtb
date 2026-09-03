@@ -42,10 +42,6 @@ function Rtb-Config {
     Write-Host "Opening RTB configuration..." -ForegroundColor Cyan
     Write-Host "  Config file: $configFile" -ForegroundColor Gray
 
-    if ($env:RTB_NON_INTERACTIVE -or $env:CI -or $env:GITHUB_ACTIONS) {
-        return
-    }
-
     # 1. Check $env:EDITOR / $env:VISUAL
     $editor = if ($env:EDITOR) { $env:EDITOR } elseif ($env:VISUAL) { $env:VISUAL } else { $null }
     if ($editor) {

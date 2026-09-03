@@ -61,22 +61,6 @@ pub fn scan_all_projects(config: &DevConfig) -> Vec<Project> {
     projects
 }
 
-pub struct ProjectInspector;
-
-impl ProjectInspector {
-    pub fn inspect(path: &Path) -> Project {
-        scan_project(path, ProjectStatus::Active)
-    }
-
-    pub fn inspect_with_status(path: &Path, status: ProjectStatus) -> Project {
-        scan_project(path, status)
-    }
-
-    pub fn scan_all(config: &DevConfig) -> Vec<Project> {
-        scan_all_projects(config)
-    }
-}
-
 fn status_priority(status: &ProjectStatus) -> usize {
     match status {
         ProjectStatus::Active => 0,
@@ -519,7 +503,7 @@ fn get_git_info(path: &Path) -> Option<GitInfo> {
     })
 }
 
-pub fn run_git(path: &Path, args: &[&str]) -> Option<String> {
+fn run_git(path: &Path, args: &[&str]) -> Option<String> {
     std::process::Command::new("git")
         .args(args)
         .current_dir(path)

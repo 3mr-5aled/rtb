@@ -6,7 +6,6 @@ Describe "Rtb-Status Shell Prompt Integration" {
     BeforeAll {
         . (Join-Path $PSScriptRoot '..\src\utils\helpers.ps1')
         . (Join-Path $PSScriptRoot '..\src\commands\status.ps1')
-        Get-Module rtb | Remove-Module -Force -ErrorAction SilentlyContinue
         Import-Module (Join-Path $PSScriptRoot '..\rtb.psd1') -Force
 
         $script:testBase = Join-Path ([System.IO.Path]::GetTempPath()) "rtb_status_test_$([Guid]::NewGuid().ToString('N'))"
@@ -37,34 +36,9 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 abandoned  = (Join-Path $script:testBase "05-Abandoned")
             }
         }
-
-        $configPath = Join-Path $script:testBase "rtb.config.json"
-        $rawConfig = @{
-            version = "1.0.0"
-            projectRoots = @{
-                active     = $script:activeRoot
-                paused     = (Join-Path $script:testBase "04-Paused")
-                planning   = (Join-Path $script:testBase "02-Planning")
-                testing    = (Join-Path $script:testBase "03-Testing")
-                production = (Join-Path $script:testBase "02-Deployed\01-Production")
-                staging    = (Join-Path $script:testBase "02-Deployed\02-Staging")
-                vibe       = (Join-Path $script:testBase "03-Vibe")
-                sandbox    = (Join-Path $script:testBase "01-SandBox")
-                abandoned  = (Join-Path $script:testBase "05-Abandoned")
-            }
-            backupRoot = ""
-            configRoot = ""
-            templateDir = ""
-            cleanDeps = @{ daysInactive = 30; targets = @() }
-            staleThresholdDays = 60
-            gitHealth = @{ scanRoots = @() }
-        } | ConvertTo-Json -Depth 5
-        Set-Content -Path $configPath -Value $rawConfig
-        $env:RTB_CONFIG = $configPath
     }
 
     AfterAll {
-        Remove-Item Env:\RTB_CONFIG -ErrorAction SilentlyContinue
         if (Test-Path $script:testBase) {
             Remove-Item -Recurse -Force $script:testBase -ErrorAction SilentlyContinue
         }
@@ -297,42 +271,6 @@ Describe "Rtb-Status Shell Prompt Integration" {
                 $data2.project | Should -Be "sample-project"
             } finally {
                 Pop-Location
-            }
-        }
-    }
-
-    Context "Rust parity" {
-        It "invokes Rust binary when available and returns matching JSON contract" {
-            $bin = Get-Command rtb -CommandType Application -ErrorAction SilentlyContinue
-            if (-not $bin -and $env:_RTB_BIN -and (Test-Path $env:_RTB_BIN)) {
-                $bin = Get-Item $env:_RTB_BIN
-            }
-            if ($bin) {
-                Push-Location $script:testProj
-                try {
-                    $configPath = Join-Path $script:testBase "rtb.config.json"
-                    $rawConfig = @{
-                        version = "1.0.0"
-                        projectRoots = @{
-                            active = $script:activeRoot
-                        }
-                        backupRoot = ""
-                        configRoot = ""
-                        templateDir = ""
-                        cleanDeps = @{ daysInactive = 30; targets = @() }
-                        staleThresholdDays = 60
-                        gitHealth = @{ scanRoots = @() }
-                    } | ConvertTo-Json -Depth 5
-                    Set-Content -Path $configPath -Value $rawConfig
-
-                    $binPath = if ($bin.Source) { $bin.Source } else { $bin.FullName }
-                    $jsonStr = & $binPath --config $configPath status --json
-                    $data = $jsonStr | ConvertFrom-Json
-                    $data.project | Should -Be "sample-project"
-                    $data.status | Should -Be "Active"
-                } finally {
-                    Pop-Location
-                }
             }
         }
     }
