@@ -107,7 +107,7 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
     }
 
     if (!selectedAgent || !selectedAgent.installed) {
-      if (options.noLaunch) {
+      if (options.launch === false || options.noLaunch) {
         selectedAgent = selectedAgent || installedAgents[0];
       } else {
         outputError('No installed AI agent found in PATH (agy, claude, gemini, codex, cursor, windsurf, aider, openhands).', 'NO_AGENTS', ctx.isJson);
