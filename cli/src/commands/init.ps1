@@ -14,7 +14,7 @@ function Rtb-Init {
     Write-RtbHeader -Title "Interactive Setup Wizard"
     
     $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-    $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
+    $userConfigDir = Join-Path $userHomeDir '.config/rtb'
     $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
     
     if (-not (Test-Path $userConfigDir)) {

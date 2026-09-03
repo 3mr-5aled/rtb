@@ -15,8 +15,8 @@ function Get-RtbConfig {
 
     $paths = @(
         $env:RTB_CONFIG,
-        $appDataPath,
         (Join-Path $dotConfigDir 'rtb.config.json'),
+        $appDataPath,
         (Join-Path (Get-Location) 'config\rtb.config.json'),
         (Join-Path (Get-Location) 'config\dev.config.json'),
         (Join-Path $PSScriptRoot '..\config\rtb.config.json'),

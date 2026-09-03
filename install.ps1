@@ -574,12 +574,8 @@ function global:Main {
     Show-Header
     Ensure-Node
 
-    $default = if ($env:APPDATA) {
-        Join-Path $env:APPDATA 'rtb'
-    } else {
-        $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-        Join-Path $homeDir '.config\rtb'
-    }
+    $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $default = Join-Path $homeDir '.config\rtb'
 
     $script:userConfigDir = Prompt-InstallPath $default
     $script:moduleHome    = Join-Path $script:userConfigDir 'module'

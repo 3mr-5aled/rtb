@@ -6,14 +6,15 @@
 #>
 
 function Get-RtbConfigFilePath {
-    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-    $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\rtb.config.json' } else { $null }
-    $dotConfigPath = Join-Path $userHomeDir '.config\rtb\rtb.config.json'
+    if ($env:RTB_CONFIG -and (Test-Path $env:RTB_CONFIG)) { return $env:RTB_CONFIG }
 
-    if ($appDataPath -and (Test-Path $appDataPath)) { return $appDataPath }
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $dotConfigPath = Join-Path $userHomeDir '.config\rtb\rtb.config.json'
+    $appDataPath = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\rtb.config.json' } else { $null }
+
     if (Test-Path $dotConfigPath) { return $dotConfigPath }
+    if ($appDataPath -and (Test-Path $appDataPath)) { return $appDataPath }
     
-    if ($appDataPath) { return $appDataPath }
     return $dotConfigPath
 }
 

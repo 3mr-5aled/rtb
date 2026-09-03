@@ -55,7 +55,7 @@ function rtb {
     $freeCommands = @('help', 'init', 'config', 'doctor', 'uninstall', '--version', '-v', '--help', '-h')
     if ($Command.ToLower() -notin $freeCommands -and -not (Test-RtbConfigured)) {
         $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-        $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
+        $userConfigDir = Join-Path $userHomeDir '.config/rtb'
         $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
         Write-Host ""
         Write-Host "  ⚠  RTB is not configured yet." -ForegroundColor Yellow

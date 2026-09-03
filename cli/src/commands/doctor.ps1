@@ -23,7 +23,8 @@ function Rtb-Doctor {
     # 1. Config Check
     Write-Host '  Config' -ForegroundColor Cyan
     $config = try { Get-RtbConfig -ErrorAction SilentlyContinue } catch { $null }
-    $userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $env:HOME '.config/rtb' }
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $userConfigDir = Join-Path $userHomeDir '.config/rtb'
     $userConfigFile = Join-Path $userConfigDir 'rtb.config.json'
     $configPassed = ($null -ne $config)
     $configLabel = if ($configPassed) { "rtb.config.json ($userConfigFile)" } else { "rtb.config.json found and parseable" }

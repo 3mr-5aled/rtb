@@ -21,7 +21,8 @@ function Resolve-MaintenanceScript {
     if (Test-Path $repoScript) { return (Resolve-Path $repoScript).Path }
 
     # 3. System fallback
-    $userBin = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb\bin' } else { Join-Path $env:HOME '.config/rtb/bin' }
+    $userHomeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+    $userBin = Join-Path $userHomeDir '.config/rtb/bin'
     $systemScript = Join-Path $userBin $scriptName
     if (Test-Path $systemScript) { return $systemScript }
 

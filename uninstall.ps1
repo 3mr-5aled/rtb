@@ -65,14 +65,12 @@ if ($shouldCleanProfile) {
 
 # 3. Clean up installed binaries, module files, and config
 $userHomeDir   = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
-$userConfigDir = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { Join-Path $userHomeDir '.config/rtb' }
+$userConfigDir = Join-Path $userHomeDir '.config/rtb'
 $moduleHome    = Join-Path $userConfigDir 'module'
 $scriptsDir    = if ($env:RTB_BIN_DIR) {
     $env:RTB_BIN_DIR
-} elseif ($env:APPDATA) {
-    Join-Path $env:APPDATA 'rtb\bin'
 } else {
-    Join-Path $userHomeDir '.config\rtb\bin'
+    Join-Path $userConfigDir 'bin'
 }
 
 if (Test-Path $moduleHome) {
