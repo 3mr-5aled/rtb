@@ -151,24 +151,63 @@ function global:Stop-Spinner([hashtable]$ctx, [bool]$success) {
     Write-Host "  $icon  ${color}$lbl${reset}"
 }
 
+function global:Get-RtbInstallerVersion {
+    $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+    $candidates = @(
+        (Join-Path $dir 'VERSION'),
+        (Join-Path $dir 'core\package.json'),
+        (Join-Path $dir 'cli\rtb.psd1')
+    )
+    $p = $dir
+    for ($i = 0; $i -lt 3; $i++) {
+        if ($p) {
+            $candidates += (Join-Path $p 'VERSION')
+            $candidates += (Join-Path $p 'core\package.json')
+            $candidates += (Join-Path $p 'cli\rtb.psd1')
+            $p = Split-Path $p -Parent
+        }
+    }
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path -LiteralPath $c)) {
+            try {
+                if ($c.EndsWith('package.json')) {
+                    $pkg = (Get-Content -LiteralPath $c -Raw) | ConvertFrom-Json
+                    if ($pkg.version) { return [string]$pkg.version }
+                } elseif ($c.EndsWith('.psd1')) {
+                    $manifest = Import-PowerShellDataFile -Path $c -ErrorAction SilentlyContinue
+                    if ($manifest -and $manifest.ModuleVersion) { return [string]$manifest.ModuleVersion }
+                } else {
+                    $raw = (Get-Content -LiteralPath $c -Raw).Trim()
+                    if ($raw) { return [string]($raw -replace '^v','') }
+                }
+            } catch {}
+        }
+    }
+    return '0.5.0'
+}
+
+$script:VERSION = Get-RtbInstallerVersion
+
 function global:Show-Header {
+    $ver = if ($script:VERSION) { $script:VERSION } else { Get-RtbInstallerVersion }
     if ($script:QUIET) {
-        Write-Host 'RTB Setup Wizard'
+        Write-Host "RTB Setup Wizard v$ver"
         return
     }
     $c = Esc '36m'
     $b = Esc '1m'
     $r = Esc '0m'
     $d = Esc '90m'
+    $g = Esc '32m'
     Write-Host ""
     Write-Host "  ${b}${c}██████╗ ████████╗██████╗ ${r}"
     Write-Host "  ${b}${c}██╔══██╗╚══██╔══╝██╔══██╗${r}"
     Write-Host "  ${b}${c}██████╔╝   ██║   ██████╔╝${r}"
     Write-Host "  ${b}${c}██╔══██╗   ██║   ██╔══██╗${r}"
     Write-Host "  ${b}${c}██║  ██║   ██║   ██████╔╝${r}"
-    Write-Host "  ${b}${c}╚═╝  ╚═╝   ╚═╝   ╚═════╝ ${r}  Setup Wizard"
+    Write-Host "  ${b}${c}╚═╝  ╚═╝   ╚═╝   ╚═════╝ ${r}  Setup Wizard ${g}v$ver${r}"
     Write-Host ""
-    Write-Host "  ${c}RTB - Repository & Tooling Base${r}"
+    Write-Host "  ${c}RTB - Repository & Tooling Base${r} ${d}(v$ver)${r}"
     Write-Host "  ${d}Windows / PowerShell installer${r}"
     Write-Host ""
 }
@@ -248,9 +287,11 @@ function global:Show-Summary([string]$installPath, [string[]]$profiles) {
     $r = Esc '0m'
     $check = [char]0x2714
 
+    $ver = if ($script:VERSION) { $script:VERSION } else { Get-RtbInstallerVersion }
     Write-Host ""
-    Write-Host "  ${b}${g}$check RTB installed successfully!${r}"
+    Write-Host "  ${b}${g}$check RTB v$ver installed successfully!${r}"
     Write-Host ""
+    Write-Host "  ${c}RTB Version:${r}   v$ver"
     Write-Host "  ${c}Install path:${r}  $installPath"
     if ($profiles -and $profiles.Count -gt 0) {
         foreach ($p in $profiles) {
@@ -349,10 +390,11 @@ function global:Install-Steps {
             } elseif (Test-Path (Join-Path $tmpExt 'core\dist\index.js')) {
                 Copy-Item (Join-Path $tmpExt 'core\dist\index.js') "$script:scriptsDir\rtb.js" -Force
             }
-            foreach ($f in @('logo.txt', 'uninstall.ps1')) {
+            foreach ($f in @('logo.txt', 'uninstall.ps1', 'VERSION')) {
                 $src = Join-Path $tmpExt $f
                 if (Test-Path $src) {
                     Copy-Item $src "$script:scriptsDir\$f" -Force
+                    Copy-Item $src "$script:moduleHome\$f" -Force -ErrorAction SilentlyContinue
                 }
             }
             $uninst = Join-Path $tmpExt 'uninstall.ps1'
@@ -391,10 +433,11 @@ function global:Install-Steps {
 
         Stop-Spinner $ctx $true
 
-        foreach ($f in @('logo.txt', 'uninstall.ps1')) {
+        foreach ($f in @('logo.txt', 'uninstall.ps1', 'VERSION')) {
             $s = Join-Path $repoRoot $f
             if (Test-Path $s) {
                 Copy-Item $s "$script:scriptsDir\$f" -Force
+                Copy-Item $s "$script:moduleHome\$f" -Force -ErrorAction SilentlyContinue
             }
         }
         $uninst = Join-Path $repoRoot 'uninstall.ps1'

@@ -155,6 +155,9 @@ jobs:
           if (Test-Path "uninstall.ps1") {
             Copy-Item -Path "uninstall.ps1" -Destination "staging\uninstall.ps1" -Force
           }
+          if (Test-Path "VERSION") {
+            Copy-Item -Path "VERSION" -Destination "staging\VERSION" -Force
+          }
           Compress-Archive -Path "staging\*" -DestinationPath "rtb-cli.zip" -Force
 
           # Move standalone binaries for release attachment

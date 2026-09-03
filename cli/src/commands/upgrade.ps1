@@ -15,19 +15,30 @@ function Rtb-Upgrade {
 
     Write-RtbHeader "Self-Upgrade Engine"
 
-    # 1. Resolve current installed version from rtb.psd1
+    # 1. Resolve current installed version from VERSION or rtb.psd1
     $currentVersion = '0.5.0'
-    $psdCandidates = @(
+    $versionCandidates = @(
+        (Join-Path $PSScriptRoot '..\..\VERSION'),
         (Join-Path $PSScriptRoot '..\..\rtb.psd1'),
-        (Join-Path $env:APPDATA 'rtb\module\rtb.psd1')
+        (Join-Path $env:APPDATA 'rtb\module\VERSION'),
+        (Join-Path $env:APPDATA 'rtb\module\rtb.psd1'),
+        (Join-Path $env:USERPROFILE '.config\rtb\VERSION')
     )
-    foreach ($psd in $psdCandidates) {
-        if ($psd -and (Test-Path $psd)) {
+    foreach ($cand in $versionCandidates) {
+        if ($cand -and (Test-Path $cand)) {
             try {
-                $manifest = Import-PowerShellDataFile -Path $psd -ErrorAction SilentlyContinue
-                if ($manifest -and $manifest.ModuleVersion) {
-                    $currentVersion = $manifest.ModuleVersion
-                    break
+                if ($cand.EndsWith('.psd1')) {
+                    $manifest = Import-PowerShellDataFile -Path $cand -ErrorAction SilentlyContinue
+                    if ($manifest -and $manifest.ModuleVersion) {
+                        $currentVersion = $manifest.ModuleVersion
+                        break
+                    }
+                } else {
+                    $raw = (Get-Content -Path $cand -Raw -ErrorAction SilentlyContinue).Trim()
+                    if ($raw) {
+                        $currentVersion = ($raw -replace '^v','')
+                        break
+                    }
                 }
             } catch {}
         }

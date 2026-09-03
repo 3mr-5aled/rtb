@@ -10,7 +10,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sync-version": "node ../scripts/sync-version.js"
   },
   "engines": {
     "node": ">=18.0.0"

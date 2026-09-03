@@ -28,12 +28,24 @@ function rtb {
     if (-not $Command -or $Command -eq '--help' -or $Command -eq '-h') { $Command = 'help' }
     if ($Command -eq '--version' -or $Command -eq '-v') {
         $ver = '0.5.0'
-        $psdPath = Join-Path $PSScriptRoot 'rtb.psd1'
-        if (Test-Path $psdPath) {
-            try {
-                $manifest = Import-PowerShellDataFile -Path $psdPath -ErrorAction SilentlyContinue
-                if ($manifest -and $manifest.ModuleVersion) { $ver = $manifest.ModuleVersion }
-            } catch {}
+        $versionCandidates = @(
+            (Join-Path $PSScriptRoot 'VERSION'),
+            (Join-Path $PSScriptRoot '..\VERSION'),
+            (Join-Path $PSScriptRoot '..\..\VERSION'),
+            (Join-Path $PSScriptRoot 'rtb.psd1')
+        )
+        foreach ($cand in $versionCandidates) {
+            if ($cand -and (Test-Path $cand)) {
+                try {
+                    if ($cand.EndsWith('.psd1')) {
+                        $manifest = Import-PowerShellDataFile -Path $cand -ErrorAction SilentlyContinue
+                        if ($manifest -and $manifest.ModuleVersion) { $ver = $manifest.ModuleVersion; break }
+                    } else {
+                        $raw = (Get-Content -Path $cand -Raw -ErrorAction SilentlyContinue).Trim()
+                        if ($raw) { $ver = ($raw -replace '^v',''); break }
+                    }
+                } catch {}
+            }
         }
         Write-Host "RTB (ﺐﺘّﺭ) CLI v$ver" -ForegroundColor Green
         return

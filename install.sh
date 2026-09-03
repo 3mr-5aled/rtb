@@ -108,6 +108,25 @@ stop_spinner() {
     fi
 }
 
+get_rtb_version() {
+    for f in "./VERSION" "../VERSION" "$SCRIPT_DIR/VERSION" "core/package.json" "../core/package.json"; do
+        if [ -f "$f" ]; then
+            case "$f" in
+                *.json)
+                    v=$(grep '"version"' "$f" | head -n 1 | sed -E 's/.*"version": "([^"]+)".*/\1/')
+                    if [ -n "$v" ]; then echo "$v"; return; fi
+                    ;;
+                *)
+                    v=$(head -n 1 "$f" | tr -d '\r\n ' | sed 's/^v//')
+                    if [ -n "$v" ]; then echo "$v"; return; fi
+                    ;;
+            esac
+        fi
+    done
+    echo "0.5.0"
+}
+RTB_VERSION="$(get_rtb_version)"
+
 show_header() {
     if [ "$RTB_QUIET" = "1" ]; then
         return
@@ -115,11 +134,12 @@ show_header() {
     c="$(esc '36m')"
     b="$(esc '1m')"
     d="$(esc '90m')"
+    g="$(esc '32m')"
     r="$(esc '0m')"
 
     printf '\n'
-    printf '  %s%sRTB%s %s(رتّب) Setup Wizard%s\n' "$b" "$c" "$r" "$b" "$r"
-    printf '  %sCross-platform developer tooling & workspace manager%s\n' "$d" "$r"
+    printf '  %s%sRTB%s %s(رتّب) Setup Wizard%s %sv%s%s\n' "$b" "$c" "$r" "$b" "$r" "$g" "$RTB_VERSION" "$r"
+    printf '  %sCross-platform developer tooling & workspace manager (v%s)%s\n' "$d" "$RTB_VERSION" "$r"
     printf '\n'
 }
 
@@ -220,7 +240,8 @@ show_summary() {
     r="$(esc '0m')"
 
     printf '\n'
-    printf '  %s%s✔ RTB installed successfully!%s\n\n' "$b" "$g" "$r"
+    printf '  %s%s✔ RTB v%s installed successfully!%s\n\n' "$b" "$g" "$RTB_VERSION" "$r"
+    printf '  %sRTB Version:%s   v%s\n' "$c" "$r" "$RTB_VERSION"
     printf '  %sInstall path:%s  %s\n' "$c" "$r" "$ipath"
     printf '  %sNode runtime:%s  %s\n\n' "$c" "$r" "$(node -v 2>/dev/null || echo 'node')"
     printf '  %sNext steps:%s\n' "$b" "$r"
@@ -261,6 +282,7 @@ install_steps() {
         RELEASE_URL='https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.js'
         start_spinner 'Downloading rtb-cli.js'
         if curl -fsSL --max-time 120 "$RELEASE_URL" -o "$LIB_DIR/rtb.js" 2>/dev/null || wget -q "$RELEASE_URL" -O "$LIB_DIR/rtb.js" 2>/dev/null; then
+            curl -fsSL --max-time 15 "https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION" -o "$RTB_DIR/VERSION" 2>/dev/null || true
             stop_spinner 1 'Downloaded RTB CLI engine'
         else
             stop_spinner 0 'Download RTB CLI engine'
@@ -275,6 +297,10 @@ install_steps() {
             }
         fi
         cp "$SCRIPT_DIR/core/dist/index.js" "$LIB_DIR/rtb.js"
+        if [ -f "$SCRIPT_DIR/VERSION" ]; then
+            cp "$SCRIPT_DIR/VERSION" "$RTB_DIR/VERSION"
+            cp "$SCRIPT_DIR/VERSION" "$LIB_DIR/VERSION" 2>/dev/null || true
+        fi
         stop_spinner 1 'Deployed local CLI bundle'
     fi
 

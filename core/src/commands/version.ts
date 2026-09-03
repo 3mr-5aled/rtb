@@ -3,7 +3,31 @@ import chalk from 'chalk';
 import type { CliContext } from '../types/context.js';
 import { outputJson } from '../utils/output.js';
 
-export const RTB_VERSION = '0.5.0';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export function resolveVersion(): string {
+  try {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const candidates = [
+      join(currentDir, 'VERSION'),
+      join(currentDir, '..', 'VERSION'),
+      join(currentDir, '..', '..', 'VERSION'),
+      join(currentDir, '..', '..', '..', 'VERSION'),
+      join(process.cwd(), 'VERSION'),
+    ];
+    for (const file of candidates) {
+      if (existsSync(file)) {
+        const content = readFileSync(file, 'utf-8').trim();
+        if (content) return content.replace(/^v/, '');
+      }
+    }
+  } catch {}
+  return '0.5.0';
+}
+
+export const RTB_VERSION = resolveVersion();
 
 export function registerVersionCommand(program: Command, getContext: () => CliContext): void {
   program
