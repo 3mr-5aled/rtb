@@ -44,10 +44,15 @@ export function resolveConfigPath(customPath?: string): { path: string; source: 
     return { path: standard, source: 'user' };
   }
 
-  // 3. Local repository fallback (./config/rtb.config.json)
-  const local = path.resolve(process.cwd(), 'config', 'rtb.config.json');
-  if (fs.existsSync(local)) {
-    return { path: local, source: 'local' };
+  // 3. Local repository fallback (./config/rtb.config.json or ../config/rtb.config.json)
+  const localCandidates = [
+    path.resolve(process.cwd(), 'config', 'rtb.config.json'),
+    path.resolve(process.cwd(), '..', 'config', 'rtb.config.json'),
+  ];
+  for (const candidate of localCandidates) {
+    if (fs.existsSync(candidate)) {
+      return { path: candidate, source: 'local' };
+    }
   }
 
   return { path: standard, source: 'none' };

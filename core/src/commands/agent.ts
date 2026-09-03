@@ -107,10 +107,14 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
     }
 
     if (!selectedAgent || !selectedAgent.installed) {
-      outputError('No installed AI agent found in PATH (agy, claude, gemini, codex, cursor, windsurf, aider, openhands).', 'NO_AGENTS', ctx.isJson);
-      console.error(chalk.gray("  Run 'rtb agent --list' to check agent status.\n"));
-      process.exitCode = 1;
-      return;
+      if (options.noLaunch) {
+        selectedAgent = selectedAgent || installedAgents[0];
+      } else {
+        outputError('No installed AI agent found in PATH (agy, claude, gemini, codex, cursor, windsurf, aider, openhands).', 'NO_AGENTS', ctx.isJson);
+        console.error(chalk.gray("  Run 'rtb agent --list' to check agent status.\n"));
+        process.exitCode = 1;
+        return;
+      }
     }
 
     // Resolve target project path

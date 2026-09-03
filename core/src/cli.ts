@@ -79,6 +79,7 @@ export function createCli(argv: string[] = process.argv): Command {
           'NOT_CONFIGURED',
           true
         );
+        if (process.env.VITEST) return;
         process.exit(1);
       }
 
@@ -103,10 +104,12 @@ export function createCli(argv: string[] = process.argv): Command {
         if (answer === '' || answer === 'y' || answer === 'yes') {
           // Future: launch init
           console.log(`\n  Please run '${chalk.cyan('rtb init')}' to proceed.\n`);
+          if (process.env.VITEST) return;
           process.exit(0);
         }
       }
 
+      if (process.env.VITEST) return;
       process.exit(1);
     }
   });
