@@ -8,6 +8,7 @@ import { registerConfigCommand } from './commands/config.js';
 import { registerGotoCommand } from './commands/goto.js';
 import { registerListCommand } from './commands/list.js';
 import { registerIndexCommand } from './commands/project-index.js';
+import { registerShellInitCommand } from './commands/shell-init.js';
 import { outputError } from './utils/output.js';
 
 export const EXEMPT_COMMANDS = new Set([
@@ -105,6 +106,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerGotoCommand(program, getContext);
   registerListCommand(program, getContext);
   registerIndexCommand(program, getContext);
+  registerShellInitCommand(program, getContext);
 
   return program;
 }
