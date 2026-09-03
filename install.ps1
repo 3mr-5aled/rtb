@@ -267,10 +267,31 @@ function global:Show-Summary([string]$installPath, [string[]]$profiles) {
     Write-Host ""
 }
 
+function global:Ensure-Node {
+    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+    if ($nodeCmd) {
+        $vStr = (& node -v) -replace '^v',''
+        $major = [int]($vStr.Split('.')[0])
+        if ($major -ge 18) {
+            return
+        }
+        Write-Warn "Node.js is installed but version ($major) is less than required (>= 18)."
+    } else {
+        Write-Warn "Node.js (>= 18) was not found on your system."
+    }
+
+    if ($script:QUIET) {
+        Write-Fail "Node.js >= 18 is required. Install from https://nodejs.org"
+    }
+
+    Write-Host "  Please install Node.js >= 18 from https://nodejs.org or via winget: winget install OpenJS.NodeJS.LTS" -ForegroundColor Yellow
+    Write-Fail "Node.js >= 18 is required to run RTB."
+}
+
 function global:Find-RepoRoot {
     $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
     while ($dir -and (Test-Path $dir)) {
-        if (Test-Path (Join-Path $dir 'cli\rtb.psd1')) {
+        if ((Test-Path (Join-Path $dir 'core\package.json')) -or (Test-Path (Join-Path $dir 'cli\rtb.psd1'))) {
             return $dir
         }
         $parent = Split-Path $dir -Parent
@@ -306,8 +327,8 @@ function global:Install-Steps {
         Write-Fail "Cannot create directories: $_"
     }
 
-    # Step 2: Module Deployment (Critical)
-    Write-Step 2 $TOTAL 'Deploying RTB module'
+    # Step 2: Deploy RTB Engine (Critical)
+    Write-Step 2 $TOTAL 'Deploying RTB CLI engine'
     if ($isStandalone) {
         $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
         $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
@@ -317,11 +338,12 @@ function global:Install-Steps {
             Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -EA Stop
             Stop-Spinner $ctx $true
 
-            $ctx = Start-Spinner 'Extracting module files'
+            $ctx = Start-Spinner 'Extracting CLI files'
             Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
-            $ec = Join-Path $tmpExt 'cli'
-            if (Test-Path $ec) {
-                Copy-Item "$ec\*" $script:moduleHome -Recurse -Force
+            if (Test-Path (Join-Path $tmpExt 'rtb.js')) {
+                Copy-Item (Join-Path $tmpExt 'rtb.js') "$script:scriptsDir\rtb.js" -Force
+            } elseif (Test-Path (Join-Path $tmpExt 'core\dist\index.js')) {
+                Copy-Item (Join-Path $tmpExt 'core\dist\index.js') "$script:scriptsDir\rtb.js" -Force
             }
             foreach ($f in @('logo.txt', 'uninstall.ps1')) {
                 $src = Join-Path $tmpExt $f
@@ -341,15 +363,27 @@ function global:Install-Steps {
             Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
         }
     } else {
-        $ctx = Start-Spinner 'Copying local CLI module'
-        $src = Join-Path $repoRoot 'cli'
-        if (Test-Path $src) {
-            Copy-Item "$src\*" $script:moduleHome -Recurse -Force
+        $ctx = Start-Spinner 'Deploying local CLI bundle'
+        $coreDir = Join-Path $repoRoot 'core'
+        $builtBundle = Join-Path $coreDir 'dist\index.js'
+        if (-not (Test-Path $builtBundle)) {
+            Push-Location $coreDir
+            try {
+                npm install --silent 2>&1 | Out-Null
+                npm run build --silent 2>&1 | Out-Null
+            } finally {
+                Pop-Location
+            }
+        }
+
+        if (Test-Path $builtBundle) {
+            Copy-Item $builtBundle "$script:scriptsDir\rtb.js" -Force
             Stop-Spinner $ctx $true
         } else {
             Stop-Spinner $ctx $false
-            Write-Fail 'cli\ not found.'
+            Write-Fail 'core\dist\index.js not found and build failed.'
         }
+
         foreach ($f in @('logo.txt', 'uninstall.ps1')) {
             $s = Join-Path $repoRoot $f
             if (Test-Path $s) {
@@ -361,6 +395,12 @@ function global:Install-Steps {
             Copy-Item $uninst "$script:userConfigDir\uninstall.ps1" -Force
         }
     }
+
+    # Generate rtb.cmd and rtb.ps1 wrappers in bin/
+    $cmdContent = "@echo off`r`nnode `"%~dp0rtb.js`" %*"
+    Set-Content -Path (Join-Path $script:scriptsDir 'rtb.cmd') -Value $cmdContent -Encoding ASCII
+    $ps1Content = "& node (Join-Path `$PSScriptRoot 'rtb.js') @args"
+    Set-Content -Path (Join-Path $script:scriptsDir 'rtb.ps1') -Value $ps1Content -Encoding UTF8
 
     # Step 3: TUI Binary (Non-critical)
     Write-Step 3 $TOTAL 'Installing rtbtui binary'
@@ -435,46 +475,43 @@ function global:Install-Steps {
 
     # Step 5: Profile Injection (Non-critical)
     Write-Step 5 $TOTAL 'Configuring PowerShell profile(s)'
-    $psd = Join-Path $script:moduleHome 'rtb.psd1'
-    if (Test-Path $psd) {
-        $line = "Import-Module '$psd' -DisableNameChecking -Force"
-        foreach ($p in $script:resolvedProfiles) {
-            if ($p) {
-                $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
-                try {
-                    $dir = Split-Path $p -Parent
-                    if ($dir -and -not (Test-Path $dir)) {
-                        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-                    }
-                    if (-not (Test-Path $p)) {
-                        New-Item -ItemType File -Path $p -Force | Out-Null
-                    }
-                    $pLines = Get-Content $p -ErrorAction SilentlyContinue
-                    $clean = if ($pLines) {
-                        @($pLines | Where-Object {
-                            $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
-                            $_ -notmatch '#\s*RTB.*?Module'
-                        })
-                    } else {
-                        @()
-                    }
-                    $newContent = ($clean + @('', '# RTB CLI Module', $line)) -join "`r`n"
-                    $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
-                    Stop-Spinner $ctx $true
-                } catch {
-                    Stop-Spinner $ctx $false
-                    Write-Warn "Could not update $p - $_"
+    $line = "Invoke-Expression (& rtb shell-init pwsh)"
+    foreach ($p in $script:resolvedProfiles) {
+        if ($p) {
+            $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
+            try {
+                $dir = Split-Path $p -Parent
+                if ($dir -and -not (Test-Path $dir)) {
+                    New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 }
+                if (-not (Test-Path $p)) {
+                    New-Item -ItemType File -Path $p -Force | Out-Null
+                }
+                $pLines = Get-Content $p -ErrorAction SilentlyContinue
+                $clean = if ($pLines) {
+                    @($pLines | Where-Object {
+                        $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
+                        $_ -notmatch 'Invoke-Expression\s+\(&\s*rtb\s+shell-init' -and
+                        $_ -notmatch '#\s*RTB.*?Module' -and
+                        $_ -notmatch '#\s*RTB.*?Shell Integration'
+                    })
+                } else {
+                    @()
+                }
+                $newContent = ($clean + @('', '# RTB Shell Integration', $line)) -join "`r`n"
+                $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
+                Stop-Spinner $ctx $true
+            } catch {
+                Stop-Spinner $ctx $false
+                Write-Warn "Could not update $p - $_"
             }
         }
-        Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
-    } else {
-        Write-Warn "rtb.psd1 not found in '$($script:moduleHome)' - skipping profile injection."
     }
 }
 
 function global:Main {
     Show-Header
+    Ensure-Node
 
     $default = if ($env:APPDATA) {
         Join-Path $env:APPDATA 'rtb'
