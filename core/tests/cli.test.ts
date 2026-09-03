@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import path from 'node:path';
 import { createCli } from '../src/cli.js';
+import { RTB_VERSION } from '../src/commands/version.js';
 
 describe('CLI Framework & Registry', () => {
   it('should support version command in human mode', async () => {
@@ -12,7 +13,7 @@ describe('CLI Framework & Registry', () => {
     expect(logSpy).toHaveBeenCalled();
     const output = logSpy.mock.calls[0][0];
     expect(output).toContain('RTB');
-    expect(output).toContain('v0.5.1');
+    expect(output).toContain(`v${RTB_VERSION}`);
     logSpy.mockRestore();
   });
 
@@ -25,7 +26,7 @@ describe('CLI Framework & Registry', () => {
     expect(logSpy).toHaveBeenCalled();
     const parsed = JSON.parse(logSpy.mock.calls[0][0]);
     expect(parsed.name).toBe('rtb');
-    expect(parsed.version).toBe('0.5.1');
+    expect(parsed.version).toBe(RTB_VERSION);
     expect(parsed.engine).toBe('node');
     logSpy.mockRestore();
   });
