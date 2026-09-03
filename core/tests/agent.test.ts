@@ -8,9 +8,19 @@ import { createCli } from '../src/cli.js';
 
 describe('Agent Orchestrator & Context Generator', () => {
   const tmpDir = path.join(os.tmpdir(), `rtb-agent-test-${Date.now()}`);
+  const configFile = path.join(tmpDir, 'rtb.config.json');
 
   beforeEach(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({
+        version: '1.0.0',
+        projectRoots: {
+          active: { path: tmpDir, label: 'Active', emoji: '📁' },
+        },
+      })
+    );
   });
 
   afterEach(() => {
@@ -64,7 +74,7 @@ describe('Agent Orchestrator & Context Generator', () => {
     };
 
     try {
-      await cli.parseAsync(['node', 'rtb', 'agent', '--list']);
+      await cli.parseAsync(['node', 'rtb', '--config', configFile, 'agent', '--list']);
       expect(stdoutData).toContain('Google Antigravity');
       expect(stdoutData).toContain('Claude Code');
     } finally {
@@ -74,7 +84,7 @@ describe('Agent Orchestrator & Context Generator', () => {
 
   it('rtb agent --no-launch should create .rtb_context.md without spawning', async () => {
     const cli = createCli();
-    await cli.parseAsync(['node', 'rtb', 'agent', tmpDir, '--no-launch']);
+    await cli.parseAsync(['node', 'rtb', '--config', configFile, 'agent', tmpDir, '--no-launch']);
 
     const ctxFile = path.join(tmpDir, '.rtb_context.md');
     expect(fs.existsSync(ctxFile)).toBe(true);

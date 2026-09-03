@@ -11,9 +11,19 @@ describe('Diagnostics & System Commands (doctor, status, info, ui)', () => {
   const tmpDir = path.join(os.tmpdir(), `rtb-diag-test-${Date.now()}`);
   const activeDir = path.join(tmpDir, '01-Active');
   const sampleProj = path.join(activeDir, 'sample-app');
+  const configFile = path.join(tmpDir, 'rtb.config.json');
 
   beforeEach(() => {
     fs.mkdirSync(sampleProj, { recursive: true });
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify({
+        version: '1.0.0',
+        projectRoots: {
+          active: { path: activeDir, label: 'Active', emoji: '📁' },
+        },
+      })
+    );
     fs.writeFileSync(
       path.join(sampleProj, 'package.json'),
       JSON.stringify({ name: 'sample-app', dependencies: { react: '^19.0.0' } })
@@ -77,7 +87,7 @@ describe('Diagnostics & System Commands (doctor, status, info, ui)', () => {
     };
 
     try {
-      await cli.parseAsync(['node', 'rtb', 'doctor']);
+      await cli.parseAsync(['node', 'rtb', '--config', configFile, 'doctor']);
       expect(stdoutData).toContain('System Doctor');
     } finally {
       console.log = origLog;
@@ -93,7 +103,7 @@ describe('Diagnostics & System Commands (doctor, status, info, ui)', () => {
     };
 
     try {
-      await cli.parseAsync(['node', 'rtb', '--json', 'info', sampleProj]);
+      await cli.parseAsync(['node', 'rtb', '--config', configFile, '--json', 'info', sampleProj]);
       const parsed = JSON.parse(stdoutData);
       expect(parsed.name).toBe('sample-app');
       expect(parsed.stack).toContain('React');
