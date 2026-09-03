@@ -15,6 +15,7 @@ import { registerResumeCommand } from './commands/resume.js';
 import { registerArchiveCommand } from './commands/archive.js';
 import { registerUnarchiveCommand } from './commands/unarchive.js';
 import { registerCleanCommand } from './commands/clean.js';
+import { registerAgentCommand } from './commands/agent.js';
 import { outputError } from './utils/output.js';
 
 export const EXEMPT_COMMANDS = new Set([
@@ -119,6 +120,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerArchiveCommand(program, getContext);
   registerUnarchiveCommand(program, getContext);
   registerCleanCommand(program, getContext);
+  registerAgentCommand(program, getContext);
 
   return program;
 }
