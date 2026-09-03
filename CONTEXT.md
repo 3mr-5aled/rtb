@@ -34,9 +34,9 @@ AI agent discovery, context generation, and process execution engine.
 
 **Release Bundle** (`rtb-cli.zip`): The canonical GitHub Release asset produced by CI. Contains the full CLI module folder, `rtbtui.exe`, `logo.txt`, and `uninstall.ps1`. This is the only artifact a standalone installer downloads.
 
-**User Configuration**: The `rtb.config.json` file at `%APPDATA%\rtb\rtb.config.json`. A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
+**User Configuration**: The `rtb.config.json` file at `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on Unix). A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
 
-**Config Gate**: The mechanism in `rtb.psm1` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `doctor`, `uninstall`.
+**Config Gate**: The mechanism in `rtb` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `config`, `doctor`, `shell-init`, `uninstall`.
 
 **Project Root Entry**: A single entry in `projectRoots` in `rtb.config.json`. Structured as `{ path: String, label: String, emoji: String }`. Represents one lifecycle folder (e.g. Active, Paused, Deployed). Replaces the previous flat string schema.
 
