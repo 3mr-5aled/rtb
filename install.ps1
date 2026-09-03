@@ -410,7 +410,7 @@ function global:Install-Steps {
                     New-Item -ItemType File -Path $p -Force | Out-Null
                 }
                 $pLines = Get-Content -LiteralPath $p -ErrorAction SilentlyContinue
-                $clean = if ($pLines) {
+                [array]$clean = if ($pLines) {
                     @($pLines | Where-Object {
                         -not [string]::IsNullOrWhiteSpace($_) -and
                         $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
@@ -421,7 +421,7 @@ function global:Install-Steps {
                     @()
                 }
                 $newContent = ($clean + @('', '# RTB Shell Integration', $line)) -join "`r`n"
-                $newContent.TrimEnd() + "`r`n" | Set-Content -LiteralPath $p -Encoding UTF8
+                [System.IO.File]::WriteAllText($p, ($newContent.TrimEnd() + "`r`n"), [System.Text.Encoding]::UTF8)
                 Stop-Spinner $ctx $true
             } catch {
                 Stop-Spinner $ctx $false

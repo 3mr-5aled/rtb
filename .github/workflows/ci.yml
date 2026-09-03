@@ -22,10 +22,15 @@ jobs:
       - name: Build RTB Binary
         run: cargo build --release --manifest-path tui/Cargo.toml
 
+      - name: Install Pester v5
+        shell: pwsh
+        run: Install-Module Pester -MinimumVersion 5.0.0 -Force -SkipPublisherCheck -Scope CurrentUser
+
       - name: Execute Pester Unit Tests
         shell: pwsh
         run: |
           $env:RTB_NON_INTERACTIVE = 'true'
+          Import-Module Pester -MinimumVersion 5.0.0
           Import-Module './cli/rtb.psd1' -Force
           Invoke-Pester ./cli/tests/ -Passthru
 
