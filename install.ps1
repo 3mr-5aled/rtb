@@ -340,6 +340,10 @@ function global:Install-Steps {
 
             $ctx = Start-Spinner 'Extracting CLI files'
             Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
+            $ec = Join-Path $tmpExt 'cli'
+            if (Test-Path $ec) {
+                Copy-Item "$ec\*" $script:moduleHome -Recurse -Force
+            }
             if (Test-Path (Join-Path $tmpExt 'rtb.js')) {
                 Copy-Item (Join-Path $tmpExt 'rtb.js') "$script:scriptsDir\rtb.js" -Force
             } elseif (Test-Path (Join-Path $tmpExt 'core\dist\index.js')) {
@@ -363,7 +367,12 @@ function global:Install-Steps {
             Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
         }
     } else {
-        $ctx = Start-Spinner 'Deploying local CLI bundle'
+        $ctx = Start-Spinner 'Deploying local CLI module & bundle'
+        $src = Join-Path $repoRoot 'cli'
+        if (Test-Path $src) {
+            Copy-Item "$src\*" $script:moduleHome -Recurse -Force
+        }
+
         $coreDir = Join-Path $repoRoot 'core'
         $builtBundle = Join-Path $coreDir 'dist\index.js'
         if (-not (Test-Path $builtBundle)) {
@@ -378,11 +387,9 @@ function global:Install-Steps {
 
         if (Test-Path $builtBundle) {
             Copy-Item $builtBundle "$script:scriptsDir\rtb.js" -Force
-            Stop-Spinner $ctx $true
-        } else {
-            Stop-Spinner $ctx $false
-            Write-Fail 'core\dist\index.js not found and build failed.'
         }
+
+        Stop-Spinner $ctx $true
 
         foreach ($f in @('logo.txt', 'uninstall.ps1')) {
             $s = Join-Path $repoRoot $f
@@ -475,7 +482,13 @@ function global:Install-Steps {
 
     # Step 5: Profile Injection (Non-critical)
     Write-Step 5 $TOTAL 'Configuring PowerShell profile(s)'
-    $line = "Invoke-Expression (& rtb shell-init pwsh)"
+    $psd = Join-Path $script:moduleHome 'rtb.psd1'
+    $line = if (Test-Path $psd) {
+        "Import-Module '$psd' -DisableNameChecking -Force"
+    } else {
+        "Invoke-Expression (& rtb shell-init pwsh)"
+    }
+
     foreach ($p in $script:resolvedProfiles) {
         if ($p) {
             $ctx = Start-Spinner "Updating $([System.IO.Path]::GetFileName($p))"
@@ -487,7 +500,7 @@ function global:Install-Steps {
                 if (-not (Test-Path $p)) {
                     New-Item -ItemType File -Path $p -Force | Out-Null
                 }
-                $pLines = Get-Content $p -ErrorAction SilentlyContinue
+                $pLines = Get-Content -LiteralPath $p -ErrorAction SilentlyContinue
                 $clean = if ($pLines) {
                     @($pLines | Where-Object {
                         $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
@@ -498,8 +511,13 @@ function global:Install-Steps {
                 } else {
                     @()
                 }
-                $newContent = ($clean + @('', '# RTB Shell Integration', $line)) -join "`r`n"
-                $newContent.TrimEnd() + "`r`n" | Set-Content -Path $p -Encoding UTF8
+                $outputLines = [System.Collections.Generic.List[string]]::new()
+                foreach ($l in $clean) { $outputLines.Add($l) }
+                $outputLines.Add('')
+                $outputLines.Add('# RTB CLI Module')
+                $outputLines.Add($line)
+                $newContent = ($outputLines -join "`r`n").TrimEnd() + "`r`n"
+                $newContent | Set-Content -LiteralPath $p -Encoding UTF8
                 Stop-Spinner $ctx $true
             } catch {
                 Stop-Spinner $ctx $false
