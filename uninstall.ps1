@@ -83,6 +83,28 @@ if (Test-Path $scriptsDir) {
     Write-Host "Removed RTB binaries directory: $scriptsDir" -ForegroundColor Green
 }
 
+# 4. Clean legacy AppData\Roaming\rtb if present
+$legacyRoaming = if ($env:APPDATA) { Join-Path $env:APPDATA 'rtb' } else { $null }
+if ($legacyRoaming -and (Test-Path $legacyRoaming)) {
+    Remove-Item -Recurse -Force $legacyRoaming -ErrorAction SilentlyContinue
+    Write-Host "Removed legacy RTB directory: $legacyRoaming" -ForegroundColor Green
+}
+
+# 5. Clean PATH environment variable
+try {
+    $curPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    if ($curPath) {
+        $pathParts = @($curPath -split ';' | Where-Object {
+            $_ -and
+            $_ -ne $scriptsDir -and
+            $_ -notmatch '(?i)[\\/]AppData[\\/]Roaming[\\/]rtb[\\/]bin' -and
+            $_ -notmatch '(?i)\.config[\\/]rtb[\\/]bin'
+        })
+        [Environment]::SetEnvironmentVariable('PATH', ($pathParts -join ';'), 'User')
+        Write-Host "Cleaned RTB from user PATH environment variable." -ForegroundColor Green
+    }
+} catch {}
+
 if (-not $KeepConfig) {
     if (Test-Path $userConfigDir) {
         Remove-Item -Recurse -Force $userConfigDir -ErrorAction SilentlyContinue

@@ -123,7 +123,7 @@ get_rtb_version() {
             esac
         fi
     done
-    echo "0.5.0"
+    echo "0.5.1"
 }
 RTB_VERSION="$(get_rtb_version)"
 

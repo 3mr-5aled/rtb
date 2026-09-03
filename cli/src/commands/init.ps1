@@ -89,14 +89,20 @@ function Rtb-Init {
     $scaffoldAns = Read-Host
     $shouldScaffold = ([string]::IsNullOrWhiteSpace($scaffoldAns) -or $scaffoldAns.Trim() -match '^(y|yes)$')
 
+    $isUnderProjects = (Test-Path (Join-Path $chosenRoot '01-Development')) -or
+                       ((Split-Path $chosenRoot -Leaf) -eq '02-Projects') -or
+                       ((Split-Path $chosenRoot -Leaf) -ieq 'projects')
+
+    $pPrefix = if ($isUnderProjects) { '' } else { '02-Projects\' }
+
     $folderDefs = @(
-        @{ Key = 'active';     Dir = '01-Active';    Rel = '02-Projects\01-Development\01-Active';    Label = 'Active';     Emoji = '📁'; Selected = $true },
-        @{ Key = 'paused';     Dir = '04-Paused';    Rel = '02-Projects\01-Development\04-Paused';    Label = 'Paused';     Emoji = '⏸️';  Selected = $true },
-        @{ Key = 'production'; Dir = '02-Deployed';  Rel = '02-Projects\02-Deployed\01-Production';   Label = 'Production'; Emoji = '🚀'; Selected = $true },
-        @{ Key = 'planning';   Dir = '02-Planning';  Rel = '02-Projects\01-Development\02-Planning';  Label = 'Planning';   Emoji = '📋'; Selected = $false },
-        @{ Key = 'testing';    Dir = '03-Testing';   Rel = '02-Projects\01-Development\03-Testing';   Label = 'Testing';    Emoji = '🧪'; Selected = $false },
-        @{ Key = 'abandoned';  Dir = '05-Abandoned'; Rel = '02-Projects\01-Development\05-Abandoned'; Label = 'Abandoned';  Emoji = '🪦'; Selected = $false },
-        @{ Key = 'sandbox';    Dir = '01-SandBox';   Rel = '01-SandBox';                              Label = 'Sandbox';    Emoji = '📦'; Selected = $false }
+        @{ Key = 'active';     Dir = '01-Active';    Rel = "${pPrefix}01-Development\01-Active";    Label = 'Active';     Emoji = '📁'; Selected = $true },
+        @{ Key = 'paused';     Dir = '04-Paused';    Rel = "${pPrefix}01-Development\04-Paused";    Label = 'Paused';     Emoji = '⏸️';  Selected = $true },
+        @{ Key = 'production'; Dir = '02-Deployed';  Rel = "${pPrefix}02-Deployed\01-Production";   Label = 'Production'; Emoji = '🚀'; Selected = $true },
+        @{ Key = 'planning';   Dir = '02-Planning';  Rel = "${pPrefix}01-Development\02-Planning";  Label = 'Planning';   Emoji = '📋'; Selected = $false },
+        @{ Key = 'testing';    Dir = '03-Testing';   Rel = "${pPrefix}01-Development\03-Testing";   Label = 'Testing';    Emoji = '🧪'; Selected = $false },
+        @{ Key = 'abandoned';  Dir = '05-Abandoned'; Rel = "${pPrefix}01-Development\05-Abandoned"; Label = 'Abandoned';  Emoji = '🪦'; Selected = $false },
+        @{ Key = 'sandbox';    Dir = '01-SandBox';   Rel = '01-SandBox';                            Label = 'Sandbox';    Emoji = '📦'; Selected = $false }
     )
 
     if ($shouldScaffold) {
@@ -147,23 +153,43 @@ function Rtb-Init {
     }
 
     # Extra non-scaffolded optional roots preserved for consistency
-    $stagingPath = Join-Path $chosenRoot '02-Projects\02-Deployed\02-Staging'
+    $stagingPath = Join-Path $chosenRoot "${pPrefix}02-Deployed\02-Staging"
     $projectRoots['staging'] = [ordered]@{
         path  = $stagingPath
         label = 'Staging'
         emoji = '🚀'
     }
 
-    $vibePath = Join-Path $chosenRoot '02-Projects\03-Vibe-Coding'
+    $vibePath = Join-Path $chosenRoot "${pPrefix}03-Vibe-Coding"
     $projectRoots['vibe'] = [ordered]@{
         path  = $vibePath
         label = 'Vibe Coding'
         emoji = '✨'
     }
 
-    $backupRoot = Join-Path $chosenRoot '08-Backup'
-    $configRoot = Join-Path $chosenRoot '05-Config'
-    $templateDir = Join-Path $chosenRoot '05-Config\templates'
+    $driveRoot = [System.IO.Path]::GetPathRoot($chosenRoot)
+    $backupRoot = if ($driveRoot -and (Test-Path (Join-Path $driveRoot '08-Backup'))) {
+        Join-Path $driveRoot '08-Backup'
+    } else {
+        Join-Path $chosenRoot '08-Backup'
+    }
+    $configRoot = if ($driveRoot -and (Test-Path (Join-Path $driveRoot '05-Config'))) {
+        Join-Path $driveRoot '05-Config'
+    } else {
+        Join-Path $chosenRoot '05-Config'
+    }
+    $templateDir = Join-Path $configRoot 'templates'
+
+    $scanRoots = @()
+    if ($isUnderProjects) {
+        $scanRoots += $chosenRoot
+    } else {
+        $projDir = Join-Path $chosenRoot '02-Projects'
+        if (Test-Path $projDir) { $scanRoots += $projDir } else { $scanRoots += $chosenRoot }
+    }
+    $sbDir = if ($driveRoot -and (Test-Path (Join-Path $driveRoot '01-SandBox'))) { Join-Path $driveRoot '01-SandBox' } else { Join-Path $chosenRoot '01-SandBox' }
+    if (Test-Path $sbDir) { $scanRoots += $sbDir }
+    if ($scanRoots.Count -eq 0) { $scanRoots = @($chosenRoot) }
 
     $newConfig = [ordered]@{
         version            = "1.0.0"
@@ -177,17 +203,12 @@ function Rtb-Init {
         }
         staleThresholdDays = 90
         gitHealth          = [ordered]@{
-            scanRoots = @((Join-Path $chosenRoot '02-Projects'), (Join-Path $chosenRoot '01-SandBox'))
+            scanRoots = $scanRoots
         }
     }
 
     $json = $newConfig | ConvertTo-Json -Depth 6
     Set-Content -Path $userConfigFile -Value $json -Encoding UTF8
-
-    # Also sync to dot-config if applicable
-    $dotConfigDir = Join-Path $userHomeDir '.config\rtb'
-    if (-not (Test-Path $dotConfigDir)) { New-Item -ItemType Directory -Path $dotConfigDir -Force | Out-Null }
-    Set-Content -Path (Join-Path $dotConfigDir 'rtb.config.json') -Value $json -Encoding UTF8 -ErrorAction SilentlyContinue
 
     Write-Host "`n  ✓ RTB configuration successfully initialized!" -ForegroundColor Green
     Write-Host "    Configuration file: $userConfigFile" -ForegroundColor White

@@ -183,7 +183,7 @@ function global:Get-RtbInstallerVersion {
             } catch {}
         }
     }
-    return '0.5.0'
+    return '0.5.1'
 }
 
 $script:VERSION = Get-RtbInstallerVersion
@@ -510,13 +510,42 @@ function global:Install-Steps {
     try {
         $cur = [Environment]::GetEnvironmentVariable('PATH', 'User')
         $pathParts = if ($cur) { $cur -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } } else { @() }
-        if ($pathParts -notcontains $script:scriptsDir) {
-            $newPath = if ($cur) { "$cur;$($script:scriptsDir)" } else { $script:scriptsDir }
-            [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
+        
+        # Clean up legacy Roaming\rtb\bin and old temp test entries
+        $cleanedParts = @($pathParts | Where-Object {
+            $_ -notmatch '(?i)[\\/]AppData[\\/]Roaming[\\/]rtb[\\/]bin' -and
+            $_ -notmatch '(?i)[\\/]AppData[\\/]Local[\\/]Temp[\\/]rtb'
+        })
+        
+        if ($cleanedParts -notcontains $script:scriptsDir) {
+            $cleanedParts = @($script:scriptsDir) + $cleanedParts
         }
-        if (($env:PATH -split ';') -notcontains $script:scriptsDir) {
-            $env:PATH = "$($script:scriptsDir);$($env:PATH)"
+        $newPath = $cleanedParts -join ';'
+        [Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')
+
+        # Clean current process PATH as well
+        $procParts = @($env:PATH -split ';' | Where-Object {
+            $_ -notmatch '(?i)[\\/]AppData[\\/]Roaming[\\/]rtb[\\/]bin' -and
+            $_ -notmatch '(?i)[\\/]AppData[\\/]Local[\\/]Temp[\\/]rtb'
+        })
+        if ($procParts -notcontains $script:scriptsDir) {
+            $procParts = @($script:scriptsDir) + $procParts
         }
+        $env:PATH = $procParts -join ';'
+
+        # Also clean legacy AppData\Roaming\rtb folder if installed to .config\rtb
+        $legacyRoaming = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'rtb'
+        if ($legacyRoaming -and (Test-Path $legacyRoaming) -and ($legacyRoaming -ne $script:userConfigDir)) {
+            $legacyCfg = Join-Path $legacyRoaming 'rtb.config.json'
+            $targetCfg = Join-Path $script:userConfigDir 'rtb.config.json'
+            if ((Test-Path $legacyCfg) -and (-not (Test-Path $targetCfg))) {
+                Copy-Item $legacyCfg $targetCfg -Force -ErrorAction SilentlyContinue
+            }
+            Remove-Item (Join-Path $legacyRoaming 'bin') -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item (Join-Path $legacyRoaming 'module') -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item $legacyCfg -Force -ErrorAction SilentlyContinue
+        }
+
         Stop-Spinner $ctx $true
     } catch {
         Stop-Spinner $ctx $false
@@ -573,7 +602,6 @@ function global:Install-Steps {
 function global:Main {
     Show-Header
     Ensure-Node
-
     $homeDir = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
     $default = Join-Path $homeDir '.config\rtb'
 
@@ -595,16 +623,21 @@ function global:Main {
     Show-Summary $script:userConfigDir $script:resolvedProfiles
 
     if (Prompt-RunInit) {
-        if (Get-Command rtb -ErrorAction SilentlyContinue) {
+        # Unload any previously cached rtb module or function from active session
+        Remove-Module rtb -Force -ErrorAction SilentlyContinue
+        Remove-Item Function:\rtb -Force -ErrorAction SilentlyContinue
+        Remove-Item Function:\Rtb-Init -Force -ErrorAction SilentlyContinue
+
+        $psd = Join-Path $script:moduleHome 'rtb.psd1'
+        if (Test-Path $psd) {
+            Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
+        }
+
+        $rtbCmd = Join-Path $script:scriptsDir 'rtb.cmd'
+        if (Test-Path $rtbCmd) {
+            & $rtbCmd init
+        } elseif (Get-Command rtb -ErrorAction SilentlyContinue) {
             rtb init
-        } else {
-            $psd = Join-Path $script:moduleHome 'rtb.psd1'
-            if (Test-Path $psd) {
-                Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
-                if (Get-Command rtb -ErrorAction SilentlyContinue) {
-                    rtb init
-                }
-            }
         }
     }
 }

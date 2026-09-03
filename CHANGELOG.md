@@ -5,6 +5,21 @@ All notable changes to **RTB — رتّب (Repository & Tooling Base)** will be 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.1] - 2026-09-03
+
+### Fixed
+
+- **Config Path Resolution**:
+  - Completely removed legacy `%APPDATA%\rtb` configuration fallback so `%USERPROFILE%\.config\rtb\rtb.config.json` is the sole, authoritative source.
+  - Setup wizard (`install.ps1`) automatically cleans stale `%APPDATA%\rtb` and test directory entries from user `PATH` and migrates any remaining config.
+- **Workspace Scaffold Duplication**:
+  - Fixed `rtb init` path calculation when targeting an existing `02-Projects` or `Projects` folder to prevent nested `02-Projects/02-Projects` paths.
+  - Added smart discovery for root-level `08-Backup`, `05-Config`, and `01-SandBox` directories.
+- **`rtb config` Editor Opening**:
+  - Restored editor-launch behavior for `rtb config` across Windows, macOS, and Linux, with `--show` / `--view` flags for terminal inspection.
+- **Interactive Installer Module Caching**:
+  - Setup wizard now cleans cached in-memory module instances and functions before invoking `rtb init`.
+
 ## [v0.5.0] - 2026-09-03
 
 ### Added

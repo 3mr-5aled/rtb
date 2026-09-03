@@ -12,7 +12,7 @@ describe('CLI Framework & Registry', () => {
     expect(logSpy).toHaveBeenCalled();
     const output = logSpy.mock.calls[0][0];
     expect(output).toContain('RTB');
-    expect(output).toContain('v0.5.0');
+    expect(output).toContain('v0.5.1');
     logSpy.mockRestore();
   });
 
@@ -25,7 +25,7 @@ describe('CLI Framework & Registry', () => {
     expect(logSpy).toHaveBeenCalled();
     const parsed = JSON.parse(logSpy.mock.calls[0][0]);
     expect(parsed.name).toBe('rtb');
-    expect(parsed.version).toBe('0.5.0');
+    expect(parsed.version).toBe('0.5.1');
     expect(parsed.engine).toBe('node');
     logSpy.mockRestore();
   });
