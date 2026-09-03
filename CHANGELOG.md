@@ -5,6 +5,28 @@ All notable changes to **RTB — رتّب (Repository & Tooling Base)** will be 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2026-09-03
+
+### Added
+
+- **Unified Cross-Platform TypeScript/Node.js CLI Engine (`core/`)**:
+  - Replaced PowerShell-exclusive CLI logic with a compiled Node.js engine (`@3mr-5aled/rtb`) bundled via `tsup`.
+  - Zero-dependency runtime execution on Linux, macOS, and Windows via Node.js (>= 18).
+- **Cross-Shell Integration (`rtb shell-init`)**:
+  - Direct shell hooks for `bash`, `zsh`, `fish`, and `pwsh` enabling seamless directory navigation via `rtb goto`.
+- **Multi-Runtime Project Inspector (`ProjectInspector`)**:
+  - Full detection for Node.js (`package.json`, `pnpm`, `yarn`, `bun`), Rust (`Cargo.toml`), Go (`go.mod`), and Python (`pyproject.toml`, `requirements.txt`).
+- **AI Agent Context Generation**:
+  - Auto-discovers installed AI agents (`agy`, `claude`, `gemini`, `codex`, `cursor`, `windsurf`, `aider`, `openhands`) in PATH.
+  - Automatically compiles `.rtb_context.md` project summaries with recent git logs and diff stat metrics.
+- **Unified Cross-Platform Configuration Path**:
+  - Standardized configuration directory to `~/.config/rtb/rtb.config.json` across Windows (`%USERPROFILE%\.config\rtb`), macOS, and Linux.
+- **Updated Cross-Platform Setup Wizards (`install.ps1` & `install.sh`)**:
+  - POSIX shell installer (`install.sh`) provisions Node.js CLI runtime without PowerShell requirement on Unix.
+  - Windows installer (`install.ps1`) provisions both native shell wrappers (`rtb.cmd`, `rtb.ps1`) and PowerShell module.
+
+---
+
 ## [v0.4.0] - 2026-08-31
 
 ### Added

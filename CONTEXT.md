@@ -6,7 +6,7 @@ This document records the domain concepts and module definitions for the RTB Rep
 
 ### 1. Project Intelligence Engine (`ProjectInspector`)
 The unified scanner and metadata inspector responsible for multi-runtime project discovery.
-- **Interface**: `Inspect-Project -Path <String>` (PowerShell) / `ProjectInspector::inspect(path: &Path)` (Rust TUI).
+- **Interface**: `ProjectInspector.inspect(projectPath)` (TypeScript/Node.js) / `Inspect-Project -Path <String>` (PowerShell) / `ProjectInspector::inspect(path: &Path)` (Rust TUI).
 - **Responsibilities**: Recursively parses package lockfiles (`pnpm`, `yarn`, `bun`, `npm`, `Cargo.toml`, `pyproject.toml`, `go.mod`), detects framework stacks (Next.js, React, Vue, Vite, Tailwind, Prisma, Express), builds monorepo workspace graphs, extracts runtime versions (`.nvmrc`, `rust-toolchain.toml`, `.python-version`), and gathers git telemetry.
 - **Canonical Output**: Standardized JSON schema contract (`rtb list --json`).
 
@@ -23,23 +23,30 @@ Centralized execution and safety engine for system operations.
 
 ### 4. Agent Orchestrator (`AgentOrchestrator`)
 AI agent discovery, context generation, and process execution engine.
-- **Interface**: `AgentOrchestrator::launch(agent_id, project_path)` / `Rtb-Agent`, `rtb <agent-shorthand>`, `rtb goto --<agent>`.
+- **Interface**: `AgentOrchestrator` (`core/src/commands/agent.ts`, `core/src/agent/context.ts`) / `AgentOrchestrator::launch(agent_id, project_path)` / `Rtb-Agent`, `rtb <agent-shorthand>`, `rtb goto --<agent>`.
 - **Responsibilities**: Discovers installed AI agent CLIs (`agy`, `claude`, `gemini`, `codex`, `cursor`, `windsurf`, `aider`, `openhands`) in `PATH`, auto-generates transient project context payloads (`.rtb_context.md`), maps agent shorthand commands and `--<agent>` flags, and manages cross-platform process spawning.
+
+### 5. Shell Integration Engine (`ShellIntegration`)
+Cross-shell environment integration and directory switching engine.
+- **Interface**: `rtb shell-init <bash|zsh|fish|pwsh>`.
+- **Responsibilities**: Generates shell wrapper functions capturing `rtb goto` target paths to change the parent shell's current working directory natively across Unix and Windows shells.
 
 ## Installation & Delivery Glossary
 
-**Installation Mode**: Either `repo` (developer running `pwsh -File ./install.ps1` from a cloned source tree) or `standalone` (end user piping `install.ps1` via `irm | iex`). Detected automatically: if `$PSScriptRoot` is empty or contains no `cli\` subfolder → standalone; otherwise → repo.
+**Installation Mode**: Either `repo` (developer running from a cloned source tree) or `standalone` (end user piping `install.ps1` or `install.sh`). Detected automatically: if source directories exist → repo mode; otherwise downloads release assets from GitHub Releases.
 
-**Module Home**: The directory where the PowerShell CLI module (`rtb.psd1`, `rtb.psm1`, `src/`) lives after installation. In standalone mode: `%APPDATA%\rtb\module\`. In repo mode: `<repo>/cli/`. The `$PROFILE` `Import-Module` line always points here.
+**Core CLI Runtime**: Node.js (>= 18) pure ESM distribution bundle (`rtb-cli.js` / `@3mr-5aled/rtb` compiled from `core/`). Installed to `$RTB_DIR/lib/rtb.js` on Unix or `$script:scriptsDir\rtb.js` on Windows with native shell wrappers (`rtb`, `rtb.cmd`, `rtb.ps1`).
 
-**Release Bundle** (`rtb-cli.zip`): The canonical GitHub Release asset produced by CI. Contains the full CLI module folder, `rtbtui.exe`, `logo.txt`, and `uninstall.ps1`. This is the only artifact a standalone installer downloads.
+**Module Home**: The directory where the CLI files live after installation (`~/.config/rtb` or `$APPDATA\rtb`).
 
-**User Configuration**: The `rtb.config.json` file at `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on Unix). A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
+**Release Bundle** (`rtb-cli.zip` & `rtb-cli.js`): The canonical GitHub Release assets produced by CI. Contains the compiled Node.js CLI bundle, `rtbtui` binary, `logo.txt`, and uninstaller.
 
-**Config Gate**: The mechanism in `rtb` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `config`, `doctor`, `shell-init`, `uninstall`.
+**User Configuration**: The unified `rtb.config.json` file at `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on macOS and Linux). A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
+
+**Config Gate**: The middleware in `rtb` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `config`, `doctor`, `shell-init`, `uninstall`.
 
 **Project Root Entry**: A single entry in `projectRoots` in `rtb.config.json`. Structured as `{ path: String, label: String, emoji: String }`. Represents one lifecycle folder (e.g. Active, Paused, Deployed). Replaces the previous flat string schema.
 
-**Workspace Scaffold**: The directory tree created by `rtb init` under the user's chosen root. Folders are selected interactively via a multi-select list; each has a default emoji and label that the user may customize. `Vibe Coding` is not part of the standard scaffold — it is a user-defined custom folder type.
+**Workspace Scaffold**: The directory tree created by `rtb init` under the user's chosen root. Folders are selected interactively via a multi-select list; each has a default emoji and label that the user may customize.
 
-**Setup Wizard**: The interactive installation flow that collects user decisions (install path, profile targets) and executes installer steps with real-time progress feedback (spinners, colored step labels, a final summary box). Implemented as two entry-point scripts — `install.ps1` (Windows / pwsh) and `install.sh` (Linux / macOS) — that share the same UX conventions. The wizard is distinct from the **Installation Mode** concept: mode is about _where files come from_; the wizard is about _how the user experiences the process_.
+**Setup Wizard**: The interactive installation flow that collects user decisions (install path, shell hooks) and executes installer steps with real-time progress feedback. Implemented via `install.ps1` (Windows) and `install.sh` (POSIX Linux/macOS) with zero PowerShell prerequisite on Unix.

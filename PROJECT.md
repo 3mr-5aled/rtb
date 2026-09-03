@@ -2,9 +2,10 @@
 
 ## Architecture
 RTB (Repository & Tooling Base) is a developer workspace management tool with:
-- **CLI (PowerShell 7+)**: `cli/src/` with commands for workspace navigation, project lifecycle (archive, pause, clean, goto, agent, doctor, status), and helper utilities (`helpers.ps1`, `rtb.psm1`).
+- **Core CLI (TypeScript / Node.js 18+)**: `core/src/` providing cross-platform commands (`init`, `goto`, `agent`, `doctor`, `ui`, `shell-init`, `run`, `build`, `test`, `pause`, `resume`, `archive`) compiled via `tsup`.
+- **CLI Fallback (PowerShell 7+)**: `cli/src/` with commands and helper utilities (`helpers.ps1`, `rtb.psm1`) for Windows PowerShell legacy environments.
 - **TUI (Rust Ratatui/Crossterm)**: `tui/src/` with an observational dashboard for project overview, git health, dependency cleaner, maintenance, ports, and agent launch.
-- **Config**: JSON-based config stored in `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Unix), falling back to relative paths for local development.
+- **Config**: JSON-based config stored in `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on Unix), falling back to local paths for development.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
@@ -17,6 +18,7 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 | 6 | R4b: `rtb status` Prompt Segment | One-line shell status and `-Json` output in `status.ps1` and `rtb.psm1` | M4 | ORIGINAL_REQUEST.md & Plan Task 6 |
 | 7 | R5: TUI Architecture Refactoring | Extract tab key handlers from `app.rs` into `tui/src/handlers/{mod,projects,git_health,cleaner,maintenance,ports}.rs` | M5 | ORIGINAL_REQUEST.md & Plan Task 7 |
 | 8 | E2E & Full Verification | Pass 100% Pester tests, Rust tests, cargo build with zero warnings, zero personal paths, verify CLI commands | M6 | ORIGINAL_REQUEST.md Acceptance Criteria |
+| 9 | Cross-Platform TypeScript/Node.js CLI Replacement | Pure ESM Node.js CLI engine with multi-runtime inspection, fuzzy goto, shell hooks, agent orchestration, and automated CI release | M7 | Wayfinder Map Issue #34 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -27,10 +29,16 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 | M4 | Diagnostic & Utility Commands | `cli/src/commands/doctor.ps1`, `cli/src/commands/status.ps1`, `cli/rtb.psm1`, `cli/tests/Test-Doctor.Tests.ps1`, `cli/tests/Test-Status.Tests.ps1` | M2, M3 | DONE |
 | M5 | TUI Architecture Refactoring | `tui/src/handlers/*.rs`, `tui/src/app.rs`, `tui/src/main.rs` | M1 | DONE |
 | M6 | Full Verification & E2E Acceptance | All tests in `cli/tests/`, `cargo test -p rtbtui`, `cargo build -p rtbtui`, forensic integrity audit | M1..M5 | DONE |
+| M7 | Cross-Platform TypeScript Engine (v0.5.0) | `core/`, `install.sh`, `install.ps1`, `.github/workflows/release.yml`, Vitest & Pester suites | M1..M6 | DONE |
 
 ## Code Layout
-- `cli/src/utils/helpers.ps1` — Common CLI helper functions
-- `cli/src/commands/` — Individual command implementations
+- `core/src/index.ts` — TypeScript/Node.js CLI entrypoint
+- `core/src/commands/` — Cross-platform subcommands (init, goto, agent, doctor, ui, etc.)
+- `core/src/config/loader.ts` — Cross-platform multi-tier config loader
+- `core/src/inspector/inspector.ts` — Multi-runtime project inspector
+- `core/src/navigation/fuzzy.ts` — Fuzzy project scoring and path discovery
+- `cli/src/utils/helpers.ps1` — Common PowerShell helper functions
+- `cli/src/commands/` — Individual PowerShell command implementations
 - `cli/tests/` — Pester test suite
 - `cli/rtb.psm1` — Main PowerShell module entry point
 - `tui/src/config.rs` — Config discovery and deserialization

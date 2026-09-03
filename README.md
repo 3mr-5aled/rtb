@@ -17,16 +17,17 @@
 ⠀⠀⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠀⠀⠀
 ```
 
-[![Version](https://img.shields.io/badge/version-v0.4.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![Version](https://img.shields.io/badge/version-v0.5.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
-[![PowerShell](https://img.shields.io/badge/PowerShell-7+-blue.svg)](https://microsoft.com/powershell)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.80+-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > [!NOTE]
 > **Beta Pre-Release**: RTB is currently in active beta testing. We welcome feedback, bug reports, and suggestions via [GitHub Issues](https://github.com/3mr-5aled/rtb/issues) and [Discussions](https://github.com/3mr-5aled/rtb/discussions)!
 
-**RTB — رتّب** is a fast, developer-first Project Operations Tool featuring a PowerShell CLI (`rtb`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, AI agent orchestration, and automated workspace lifecycle management.
+**RTB — رتّب** is a fast, developer-first cross-platform Project Operations Tool featuring a unified TypeScript/Node.js CLI (`rtb`), an interactive Rust Terminal UI (`rtbtui`), multi-runtime project intelligence, Git telemetry monitoring, AI agent orchestration, and automated workspace lifecycle management.
 
 ---
 
@@ -36,25 +37,31 @@
 rtb/
 ├── config/
 │   └── rtb.config.json     # Default JSON configuration template
-├── cli/                    # PowerShell CLI module source & commands
-│   ├── rtb.psd1            # Module Manifest (v0.4.0)
-│   ├── rtb.psm1            # Primary CLI Module Entrypoint & Config Gate
+├── core/                   # Unified Cross-Platform TypeScript/Node.js CLI engine
+│   ├── package.json        # Pure ESM module (@3mr-5aled/rtb)
+│   ├── tsup.config.ts      # Multiplatform ESM bundler
 │   ├── src/
-│   │   ├── commands/       # Subcommands (init, run, build, test, commit, goto, doctor, upgrade, etc.)
-│   │   ├── completions/    # Shell completion scripts (ps1, bash, zsh, fish)
-│   │   └── utils/          # Helpers, schema normalizer & config loaders
+│   │   ├── agent/          # AI agent discovery & .rtb_context.md generator
+│   │   ├── commands/       # CLI commands (init, goto, agent, doctor, ui, new, pause, etc.)
+│   │   ├── config/         # Multi-tier config loader (~/.config/rtb/rtb.config.json)
+│   │   ├── inspector/      # Multi-runtime project inspector (Node, Rust, Go, Python)
+│   │   ├── navigation/     # Fuzzy scoring navigation engine
+│   │   └── index.ts        # CLI binary entrypoint
+│   └── tests/              # Vitest test suite
+├── cli/                    # PowerShell CLI module source (Windows fallback)
+│   ├── rtb.psd1            # Module Manifest
+│   ├── rtb.psm1            # Module Entrypoint
 │   └── tests/              # Pester unit & integration tests
 ├── tui/                    # Rust Ratatui interactive TUI source
 │   ├── Cargo.toml
-│   ├── Cargo.lock
 │   └── src/
 ├── .github/                # CI/CD Workflows & Issue templates
-│   ├── workflows/release.yml
-│   └── ISSUE_TEMPLATE/
-├── install.ps1             # Windows / PowerShell interactive Setup Wizard
-├── install.sh              # Linux / macOS POSIX interactive Setup Wizard
+│   └── workflows/release.yml
+├── install.ps1             # Windows interactive Setup Wizard (PowerShell / cmd)
+├── install.sh              # Linux / macOS POSIX Setup Wizard (Node.js runtime)
 ├── uninstall.ps1           # Standalone automated uninstaller
-├── PROJECT.md              # Project metadata
+├── PROJECT.md              # Project architecture & milestone metadata
+├── CONTEXT.md              # Domain model & architectural glossary
 ├── LICENSE                 # MIT License
 └── README.md
 ```
@@ -177,6 +184,8 @@ Add the `-KeepConfig` flag if you wish to preserve your `%APPDATA%\rtb\rtb.confi
 | `rtb init [--force]` | Interactive setup wizard (detects workspace root and scaffolds lifecycle folders) |
 | `rtb config` | Open active `rtb.config.json` configuration file in default editor |
 | `rtb doctor` | System health check (validates config, roots, git, runtimes, agents, and TUI binary) |
+| `rtb shell-init <bash\|zsh\|fish\|pwsh>` | Output shell wrapper function enabling directory change on `rtb goto` |
+| `rtb ui` | Launch native interactive Rust Terminal UI (`rtbtui`) |
 | `rtb upgrade [--check] [--force]` | Check for newer releases and perform in-place self-upgrade |
 | `rtb uninstall [--force] [-KeepConfig]` | Cleanly remove RTB binaries, module, and profile integrations |
 | `rtb --version` / `rtb --help` | Display current version or command help menu |
@@ -251,8 +260,8 @@ rtbtui
  
 RTB configuration (`rtb.config.json`) is dynamically loaded in order of priority:
 
-1. **User Profile**: `%APPDATA%\rtb\rtb.config.json` (Windows) or `~/.config/rtb/rtb.config.json` (Linux/macOS)
-2. **Repository Fallback**: `config/rtb.config.json`
+1. **User Profile**: `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on Linux/macOS)
+2. **Local Repository Fallback**: `config/rtb.config.json`
 
 ### Direct Configuration Editing (`rtb config`)
 
