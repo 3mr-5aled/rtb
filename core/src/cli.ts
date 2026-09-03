@@ -5,6 +5,9 @@ import { loadConfig } from './config/loader.js';
 import type { CliContext } from './types/context.js';
 import { registerVersionCommand, RTB_VERSION } from './commands/version.js';
 import { registerConfigCommand } from './commands/config.js';
+import { registerGotoCommand } from './commands/goto.js';
+import { registerListCommand } from './commands/list.js';
+import { registerIndexCommand } from './commands/project-index.js';
 import { outputError } from './utils/output.js';
 
 export const EXEMPT_COMMANDS = new Set([
@@ -99,6 +102,9 @@ export function createCli(argv: string[] = process.argv): Command {
   // Register commands
   registerVersionCommand(program, getContext);
   registerConfigCommand(program, getContext);
+  registerGotoCommand(program, getContext);
+  registerListCommand(program, getContext);
+  registerIndexCommand(program, getContext);
 
   return program;
 }
