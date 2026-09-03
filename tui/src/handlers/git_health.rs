@@ -68,7 +68,7 @@ impl App {
                     });
                 }
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('R') => {
                 self.start_background_scan("Re-scanning Git health...");
             }
             _ => {}
@@ -119,7 +119,7 @@ mod tests {
             KeyCode::Down, KeyCode::Up, KeyCode::Char('j'), KeyCode::Char('k'),
             KeyCode::Char('f'), KeyCode::Char('o'), KeyCode::Enter, KeyCode::Char('d'),
             KeyCode::Char('b'), KeyCode::Char('c'), KeyCode::Char('C'), KeyCode::Char('P'),
-            KeyCode::Char('p'), KeyCode::Char('r'),
+            KeyCode::Char('p'), KeyCode::Char('R'),
         ];
 
         for key in test_keys {

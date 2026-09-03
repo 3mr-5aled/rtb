@@ -41,7 +41,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect) {
     }
 
     // Right side hint
-    let hint = "[1-5] Switch tab  [/] Search  [r] Refresh  [?] Help  [q] Quit";
+    let hint = "[1-5] Switch tab  [/] Search  [R] Refresh  [?] Help  [q] Quit";
     spans.push(Span::styled(
         format!("  {}", hint),
         Style::default().fg(Color::DarkGray),

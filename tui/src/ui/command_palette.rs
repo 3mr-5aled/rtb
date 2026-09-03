@@ -69,7 +69,7 @@ impl PaletteAction {
             PaletteAction::Search => "/",
             PaletteAction::LaunchAgent => "a",
             PaletteAction::ReadmeViewer => "v",
-            PaletteAction::Refresh => "r",
+            PaletteAction::Refresh => "R",
             PaletteAction::Help => "?",
         }
     }

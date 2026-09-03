@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,37 +16,78 @@ if (!version) {
 
 console.log(`Synchronizing project version to: ${version}`);
 
+function updateFile(relPath, replacer) {
+  const fullPath = resolve(repoRoot, relPath);
+  if (!existsSync(fullPath)) return;
+  try {
+    const original = readFileSync(fullPath, 'utf-8');
+    const updated = replacer(original);
+    if (original !== updated) {
+      writeFileSync(fullPath, updated, 'utf-8');
+      console.log(`  ✓ ${relPath} -> ${version}`);
+    } else {
+      console.log(`  - ${relPath} (already ${version})`);
+    }
+  } catch (err) {
+    console.warn(`  ⚠ Could not update ${relPath}: ${err.message}`);
+  }
+}
+
 // 1. core/package.json
-const pkgPath = resolve(repoRoot, 'core', 'package.json');
-try {
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+updateFile('core/package.json', (content) => {
+  const pkg = JSON.parse(content);
   pkg.version = version;
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
-  console.log(`  ✓ core/package.json -> ${version}`);
-} catch (err) {
-  console.warn(`  ⚠ Could not update core/package.json: ${err.message}`);
-}
+  return JSON.stringify(pkg, null, 2) + '\n';
+});
 
-// 2. cli/rtb.psd1
-const psdPath = resolve(repoRoot, 'cli', 'rtb.psd1');
-try {
-  let psdContent = readFileSync(psdPath, 'utf-8');
-  psdContent = psdContent.replace(/ModuleVersion\s*=\s*['"][^'"]+['"]/, `ModuleVersion     = '${version}'`);
-  writeFileSync(psdPath, psdContent, 'utf-8');
-  console.log(`  ✓ cli/rtb.psd1 -> ${version}`);
-} catch (err) {
-  console.warn(`  ⚠ Could not update cli/rtb.psd1: ${err.message}`);
-}
+// 2. core/package-lock.json
+updateFile('core/package-lock.json', (content) => {
+  const lock = JSON.parse(content);
+  lock.version = version;
+  if (lock.packages && lock.packages['']) {
+    lock.packages[''].version = version;
+  }
+  return JSON.stringify(lock, null, 2) + '\n';
+});
 
-// 3. tui/Cargo.toml
-const cargoPath = resolve(repoRoot, 'tui', 'Cargo.toml');
-try {
-  let cargoContent = readFileSync(cargoPath, 'utf-8');
-  cargoContent = cargoContent.replace(/version\s*=\s*"[^"]+"/, `version = "${version}"`);
-  writeFileSync(cargoPath, cargoContent, 'utf-8');
-  console.log(`  ✓ tui/Cargo.toml -> ${version}`);
-} catch (err) {
-  console.warn(`  ⚠ Could not update tui/Cargo.toml: ${err.message}`);
-}
+// 3. core/src/commands/version.ts
+updateFile('core/src/commands/version.ts', (content) =>
+  content.replace(/return\s+['"][0-9]+\.[0-9]+\.[0-9]+['"];/, `return '${version}';`)
+);
+
+// 4. cli/rtb.psd1
+updateFile('cli/rtb.psd1', (content) =>
+  content.replace(/ModuleVersion\s*=\s*['"][^'"]+['"]/, `ModuleVersion     = '${version}'`)
+);
+
+// 5. cli/rtb.psm1
+updateFile('cli/rtb.psm1', (content) =>
+  content.replace(/\$ver\s*=\s*['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `$ver = '${version}'`)
+);
+
+// 6. cli/src/commands/upgrade.ps1
+updateFile('cli/src/commands/upgrade.ps1', (content) =>
+  content.replace(/\$currentVersion\s*=\s*['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `$currentVersion = '${version}'`)
+);
+
+// 7. tui/Cargo.toml
+updateFile('tui/Cargo.toml', (content) =>
+  content.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`)
+);
+
+// 8. README.md
+updateFile('README.md', (content) =>
+  content.replace(/version-v[0-9]+\.[0-9]+\.[0-9]+-blue/g, `version-v${version}-blue`)
+);
+
+// 9. install.ps1
+updateFile('install.ps1', (content) =>
+  content.replace(/(Get-RtbInstallerVersion[\s\S]*?return\s+['"])[0-9]+\.[0-9]+\.[0-9]+(['"])/, `$1${version}$2`)
+);
+
+// 10. install.sh
+updateFile('install.sh', (content) =>
+  content.replace(/echo\s+['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `echo "${version}"`)
+);
 
 console.log('Version synchronization complete.');

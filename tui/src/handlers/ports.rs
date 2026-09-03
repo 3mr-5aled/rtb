@@ -32,7 +32,7 @@ impl App {
                     self.status_message = Some(format!("Opening {}", url));
                 }
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('R') => {
                 self.active_ports = scan_dev_ports();
                 self.status_message = Some("Dev ports rescanned".into());
             }
@@ -66,7 +66,7 @@ mod tests {
 
         let test_keys = [
             KeyCode::Down, KeyCode::Up, KeyCode::Char('j'), KeyCode::Char('k'),
-            KeyCode::Char('o'), KeyCode::Char('r'),
+            KeyCode::Char('o'), KeyCode::Char('R'),
         ];
 
         for key in test_keys {
@@ -103,7 +103,7 @@ mod tests {
         let mut app = App::new().unwrap();
         app.current_tab = Tab::DevPorts;
 
-        app.handle_ports_key(KeyCode::Char('r'));
+        app.handle_ports_key(KeyCode::Char('R'));
         assert_eq!(app.status_message.as_deref(), Some("Dev ports rescanned"));
     }
 }

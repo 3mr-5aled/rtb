@@ -176,7 +176,7 @@ pub fn draw(f: &mut Frame, app: &App, area: Rect) {
         Span::styled("Pull  ", Style::default().fg(Color::White)),
         Span::styled("🏷️ [f] ", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
         Span::styled("Filter  ", Style::default().fg(Color::White)),
-        Span::styled("🔄 [r] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
+        Span::styled("🔄 [R] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
         Span::styled("Re-scan", Style::default().fg(Color::White)),
     ]);
     let para = Paragraph::new(line);

@@ -156,7 +156,7 @@ fn draw_action_bar(f: &mut Frame, area: Rect) {
         Span::styled("None  ", Style::default().fg(Color::White)),
         Span::styled("⚡ [Enter] ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
         Span::styled("PRUNE SELECTED  ", Style::default().fg(Color::Green)),
-        Span::styled("🔄 [r] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
+        Span::styled("🔄 [R] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
         Span::styled("Rescan", Style::default().fg(Color::White)),
     ]);
 

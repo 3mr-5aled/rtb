@@ -81,7 +81,7 @@ impl App {
                     self.status_message = Some("No folders selected for pruning".into());
                 }
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('R') => {
                 self.start_background_scan("Re-scanning dependencies...");
             }
             _ => {}
@@ -118,7 +118,7 @@ mod tests {
         let test_keys = [
             KeyCode::Down, KeyCode::Up, KeyCode::Char('j'), KeyCode::Char('k'),
             KeyCode::Char(' '), KeyCode::Char('c'), KeyCode::Char('a'), KeyCode::Char('n'),
-            KeyCode::Enter, KeyCode::Char('r'),
+            KeyCode::Enter, KeyCode::Char('R'),
         ];
 
         for key in test_keys {

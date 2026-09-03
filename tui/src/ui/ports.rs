@@ -132,7 +132,7 @@ fn draw_action_bar(f: &mut Frame, area: Rect) {
         Span::styled("Kill Process (taskkill /F)   ", Style::default().fg(Color::White)),
         Span::styled("🌐 [o] ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
         Span::styled("Open in Browser   ", Style::default().fg(Color::White)),
-        Span::styled("🔄 [r] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
+        Span::styled("🔄 [R] ", Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)),
         Span::styled("Re-scan Ports", Style::default().fg(Color::White)),
     ]);
 
