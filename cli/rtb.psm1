@@ -27,7 +27,7 @@ function rtb {
 
     if (-not $Command -or $Command -eq '--help' -or $Command -eq '-h') { $Command = 'help' }
     if ($Command -eq '--version' -or $Command -eq '-v') {
-        $ver = '0.5.1'
+        $ver = '0.5.2'
         $versionCandidates = @(
             (Join-Path $PSScriptRoot 'VERSION'),
             (Join-Path $PSScriptRoot '..\VERSION'),

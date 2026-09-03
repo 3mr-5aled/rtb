@@ -90,9 +90,10 @@ if (Test-Path $changelogFile) {
 $entrySummary
 
 "@
-        # Insert after preamble
-        if ($changelog -match '(?m)^## \[v') {
-            $changelog = $changelog -replace '(?m)(^## \[v)', "$newSection`$1"
+        # Insert before first release entry
+        $idx = $changelog.IndexOf("`n## [v")
+        if ($idx -ge 0) {
+            $changelog = $changelog.Substring(0, $idx + 1) + $newSection + $changelog.Substring($idx + 1)
         } else {
             $changelog = $changelog + "`n`n" + $newSection
         }
@@ -141,7 +142,8 @@ $existingTag = git tag -l $tagName
 if ($existingTag) {
     Write-Warning "Tag '$tagName' already exists locally."
 } else {
-    git tag -a $tagName -m "Release $tagName: $(if ($Message) { $Message } else { 'Release ' + $tagName })"
+    $tagMsg = if ($Message) { "Release $tagName - $Message" } else { "Release $tagName" }
+    git tag -a $tagName -m $tagMsg
     Write-Host "  ✓ Tagged: $tagName" -ForegroundColor Green
 }
 
