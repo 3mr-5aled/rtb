@@ -21,6 +21,7 @@ import { registerStatusCommand } from './commands/status.js';
 import { registerInfoCommand } from './commands/info.js';
 import { registerUiCommand } from './commands/ui.js';
 import { registerInitCommand } from './commands/init.js';
+import { registerHelpCommand } from './commands/help.js';
 import { outputError } from './utils/output.js';
 
 export const EXEMPT_COMMANDS = new Set([
@@ -134,6 +135,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerInfoCommand(program, getContext);
   registerUiCommand(program, getContext);
   registerInitCommand(program, getContext);
+  registerHelpCommand(program);
 
   return program;
 }
