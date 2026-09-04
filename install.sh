@@ -153,7 +153,7 @@ get_rtb_version() {
         esac
     fi
 
-    echo "0.8.5"
+    echo "0.8.6"
 }
 RTB_VERSION="$(get_rtb_version)"
 
