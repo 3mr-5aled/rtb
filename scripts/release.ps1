@@ -114,6 +114,13 @@ if (Test-Path $userConfigBin) {
     Write-Host "  ✓ Synchronized local ~/.config/rtb/bin launcher" -ForegroundColor Green
 }
 
+$dBin = 'D:\bin'
+if ((Test-Path (Join-Path $dBin 'rtb.js')) -or (Test-Path (Join-Path $dBin 'rtb.ps1'))) {
+    Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $dBin 'rtb.js') -Force
+    Copy-Item $versionFile (Join-Path $dBin 'VERSION') -Force
+    Write-Host "  ✓ Synchronized local D:\bin launcher" -ForegroundColor Green
+}
+
 # 7. Git Commit & Tag
 if ($NoCommit) {
     Write-Host "`n[!] -NoCommit specified. Files modified but not committed." -ForegroundColor Yellow
