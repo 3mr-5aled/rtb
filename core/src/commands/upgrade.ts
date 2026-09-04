@@ -59,17 +59,17 @@ export async function fetchLatestVersion(): Promise<string | null> {
   return null;
 }
 
-export function executeUpgrade(): { success: boolean; method: string; message: string } {
-  // Strategy 1: npm global install
+export async function executeUpgrade(): Promise<{ success: boolean; method: string; message: string }> {
+  // Strategy 1: npm global install (silent attempt)
   try {
     const isWindows = process.platform === 'win32';
     const res = isWindows
-      ? spawnSync('npm.cmd install -g @3mr-5aled/rtb@latest', {
-          stdio: 'inherit',
+      ? spawnSync('npm.cmd', ['install', '-g', '@3mr-5aled/rtb@latest'], {
+          stdio: ['ignore', 'pipe', 'pipe'],
           shell: true,
         })
       : spawnSync('npm', ['install', '-g', '@3mr-5aled/rtb@latest'], {
-          stdio: 'inherit',
+          stdio: ['ignore', 'pipe', 'pipe'],
           shell: false,
         });
     if (res.status === 0) {
@@ -77,30 +77,60 @@ export function executeUpgrade(): { success: boolean; method: string; message: s
     }
   } catch {}
 
-  // Strategy 2: Standalone bundle download
-  const homeDir = os.homedir();
-  const configDir = path.join(homeDir, '.config', 'rtb');
-  const binDir = process.env.RTB_BIN_DIR || path.join(configDir, 'bin');
-  const targetJs = path.join(binDir, 'rtb.js');
+  // Strategy 2: Standalone bundle download from GitHub Releases
+  try {
+    const possibleTargets: string[] = [];
 
-  if (fs.existsSync(targetJs) && process.platform === 'win32') {
-    try {
-      const psCmd = `
-        $bundleUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.js'
-        $destJs = '${targetJs.replace(/\\/g, '\\\\')}'
-        Invoke-WebRequest -Uri $bundleUrl -OutFile $destJs -UseBasicParsing -TimeoutSec 120
-      `;
-      const res = spawnSync('powershell.exe', ['-NoProfile', '-Command', psCmd], { stdio: 'inherit' });
-      if (res.status === 0) {
+    // Current executing script
+    if (process.argv[1] && process.argv[1].endsWith('.js') && fs.existsSync(process.argv[1])) {
+      possibleTargets.push(process.argv[1]);
+    }
+
+    const homeDir = os.homedir();
+    const configDir = path.join(homeDir, '.config', 'rtb');
+    const binDir = process.env.RTB_BIN_DIR || path.join(configDir, 'bin');
+    possibleTargets.push(path.join(binDir, 'rtb.js'));
+
+    if (process.platform === 'win32') {
+      possibleTargets.push('D:\\bin\\rtb.js');
+      possibleTargets.push('C:\\bin\\rtb.js');
+    } else {
+      possibleTargets.push(path.join(homeDir, 'bin', 'rtb.js'));
+      possibleTargets.push('/usr/local/bin/rtb.js');
+    }
+
+    const targetJs = possibleTargets.find((t) => fs.existsSync(t)) || possibleTargets[0];
+    const parentDir = path.dirname(targetJs);
+    if (!fs.existsSync(parentDir)) {
+      fs.mkdirSync(parentDir, { recursive: true });
+    }
+
+    const bundleUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.js';
+    const res = await fetch(bundleUrl, {
+      headers: { 'User-Agent': 'rtb-cli' },
+      redirect: 'follow',
+    });
+
+    if (res.ok) {
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.length > 1000) {
+        fs.writeFileSync(targetJs, buffer);
+        const versionFile = path.join(parentDir, 'VERSION');
+        const latestVer = await fetchLatestVersion();
+        if (latestVer) {
+          try {
+            fs.writeFileSync(versionFile, latestVer, 'utf-8');
+          } catch {}
+        }
         return { success: true, method: 'standalone', message: 'Successfully downloaded latest rtb-cli.js bundle' };
       }
-    } catch {}
-  }
+    }
+  } catch {}
 
   return {
     success: false,
     method: 'none',
-    message: "Automatic upgrade failed. Run 'npm install -g @3mr-5aled/rtb@latest' or run the setup installer.",
+    message: "Automatic upgrade failed. Please re-run the setup installer.",
   };
 }
 
@@ -191,7 +221,7 @@ export function registerUpgradeCommand(
         console.log(`  ${chalk.cyan('→')} Upgrading RTB to v${latestVersion}...`);
       }
 
-      const result = service.executeUpgrade();
+      const result = await service.executeUpgrade();
 
       if (ctx.isJson) {
         outputJson({
