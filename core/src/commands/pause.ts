@@ -1,22 +1,11 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
-import fs from 'node:fs';
-import path from 'node:path';
 import type { CliContext } from '../types/context.js';
-import { isGitClean } from '../utils/git.js';
-import { toKebabCase } from './new.js';
-import { outputError, outputJson } from '../utils/output.js';
+import { ProjectLifecycle } from '../services/lifecycle.js';
+import { ConfigMissingError } from '../errors.js';
+import { outputJson } from '../utils/output.js';
 
-export function pruneDirectory(dir: string, targets: string[] = ['node_modules', '.venv', '.next', '__pycache__', 'dist', 'build', 'target']): void {
-  for (const target of targets) {
-    const targetPath = path.join(dir, target);
-    if (fs.existsSync(targetPath)) {
-      try {
-        fs.rmSync(targetPath, { recursive: true, force: true });
-      } catch {}
-    }
-  }
-}
+export { pruneDirectory } from '../services/lifecycle.js';
 
 export function registerPauseCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -33,69 +22,30 @@ export function registerPauseCommand(program: Command, getContext: () => CliCont
       }
 
       if (!ctx.config) {
-        outputError('Configuration not loaded', 'CONFIG_MISSING', ctx.isJson);
-        process.exitCode = 1;
-        return;
+        throw new ConfigMissingError('Configuration not loaded');
       }
 
-      const activeRoot = ctx.config.projectRoots.active?.path;
-      const pausedRoot = ctx.config.projectRoots.paused?.path;
-
-      if (!activeRoot || !pausedRoot) {
-        outputError('Active or Paused roots not defined in config', 'CONFIG_INVALID', ctx.isJson);
-        process.exitCode = 1;
-        return;
-      }
-
-      const kebab = toKebabCase(name);
-      let sourcePath = path.join(activeRoot, kebab);
-
-      if (!fs.existsSync(sourcePath)) {
-        // Fallback: check exact name
-        sourcePath = path.join(activeRoot, name);
-        if (!fs.existsSync(sourcePath)) {
-          outputError(`Project '${name}' not found in Active!`, 'NOT_FOUND', ctx.isJson);
-          process.exitCode = 1;
-          return;
-        }
-      }
-
-      const projectName = path.basename(sourcePath);
-      const targetPath = path.join(pausedRoot, projectName);
-
-      if (!options.force && !isGitClean(sourcePath)) {
-        outputError(
-          `Project has uncommitted git changes! Commit/stash first, or pass --force.`,
-          'DIRTY_GIT',
-          ctx.isJson
-        );
-        process.exitCode = 1;
-        return;
-      }
-
-      if (!fs.existsSync(pausedRoot)) {
-        fs.mkdirSync(pausedRoot, { recursive: true });
-      }
-
-      if (options.prune) {
-        pruneDirectory(sourcePath, ctx.config.cleanDeps?.targets);
-      }
-
-      fs.renameSync(sourcePath, targetPath);
+      const lifecycle = new ProjectLifecycle();
+      const result = lifecycle.pause({
+        name,
+        config: ctx.config,
+        prune: options.prune,
+        force: options.force,
+      });
 
       if (ctx.isJson) {
         outputJson({
           paused: true,
-          name: projectName,
-          from: sourcePath,
-          to: targetPath,
-          pruned: Boolean(options.prune),
+          name: result.name,
+          from: result.from,
+          to: result.to,
+          pruned: result.pruned,
         });
         return;
       }
 
-      console.log(`\n  ${chalk.green('✓')} '${chalk.bold(projectName)}' moved to Paused`);
-      console.log(`  Target: ${chalk.gray(targetPath)}`);
-      console.log(`  Run: ${chalk.cyan(`rtb resume ${projectName}`)} to restore.\n`);
+      console.log(`\n  ${chalk.green('✓')} '${chalk.bold(result.name)}' moved to Paused`);
+      console.log(`  Target: ${chalk.gray(result.to)}`);
+      console.log(`  Run: ${chalk.cyan(`rtb resume ${result.name}`)} to restore.\n`);
     });
 }
