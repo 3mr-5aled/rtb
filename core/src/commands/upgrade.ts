@@ -227,6 +227,7 @@ export function registerUpgradeCommand(
         outputJson({
           currentVersion,
           latestVersion,
+          targetVersion: latestVersion,
           upgraded: result.success,
           method: result.method,
           message: result.message,

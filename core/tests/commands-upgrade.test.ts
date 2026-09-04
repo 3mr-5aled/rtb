@@ -81,4 +81,23 @@ describe('rtb upgrade command', () => {
     expect(parsed.upgraded).toBe(true);
     expect(parsed.method).toBe('mock');
   });
+
+  it('end-to-end upgrade cycle reports success when newer version is detected', async () => {
+    vi.spyOn(upgradeService, 'fetchLatestVersion').mockResolvedValue('1.0.0');
+    vi.spyOn(upgradeService, 'executeUpgrade').mockReturnValue({
+      success: true,
+      method: 'standalone',
+      message: 'Successfully updated bundle',
+    });
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'upgrade', '--json']);
+
+    expect(logSpy).toHaveBeenCalled();
+    const parsed = JSON.parse(logSpy.mock.calls[0][0]);
+    expect(parsed.upgraded).toBe(true);
+    expect(parsed.targetVersion).toBe('1.0.0');
+    expect(parsed.method).toBe('standalone');
+  });
 });
