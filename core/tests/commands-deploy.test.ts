@@ -87,7 +87,44 @@ describe('rtb deploy command', () => {
     expect(parsed.name).toBe('api-service');
   });
 
-  it('errors gracefully when project is not found in Active', async () => {
+  it('promotes project from Staging to Production when not found in Active', async () => {
+    const projDir = path.join(stagingDir, 'staged-app');
+    fs.mkdirSync(projDir, { recursive: true });
+    fs.writeFileSync(path.join(projDir, 'package.json'), '{}');
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'deploy', 'staged-app', '--prod', '--config', configFile, '--json']);
+
+    expect(fs.existsSync(projDir)).toBe(false);
+    const deployedDir = path.join(prodDir, 'staged-app');
+    expect(fs.existsSync(deployedDir)).toBe(true);
+
+    const rawOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const parsed = JSON.parse(rawOutput);
+    expect(parsed.deployed).toBe(true);
+    expect(parsed.target).toBe('production');
+    expect(parsed.from).toBe(projDir);
+    expect(parsed.to).toBe(deployedDir);
+  });
+
+  it('supports explicit --from flag', async () => {
+    const projDir = path.join(stagingDir, 'explicit-app');
+    fs.mkdirSync(projDir, { recursive: true });
+    fs.writeFileSync(path.join(projDir, 'package.json'), '{}');
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'deploy', 'explicit-app', '--from', 'staging', '--prod', '--config', configFile, '--json']);
+
+    expect(fs.existsSync(projDir)).toBe(false);
+    const deployedDir = path.join(prodDir, 'explicit-app');
+    expect(fs.existsSync(deployedDir)).toBe(true);
+  });
+
+  it('errors gracefully when project is not found in Active or Staging', async () => {
     const cli = createCli();
     await cli.parseAsync(['node', 'rtb', 'deploy', 'non-existent', '--config', configFile, '--json']);
 

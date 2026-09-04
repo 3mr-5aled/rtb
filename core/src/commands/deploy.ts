@@ -12,13 +12,14 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
     .description('Deploy a project from Active to Production or Staging')
     .option('--prod', 'Deploy to Production (default)', true)
     .option('--staging', 'Deploy to Staging', false)
+    .option('--from <root>', 'Specify source project root (e.g. active, staging)')
     .option('--json', 'Output deploy result in JSON format')
-    .action((name: string | undefined, options: { prod?: boolean; staging?: boolean; json?: boolean }) => {
+    .action((name: string | undefined, options: { prod?: boolean; staging?: boolean; from?: string; json?: boolean }) => {
       const ctx = getContext();
       const isJson = Boolean(options.json || ctx.isJson);
 
       if (!name) {
-        outputError('Usage: rtb deploy <project-name> [--prod|--staging]', 'USAGE_ERROR', isJson);
+        outputError('Usage: rtb deploy <project-name> [--prod|--staging] [--from <root>]', 'USAGE_ERROR', isJson);
         process.exitCode = 1;
         return;
       }
@@ -29,15 +30,10 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
         return;
       }
 
-      const activeRoot = ctx.config.projectRoots?.active?.path;
-      if (!activeRoot || !fs.existsSync(activeRoot)) {
-        outputError('Active project root not configured or does not exist', 'CONFIG_INVALID', isJson);
-        process.exitCode = 1;
-        return;
-      }
-
+      const projectRoots = ctx.config.projectRoots || {};
+      const activeRootEntry = projectRoots.active;
       const targetEnvironment = options.staging ? 'staging' : 'production';
-      const targetRootEntry = ctx.config.projectRoots?.[targetEnvironment];
+      const targetRootEntry = projectRoots[targetEnvironment];
 
       if (!targetRootEntry?.path) {
         outputError(`Target root '${targetEnvironment}' not configured in rtb.config.json`, 'CONFIG_INVALID', isJson);
@@ -46,13 +42,55 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
       }
 
       const kebabName = toKebabCase(name);
-      let sourcePath = path.join(activeRoot, kebabName);
 
-      if (!fs.existsSync(sourcePath)) {
-        // Fallback: check exact name
-        sourcePath = path.join(activeRoot, name);
-        if (!fs.existsSync(sourcePath)) {
-          outputError(`Project '${kebabName}' not found in Active!`, 'NOT_FOUND', isJson);
+      const findProjectInRoot = (rootPath: string): string | null => {
+        if (!fs.existsSync(rootPath)) return null;
+        const candidateKebab = path.join(rootPath, kebabName);
+        if (fs.existsSync(candidateKebab)) return candidateKebab;
+        const candidateExact = path.join(rootPath, name);
+        if (fs.existsSync(candidateExact)) return candidateExact;
+        return null;
+      };
+
+      let sourcePath: string | null = null;
+      let sourceLabel = 'Active';
+
+      if (options.from) {
+        const fromKey = options.from.toLowerCase();
+        const fromEntry = projectRoots[fromKey];
+        if (!fromEntry?.path || !fs.existsSync(fromEntry.path)) {
+          outputError(`Source root '${options.from}' not configured or does not exist`, 'CONFIG_INVALID', isJson);
+          process.exitCode = 1;
+          return;
+        }
+        sourceLabel = fromEntry.label || options.from;
+        sourcePath = findProjectInRoot(fromEntry.path);
+        if (!sourcePath) {
+          outputError(`Project '${kebabName}' not found in ${sourceLabel}!`, 'NOT_FOUND', isJson);
+          process.exitCode = 1;
+          return;
+        }
+      } else {
+        // Default lookup
+        if (activeRootEntry?.path) {
+          sourcePath = findProjectInRoot(activeRootEntry.path);
+        }
+
+        // Project promotion workflow: if deploying to production and not found in active, check staging
+        if (!sourcePath && targetEnvironment === 'production') {
+          const stagingEntry = projectRoots.staging;
+          if (stagingEntry?.path) {
+            const stagingCandidate = findProjectInRoot(stagingEntry.path);
+            if (stagingCandidate) {
+              sourcePath = stagingCandidate;
+              sourceLabel = stagingEntry.label || 'Staging';
+            }
+          }
+        }
+
+        if (!sourcePath) {
+          const searchRoots = targetEnvironment === 'production' && projectRoots.staging ? 'Active or Staging' : 'Active';
+          outputError(`Project '${kebabName}' not found in ${searchRoots}!`, 'NOT_FOUND', isJson);
           process.exitCode = 1;
           return;
         }
@@ -94,7 +132,7 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
         return;
       }
 
-      console.log(`\n  ${chalk.cyan('Deploying:')} ${chalk.bold(projectName)} → ${chalk.green(targetEnvironment)}`);
+      console.log(`\n  ${chalk.cyan('Deploying:')} ${chalk.bold(projectName)} (${sourceLabel}) → ${chalk.green(targetEnvironment)}`);
       console.log(`  Target: ${chalk.gray(destinationPath)}`);
       console.log(`  ${chalk.green('✓')} '${chalk.bold(projectName)}' deployed to ${targetEnvironment}!\n`);
     });
