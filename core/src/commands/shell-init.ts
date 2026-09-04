@@ -4,14 +4,17 @@ import chalk from 'chalk';
 import type { CliContext } from '../types/context.js';
 import { outputError } from '../utils/output.js';
 
+import { getCompletionScript } from './completion.js';
+
 export type SupportedShell = 'bash' | 'zsh' | 'fish' | 'pwsh' | 'powershell';
 
 export function getShellScript(shell: string): string {
   const norm = shell.trim().toLowerCase();
 
+  let wrapper = '';
   switch (norm) {
     case 'bash':
-      return `# rtb shell integration for bash
+      wrapper = `# rtb shell integration for bash
 # Add to ~/.bashrc:
 #   eval "$(rtb shell-init bash)"
 
@@ -36,9 +39,10 @@ rtb() {
     fi
 }
 `;
+      break;
 
     case 'zsh':
-      return `# rtb shell integration for zsh
+      wrapper = `# rtb shell integration for zsh
 # Add to ~/.zshrc:
 #   eval "$(rtb shell-init zsh)"
 
@@ -63,9 +67,10 @@ rtb() {
     fi
 }
 `;
+      break;
 
     case 'fish':
-      return `# rtb shell integration for fish
+      wrapper = `# rtb shell integration for fish
 # Add to ~/.config/fish/config.fish:
 #   rtb shell-init fish | source
 
@@ -89,11 +94,12 @@ function rtb
     end
 end
 `;
+      break;
 
     case 'pwsh':
     case 'powershell':
     case 'posh':
-      return `# rtb shell integration for PowerShell (pwsh / Windows PowerShell)
+      wrapper = `# rtb shell integration for PowerShell (pwsh / Windows PowerShell)
 # Add to $PROFILE:
 #   (& rtb shell-init pwsh | Out-String) | Invoke-Expression
 
@@ -119,10 +125,14 @@ function rtb {
     }
 }
 `;
+      break;
 
     default:
       throw new Error(`Unsupported shell: '${shell}'. Supported shells: bash, zsh, fish, pwsh`);
   }
+
+  const completion = getCompletionScript(norm);
+  return `${wrapper}\n${completion}`;
 }
 
 export function detectCurrentShell(): string {
