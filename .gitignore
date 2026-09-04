@@ -27,6 +27,11 @@ desktop.ini
 # Scratch and personal dev notes
 .scratch/
 .rtb_context.md
+# Dependencies and packages
+node_modules/
+**/node_modules/
+
+# Agent and skill caches
 .superpowers/
 .agents/
 .sandbox/
