@@ -141,6 +141,14 @@ export function resolveProjectAction(
   return null;
 }
 
+function quoteShellArg(arg: string): string {
+  if (arg === '') return '""';
+  if (/[ \t\n\v"]/.test(arg)) {
+    return `"${arg.replace(/"/g, '\\"')}"`;
+  }
+  return arg;
+}
+
 export function executeProjectAction(
   projectPath: string,
   cmd: ResolvedCommand,
@@ -153,11 +161,26 @@ export function executeProjectAction(
   return new Promise((resolve) => {
     const isWindows = process.platform === 'win32';
     const needsShell = isWindows && !cmd.executable.toLowerCase().endsWith('.exe');
-    const child = spawn(cmd.executable, cmd.args, {
-      cwd: projectPath,
-      stdio: 'inherit',
-      shell: needsShell,
-    });
+    
+    // On Node 22+, passing args array with shell: true triggers DEP0190.
+    // Format the command and args as a single string when shell: true.
+    const child = needsShell
+      ? spawn(
+          [
+            cmd.executable.includes(' ') ? `"${cmd.executable}"` : cmd.executable,
+            ...cmd.args.map(quoteShellArg),
+          ].join(' '),
+          {
+            cwd: projectPath,
+            stdio: 'inherit',
+            shell: true,
+          }
+        )
+      : spawn(cmd.executable, cmd.args, {
+          cwd: projectPath,
+          stdio: 'inherit',
+          shell: false,
+        });
 
     child.on('error', (err) => {
       console.error(`Failed to execute ${cmd.executable}: ${err.message}`);

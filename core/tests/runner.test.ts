@@ -234,5 +234,26 @@ describe('ProjectRunner - resolveProjectAction', () => {
       const code = await executeProjectAction(process.cwd(), { executable, args });
       expect(code).toBe(isWindows ? 7 : 1);
     });
+
+    it('executes without triggering DEP0190 warning when needsShell is true', async () => {
+      const isWindows = process.platform === 'win32';
+      if (!isWindows) return;
+
+      const warnings: any[] = [];
+      const onWarning = (w: any) => warnings.push(w);
+      process.on('warning', onWarning);
+
+      try {
+        const code = await executeProjectAction(process.cwd(), {
+          executable: 'cmd',
+          args: ['/c', 'exit', '0'],
+        });
+        expect(code).toBe(0);
+        const depWarnings = warnings.filter((w) => w.name === 'DeprecationWarning' && w.code === 'DEP0190');
+        expect(depWarnings).toHaveLength(0);
+      } finally {
+        process.off('warning', onWarning);
+      }
+    });
   });
 });

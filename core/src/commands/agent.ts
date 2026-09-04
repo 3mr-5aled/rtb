@@ -14,11 +14,17 @@ export function launchAgentProcess(agent: AgentDefinition, projectPath: string):
   return new Promise((resolve) => {
     const isWindows = process.platform === 'win32';
     // Use shell on Windows for resolving .cmd, .bat, or path lookup cleanly
-    const child = spawn(agent.command, [], {
-      cwd: projectPath,
-      stdio: 'inherit',
-      shell: isWindows,
-    });
+    const child = isWindows
+      ? spawn(agent.command, {
+          cwd: projectPath,
+          stdio: 'inherit',
+          shell: true,
+        })
+      : spawn(agent.command, [], {
+          cwd: projectPath,
+          stdio: 'inherit',
+          shell: false,
+        });
 
     child.on('error', (err) => {
       console.error(`Failed to launch agent ${agent.command}: ${err.message}`);
