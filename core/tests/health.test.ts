@@ -52,7 +52,8 @@ describe('scanGitHealth', () => {
     expect(report.scannedCount).toBe(1);
     expect(report.issuesCount).toBe(1);
     const repo = report.repos[0];
-    expect(repo.issues.some((i) => i.includes('UNCOMMITTED'))).toBe(true);
-    expect(repo.issues.includes('NO REMOTE')).toBe(true);
+    expect(repo.issues.some((i) => i.type === 'UNCOMMITTED')).toBe(true);
+    expect(repo.issues.some((i) => i.type === 'NO REMOTE')).toBe(true);
   });
 });
+

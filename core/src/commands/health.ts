@@ -53,9 +53,8 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
           console.log(`\n  ${chalk.bold.yellow(repo.repoPath)}`);
           console.log(`    Last commit: ${chalk.gray(repo.lastCommitRelative)}`);
           for (const issue of repo.issues) {
-            const isCritical = issue.includes('UNCOMMITTED') || issue.includes('UNPUSHED');
-            const color = isCritical ? chalk.red : chalk.yellow;
-            console.log(`    ${color(`⚠ ${issue}`)}`);
+            const color = issue.isCritical ? chalk.red : chalk.yellow;
+            console.log(`    ${color(`⚠ ${issue.message}`)}`);
           }
         }
       }

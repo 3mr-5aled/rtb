@@ -1,10 +1,9 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'node:path';
-import fs from 'node:fs';
 import type { CliContext } from '../types/context.js';
 import { inspectWorkspace } from '../inspector/workspace.js';
-import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { outputJson, outputError } from '../utils/output.js';
 
 export function registerWorkspaceCommand(program: Command, getContext: () => CliContext): void {
@@ -16,27 +15,14 @@ export function registerWorkspaceCommand(program: Command, getContext: () => Cli
       const ctx = getContext();
       const isJson = Boolean(cmdOpts.json || ctx.isJson);
 
-      let targetPath = process.cwd();
-
-      if (projectName) {
-        if (fs.existsSync(projectName)) {
-          targetPath = path.resolve(projectName);
-        } else if (ctx.config) {
-          const matches = findProjectPathFuzzy(projectName, ctx.config);
-          if (matches.length > 0) {
-            targetPath = matches[0].path;
-          } else {
-            outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', isJson);
-            if (process.env.VITEST) return;
-            process.exit(1);
-          }
-        } else {
-          outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', isJson);
-          if (process.env.VITEST) return;
-          process.exit(1);
-        }
+      const target = resolveProjectTarget(projectName, ctx.config);
+      if (!target) {
+        outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', isJson);
+        if (process.env.VITEST) return;
+        process.exit(1);
       }
 
+      const { targetPath } = target;
       const info = inspectWorkspace(targetPath);
 
       if (isJson) {

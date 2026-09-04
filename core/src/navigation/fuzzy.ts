@@ -50,3 +50,28 @@ export function findProjectPathFuzzy(query: string, config: RtbConfig): FuzzyMat
     return a.name.localeCompare(b.name);
   });
 }
+
+export function resolveProjectTarget(
+  projectName: string | undefined,
+  config: RtbConfig | null
+): { targetPath: string; targetName: string } | null {
+  if (!projectName) {
+    const cwd = process.cwd();
+    return { targetPath: cwd, targetName: path.basename(cwd) };
+  }
+
+  if (fs.existsSync(projectName)) {
+    const resolved = path.resolve(projectName);
+    return { targetPath: resolved, targetName: path.basename(resolved) };
+  }
+
+  if (config) {
+    const matches = findProjectPathFuzzy(projectName, config);
+    if (matches.length > 0) {
+      return { targetPath: matches[0].path, targetName: matches[0].name };
+    }
+  }
+
+  return null;
+}
+

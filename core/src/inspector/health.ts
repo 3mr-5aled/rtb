@@ -2,12 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
+export type HealthIssueType = 'UNCOMMITTED' | 'UNPUSHED' | 'STALE' | 'NO REMOTE';
+
+
+export interface HealthIssue {
+  type: HealthIssueType;
+  message: string;
+  isCritical: boolean;
+}
+
 export interface RepoHealthResult {
   repoPath: string;
   repoName: string;
   lastCommitRelative: string;
   lastCommitDate: string | null;
-  issues: string[];
+  issues: HealthIssue[];
 }
 
 export interface HealthReport {
@@ -50,7 +59,7 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
   let totalIssues = 0;
 
   for (const repoPath of repoPaths) {
-    const issues: string[] = [];
+    const issues: HealthIssue[] = [];
     const repoName = path.basename(repoPath);
 
     // 1. Check uncommitted changes
@@ -64,7 +73,11 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
 
       if (statusRaw) {
         const fileCount = statusRaw.split('\n').filter(Boolean).length;
-        issues.push(`UNCOMMITTED (${fileCount} files)`);
+        issues.push({
+          type: 'UNCOMMITTED',
+          message: `UNCOMMITTED (${fileCount} files)`,
+          isCritical: true,
+        });
       }
     } catch {}
 
@@ -81,10 +94,18 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
       if (remotes) {
         hasRemote = true;
       } else {
-        issues.push('NO REMOTE');
+        issues.push({
+          type: 'NO REMOTE',
+          message: 'NO REMOTE',
+          isCritical: false,
+        });
       }
     } catch {
-      issues.push('NO REMOTE');
+      issues.push({
+        type: 'NO REMOTE',
+        message: 'NO REMOTE',
+        isCritical: false,
+      });
     }
 
     // Check unpushed commits if remote exists
@@ -110,7 +131,11 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
 
         if (unpushedRaw) {
           const unpushedCount = unpushedRaw.split('\n').filter(Boolean).length;
-          issues.push(`UNPUSHED (${unpushedCount})`);
+          issues.push({
+            type: 'UNPUSHED',
+            message: `UNPUSHED (${unpushedCount})`,
+            isCritical: true,
+          });
         }
       } catch {}
     }
@@ -139,27 +164,15 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
         if (!Number.isNaN(commitTime)) {
           const diffDays = Math.floor((Date.now() - commitTime) / (1000 * 60 * 60 * 24));
           if (diffDays > staleThresholdDays) {
-            issues.push(`STALE (${diffDays} days)`);
+            issues.push({
+              type: 'STALE',
+              message: `STALE (${diffDays} days)`,
+              isCritical: false,
+            });
           }
         }
       }
     } catch {}
-
-    // 4. Remote check
-    try {
-      const remotes = execSync('git remote', {
-        cwd: repoPath,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      })
-        .toString()
-        .trim();
-
-      if (!remotes) {
-        issues.push('NO REMOTE');
-      }
-    } catch {
-      issues.push('NO REMOTE');
-    }
 
     if (issues.length > 0) {
       totalIssues++;
