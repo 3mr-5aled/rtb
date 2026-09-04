@@ -55,37 +55,22 @@ updateFile('core/src/commands/version.ts', (content) =>
   content.replace(/return\s+['"][0-9]+\.[0-9]+\.[0-9]+['"];/, `return '${version}';`)
 );
 
-// 4. cli/rtb.psd1
-updateFile('cli/rtb.psd1', (content) =>
-  content.replace(/ModuleVersion\s*=\s*['"][^'"]+['"]/, `ModuleVersion     = '${version}'`)
-);
-
-// 5. cli/rtb.psm1
-updateFile('cli/rtb.psm1', (content) =>
-  content.replace(/\$ver\s*=\s*['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `$ver = '${version}'`)
-);
-
-// 6. cli/src/commands/upgrade.ps1
-updateFile('cli/src/commands/upgrade.ps1', (content) =>
-  content.replace(/\$currentVersion\s*=\s*['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `$currentVersion = '${version}'`)
-);
-
-// 7. tui/Cargo.toml
+// 4. tui/Cargo.toml
 updateFile('tui/Cargo.toml', (content) =>
   content.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`)
 );
 
-// 8. README.md
+// 5. README.md
 updateFile('README.md', (content) =>
   content.replace(/version-v[0-9]+\.[0-9]+\.[0-9]+-blue/g, `version-v${version}-blue`)
 );
 
-// 9. install.ps1
+// 6. install.ps1
 updateFile('install.ps1', (content) =>
   content.replace(/(Get-RtbInstallerVersion[\s\S]*?return\s+['"])[0-9]+\.[0-9]+\.[0-9]+(['"])/, `$1${version}$2`)
 );
 
-// 10. install.sh
+// 7. install.sh
 updateFile('install.sh', (content) =>
   content.replace(/echo\s+['"][0-9]+\.[0-9]+\.[0-9]+['"]/, `echo "${version}"`)
 );

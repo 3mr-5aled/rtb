@@ -18,8 +18,8 @@ The TUI view encapsulation seam.
 
 ### 3. Maintenance Task Registry (`MaintenanceTaskRegistry`)
 Centralized execution and safety engine for system operations.
-- **Interface**: `Invoke-MaintenanceTask` (PowerShell) / `MaintenanceTaskRegistry::execute` (Rust).
-- **Responsibilities**: Resolves task scripts from `rtb.config.json` (with relative fallbacks in `cli/scripts/`), validates execution safety flags, manages dry-run modes, streams process execution logs, and enforces workspace guard rules.
+- **Interface**: `MaintenanceTaskRegistry` (`core/src/services/maintenance.ts`, `rtb maintenance`) / `MaintenanceTaskRegistry::execute` (Rust).
+- **Responsibilities**: Registers and executes modular workspace maintenance routines (guard, backup, env), provides `--full` and `--json` automation output, validates execution safety, and enforces workspace guard rules.
 
 ### 4. Agent Orchestrator (`AgentOrchestrator`)
 AI agent discovery, context generation, and process execution engine.

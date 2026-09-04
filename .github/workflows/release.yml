@@ -35,6 +35,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Run TUI Unit Tests
+        run: cargo test --manifest-path tui/Cargo.toml
+
       - name: Build TUI Release Binary
         run: cargo build --manifest-path tui/Cargo.toml --release --target ${{ matrix.target }}
 
@@ -43,41 +46,6 @@ jobs:
         with:
           name: ${{ matrix.asset_name }}
           path: tui/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-
-  pester-tests:
-    name: Run PowerShell CLI Tests
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup RTB Test Configuration
-        shell: pwsh
-        run: |
-          $configDir = Join-Path $env:USERPROFILE '.config\rtb'
-          if (-not (Test-Path $configDir)) {
-            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-          }
-          $testActive = Join-Path ([System.IO.Path]::GetTempPath()) 'rtb-ci-active'
-          $testPaused = Join-Path ([System.IO.Path]::GetTempPath()) 'rtb-ci-paused'
-          New-Item -ItemType Directory -Path $testActive -Force | Out-Null
-          New-Item -ItemType Directory -Path $testPaused -Force | Out-Null
-          @{
-            version = "1.0.0"
-            projectRoots = @{
-              active = @{ path = $testActive; label = "Active"; emoji = "📁" }
-              paused = @{ path = $testPaused; label = "Paused"; emoji = "⏸️" }
-            }
-            backupRoot = [System.IO.Path]::GetTempPath()
-            cleanDeps = @{ targets = @("node_modules") }
-          } | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $configDir 'rtb.config.json') -Encoding UTF8
-
-      - name: Execute Pester Unit Tests
-        shell: pwsh
-        run: |
-          $env:RTB_NON_INTERACTIVE = 'true'
-          Import-Module './cli/rtb.psd1' -Force
-          Invoke-Pester ./cli/tests/ -Passthru
 
   core-tests:
     name: Run Core TypeScript CLI Tests
@@ -102,7 +70,7 @@ jobs:
 
   publish-release:
     name: Package and Publish GitHub Release
-    needs: [build-and-release, pester-tests, core-tests]
+    needs: [build-and-release, core-tests]
     runs-on: windows-latest
     permissions:
       contents: write
@@ -145,7 +113,6 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path staging -Force | Out-Null
-          Copy-Item -Path "cli" -Destination "staging\cli" -Recurse -Force
           Copy-Item -Path "core\dist\index.js" -Destination "staging\rtb.js" -Force
           Copy-Item -Path "core\dist\index.js" -Destination "rtb-cli.js" -Force
           Copy-Item -Path "release-assets\windows\rtbtui.exe" -Destination "staging\rtbtui.exe" -Force

@@ -2,8 +2,7 @@
 
 ## Architecture
 RTB (Repository & Tooling Base) is a developer workspace management tool with:
-- **Core CLI (TypeScript / Node.js 18+)**: `core/src/` providing cross-platform commands (`init`, `goto`, `agent`, `doctor`, `ui`, `shell-init`, `run`, `build`, `test`, `pause`, `resume`, `archive`) compiled via `tsup`.
-- **CLI Fallback (PowerShell 7+)**: `cli/src/` with commands and helper utilities (`helpers.ps1`, `rtb.psm1`) for Windows PowerShell legacy environments.
+- **Core CLI (TypeScript / Node.js 18+)**: `core/src/` providing cross-platform commands (`init`, `goto`, `agent`, `doctor`, `ui`, `shell-init`, `run`, `build`, `test`, `deps`, `workspace`, `open`, `health`, `maintenance`, `backup`, `env`, `guard`, `deploy`, `pause`, `resume`, `archive`) compiled via `tsup`.
 - **TUI (Rust Ratatui/Crossterm)**: `tui/src/` with an observational dashboard for project overview, git health, dependency cleaner, maintenance, ports, and agent launch.
 - **Config**: JSON-based config stored in `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on Unix), falling back to local paths for development.
 
@@ -33,14 +32,11 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 
 ## Code Layout
 - `core/src/index.ts` — TypeScript/Node.js CLI entrypoint
-- `core/src/commands/` — Cross-platform subcommands (init, goto, agent, doctor, ui, etc.)
+- `core/src/commands/` — Cross-platform subcommands (init, goto, agent, doctor, ui, run, build, test, etc.)
 - `core/src/config/loader.ts` — Cross-platform multi-tier config loader
-- `core/src/inspector/inspector.ts` — Multi-runtime project inspector
+- `core/src/inspector/` — Multi-runtime project and workspace inspector
 - `core/src/navigation/fuzzy.ts` — Fuzzy project scoring and path discovery
-- `cli/src/utils/helpers.ps1` — Common PowerShell helper functions
-- `cli/src/commands/` — Individual PowerShell command implementations
-- `cli/tests/` — Pester test suite
-- `cli/rtb.psm1` — Main PowerShell module entry point
+- `core/src/services/` — Execution and maintenance task registries
 - `tui/src/config.rs` — Config discovery and deserialization
 - `tui/src/ui/` — Ratatui UI components and logo rendering
 - `tui/src/data/agents.rs` — Agent context file generation in Rust

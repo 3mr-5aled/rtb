@@ -42,16 +42,13 @@ rtb/
 │   ├── tsup.config.ts      # Multiplatform ESM bundler
 │   ├── src/
 │   │   ├── agent/          # AI agent discovery & .rtb_context.md generator
-│   │   ├── commands/       # CLI commands (init, goto, agent, doctor, ui, new, pause, etc.)
+│   │   ├── commands/       # CLI commands (init, goto, agent, doctor, ui, run, build, test, etc.)
 │   │   ├── config/         # Multi-tier config loader (~/.config/rtb/rtb.config.json)
 │   │   ├── inspector/      # Multi-runtime project inspector (Node, Rust, Go, Python)
 │   │   ├── navigation/     # Fuzzy scoring navigation engine
+│   │   ├── services/       # Runner & Maintenance task registries
 │   │   └── index.ts        # CLI binary entrypoint
 │   └── tests/              # Vitest test suite
-├── cli/                    # PowerShell CLI module source (Windows fallback)
-│   ├── rtb.psd1            # Module Manifest
-│   ├── rtb.psm1            # Module Entrypoint
-│   └── tests/              # Pester unit & integration tests
 ├── tui/                    # Rust Ratatui interactive TUI source
 │   ├── Cargo.toml
 │   └── src/
