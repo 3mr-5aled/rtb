@@ -24,7 +24,7 @@ export function resolveVersion(): string {
       }
     }
   } catch {}
-  return '0.6.0';
+  return '0.6.1';
 }
 
 export const RTB_VERSION = resolveVersion();

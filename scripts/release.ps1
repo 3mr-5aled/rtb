@@ -83,13 +83,7 @@ if (Test-Path $changelogFile) {
     if ($changelog -notmatch [regex]::Escape($tagHeader)) {
         Write-Host "`n▶ Updating CHANGELOG.md..." -ForegroundColor Cyan
         $entrySummary = if ($Message) { "- $Message" } else { "- Maintenance release and codebase updates." }
-        $newSection = @"
-## [v$targetVersion] - $today
-
-### Changed
-$entrySummary
-
-"@
+        $newSection = "## [v$targetVersion] - $today`n`n### Changed`n$entrySummary`n`n"
         # Insert before first release entry
         $idx = $changelog.IndexOf("`n## [v")
         if ($idx -ge 0) {
