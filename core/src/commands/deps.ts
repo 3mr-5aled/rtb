@@ -9,27 +9,21 @@ import { outputError, outputJson } from '../utils/output.js';
 
 export function registerDepsCommand(program: Command, getContext: () => CliContext): void {
   program
-    .command('deps [subCommandOrProject] [projectName]')
+    .command('deps [project]')
     .description('Audit declared project dependencies across ecosystems')
-    .action((subCommandOrProject?: string, projectName?: string) => {
+    .action((projectName?: string) => {
       const ctx = getContext();
       let targetPath = process.cwd();
 
-      const candidateName = projectName || (subCommandOrProject && subCommandOrProject !== 'outdated' ? subCommandOrProject : undefined);
-
-      if (candidateName && ctx.config) {
-        if (fs.existsSync(candidateName)) {
-          targetPath = path.resolve(candidateName);
+      if (projectName && ctx.config) {
+        if (fs.existsSync(projectName)) {
+          targetPath = path.resolve(projectName);
         } else {
-          const matches = findProjectPathFuzzy(candidateName, ctx.config);
+          const matches = findProjectPathFuzzy(projectName, ctx.config);
           if (matches.length > 0) {
             targetPath = matches[0].path;
           } else {
-            if (ctx.isJson) {
-              outputError(`Project '${candidateName}' not found.`, 'PROJECT_NOT_FOUND', true);
-            } else {
-              console.error(chalk.red(`\n  ✗ Project '${candidateName}' not found.\n`));
-            }
+            outputError(`Project '${projectName}' not found.`, 'PROJECT_NOT_FOUND', ctx.isJson);
             process.exit(1);
             return;
           }

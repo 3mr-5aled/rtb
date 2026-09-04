@@ -1,11 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+export type DependencyType =
+  | 'npm/pnpm/yarn'
+  | 'npm/pnpm (dev)'
+  | 'Cargo (Rust)'
+  | 'Python (pyproject)'
+  | 'Python (requirements)'
+  | 'Go (go.mod)'
+  | 'Other';
+
+export type DependencyStatus = 'Declared' | 'Outdated' | 'Vulnerable';
+
 export interface DeclaredDependency {
   package: string;
   spec: string;
-  type: string;
-  status: string;
+  type: DependencyType;
+  status: DependencyStatus;
 }
 
 export function inspectDependencies(projectPath: string): DeclaredDependency[] {
@@ -58,27 +69,15 @@ export function inspectDependencies(projectPath: string): DeclaredDependency[] {
         }
 
         if (inDeps && line && !line.startsWith('#')) {
-          // format: name = "version" or name = { version = "1.0", ... }
-          const simpleMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*"([^"]+)"/);
-          if (simpleMatch) {
+          const match = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*(?:"([^"]+)"|\{.*version\s*=\s*"([^"]+)".*\})/);
+          if (match) {
+            const spec = match[2] || match[3] || '*';
             depsList.push({
-              package: simpleMatch[1],
-              spec: simpleMatch[2],
+              package: match[1],
+              spec,
               type: 'Cargo (Rust)',
               status: 'Declared',
             });
-            continue;
-          }
-
-          const inlineTableMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*\{.*version\s*=\s*"([^"]+)".*\}/);
-          if (inlineTableMatch) {
-            depsList.push({
-              package: inlineTableMatch[1],
-              spec: inlineTableMatch[2],
-              type: 'Cargo (Rust)',
-              status: 'Declared',
-            });
-            continue;
           }
         }
       }
@@ -91,7 +90,6 @@ export function inspectDependencies(projectPath: string): DeclaredDependency[] {
   if (fs.existsSync(pyprojectPath)) {
     try {
       const content = fs.readFileSync(pyprojectPath, 'utf8');
-      // Look for dependencies = [ "req>=1.0", ... ]
       const depBlockMatch = content.match(/dependencies\s*=\s*\[([\s\S]*?)\]/);
       if (depBlockMatch) {
         pyprojectFound = true;
@@ -143,6 +141,18 @@ export function inspectDependencies(projectPath: string): DeclaredDependency[] {
       const lines = content.split('\n');
       let inRequireBlock = false;
 
+      const recordGoDep = (rawDepLine: string) => {
+        const parts = rawDepLine.split(/\s+/);
+        if (parts.length >= 2) {
+          depsList.push({
+            package: parts[0],
+            spec: parts[1],
+            type: 'Go (go.mod)',
+            status: 'Declared',
+          });
+        }
+      };
+
       for (const rawLine of lines) {
         const line = rawLine.trim();
         if (line === 'require (') {
@@ -154,25 +164,9 @@ export function inspectDependencies(projectPath: string): DeclaredDependency[] {
         }
 
         if (inRequireBlock && line && !line.startsWith('//')) {
-          const parts = line.split(/\s+/);
-          if (parts.length >= 2) {
-            depsList.push({
-              package: parts[0],
-              spec: parts[1],
-              type: 'Go (go.mod)',
-              status: 'Declared',
-            });
-          }
+          recordGoDep(line);
         } else if (line.startsWith('require ') && !line.includes('(')) {
-          const parts = line.substring('require '.length).trim().split(/\s+/);
-          if (parts.length >= 2) {
-            depsList.push({
-              package: parts[0],
-              spec: parts[1],
-              type: 'Go (go.mod)',
-              status: 'Declared',
-            });
-          }
+          recordGoDep(line.substring('require '.length).trim());
         }
       }
     } catch {}
