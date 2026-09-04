@@ -389,10 +389,17 @@ function global:Install-Steps {
                 New-Item -ItemType Directory -Path $d -Force | Out-Null
             }
         }
-        # Clean up stale legacy module directory if present
+        # Clean up stale legacy module directory if present in .config/rtb
         $staleModule = Join-Path $script:userConfigDir 'module'
         if (Test-Path $staleModule) {
             Remove-Item $staleModule -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        # Clean up stale legacy module in AppData\Roaming\rtb if present
+        if ($env:APPDATA) {
+            $roamingModule = Join-Path $env:APPDATA 'rtb\module'
+            if (Test-Path $roamingModule) {
+                Remove-Item $roamingModule -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
         Stop-Spinner $ctx $true
     } catch {
@@ -628,6 +635,24 @@ function global:Install-Steps {
                 Stop-Spinner $ctx $false
                 Write-Warn "Could not update $p - $_"
             }
+        }
+    }
+
+    # Step 6: Verify Installation (Smoke check)
+    $smokeRtb = Join-Path $script:scriptsDir 'rtb.cmd'
+    if (Test-Path $smokeRtb) {
+        $checkCtx = Start-Spinner 'Verifying RTB installation'
+        try {
+            $verOutput = (& $smokeRtb --version 2>&1)
+            if ($LASTEXITCODE -eq 0 -or $verOutput -match '\d+\.\d+\.\d+') {
+                Stop-Spinner $checkCtx $true
+            } else {
+                Stop-Spinner $checkCtx $false
+                Write-Warn "Smoke check returned unexpected output: $verOutput"
+            }
+        } catch {
+            Stop-Spinner $checkCtx $false
+            Write-Warn "Smoke check failed to execute: $_"
         }
     }
 }
