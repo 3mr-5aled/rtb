@@ -30,6 +30,8 @@ desktop.ini
 # Dependencies and packages
 node_modules/
 **/node_modules/
+dist/
+**/dist/
 
 # Agent and skill caches
 .superpowers/

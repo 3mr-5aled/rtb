@@ -106,7 +106,31 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  ✓ Built core/dist/index.js" -ForegroundColor Green
 
-# 6. Copy build to local distribution bin if installed
+# 6. Stage Standalone Release Assets
+$releaseDir = Join-Path $repoRoot 'dist\release'
+if (-not (Test-Path $releaseDir)) {
+    New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+}
+
+$coreBundle = Join-Path $repoRoot 'core\dist\index.js'
+$standaloneJs = Join-Path $releaseDir 'rtb-cli.js'
+Copy-Item $coreBundle $standaloneJs -Force
+Copy-Item $versionFile (Join-Path $releaseDir 'VERSION') -Force
+if (Test-Path (Join-Path $repoRoot 'logo.txt')) {
+    Copy-Item (Join-Path $repoRoot 'logo.txt') (Join-Path $releaseDir 'logo.txt') -Force
+}
+if (Test-Path (Join-Path $repoRoot 'uninstall.ps1')) {
+    Copy-Item (Join-Path $repoRoot 'uninstall.ps1') (Join-Path $releaseDir 'uninstall.ps1') -Force
+}
+
+$releaseZip = Join-Path $releaseDir 'rtb-cli.zip'
+if (Test-Path $releaseZip) {
+    Remove-Item $releaseZip -Force
+}
+Compress-Archive -Path (Join-Path $releaseDir '*') -DestinationPath $releaseZip -Force
+Write-Host "  ✓ Staged standalone release assets in dist/release/" -ForegroundColor Green
+
+# 7. Copy build to local distribution bin if installed
 $userConfigBin = Join-Path $env:USERPROFILE '.config\rtb\bin'
 if (Test-Path $userConfigBin) {
     Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $userConfigBin 'rtb.js') -Force
