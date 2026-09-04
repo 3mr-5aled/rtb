@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { createCli } from '../src/cli.js';
-import { performUninstall, cleanShellProfiles } from '../src/commands/uninstall.js';
+import { performUninstall, cleanShellProfiles, cleanProfileContent } from '../src/commands/uninstall.js';
 
 describe('rtb uninstall command', () => {
   let tmpHome: string;
@@ -96,5 +96,37 @@ describe('rtb uninstall command', () => {
     expect(parsed.keptConfig).toBe(true);
 
     delete process.env.RTB_BIN_DIR;
+  });
+
+  it('cleanProfileContent strips modern shell-init and legacy module imports across shells', () => {
+    const bashContent = [
+      '# User config',
+      'export PATH="$HOME/bin:$PATH"',
+      '# RTB Shell Integration',
+      'eval "$(rtb shell-init bash)"',
+      '(& rtb shell-init pwsh | Out-String) | Invoke-Expression',
+      'Import-Module "$env:USERPROFILE\\AppData\\Roaming\\rtb\\module\\rtb.psd1"',
+      '# RTB PowerShell Module',
+      '# End config',
+    ].join('\n');
+
+    const cleaned = cleanProfileContent(bashContent);
+    expect(cleaned).toContain('export PATH="$HOME/bin:$PATH"');
+    expect(cleaned).toContain('# End config');
+    expect(cleaned).not.toContain('rtb shell-init');
+    expect(cleaned).not.toContain('Import-Module');
+    expect(cleaned).not.toContain('# RTB Shell Integration');
+    expect(cleaned).not.toContain('# RTB PowerShell Module');
+  });
+
+  it('cleanShellProfiles removes lines from provided profile paths and returns modified files', () => {
+    const p1 = path.join(tmpHome, 'profile1.ps1');
+    const p2 = path.join(tmpHome, 'profile2.sh');
+    fs.writeFileSync(p1, 'Write-Host "Hi"\r\n(& rtb shell-init pwsh | Out-String) | Invoke-Expression\r\n');
+    fs.writeFileSync(p2, 'echo "Clean file"\n');
+
+    const modified = cleanShellProfiles([p1, p2]);
+    expect(modified).toEqual([p1]);
+    expect(fs.readFileSync(p1, 'utf-8')).not.toContain('rtb shell-init');
   });
 });

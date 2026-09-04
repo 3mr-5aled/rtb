@@ -8,41 +8,50 @@ import { spawnSync } from 'node:child_process';
 import type { CliContext } from '../types/context.js';
 import { outputError, outputJson } from '../utils/output.js';
 
-export function cleanShellProfiles(): string[] {
+export function cleanProfileContent(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const filtered = lines.filter((line) => {
+    if (/rtb\s+shell-init/i.test(line)) return false;
+    if (/#\s*RTB\s+Shell\s+Integration/i.test(line)) return false;
+    if (/Import-Module.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1/i.test(line)) return false;
+    if (/#\s*RTB.*?Module/i.test(line)) return false;
+    return true;
+  });
+
+  const sep = content.includes('\r\n') ? '\r\n' : '\n';
+  return filtered.join(sep);
+}
+
+export function cleanShellProfiles(customCandidates?: string[]): string[] {
   const cleaned: string[] = [];
   const homeDir = os.homedir();
 
-  const candidates: string[] = [];
-  if (process.platform === 'win32') {
-    const docs = path.join(homeDir, 'Documents');
+  const candidates: string[] = customCandidates ?? [];
+  if (!customCandidates) {
+    if (process.platform === 'win32') {
+      const docs = path.join(homeDir, 'Documents');
+      candidates.push(
+        path.join(docs, 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
+        path.join(docs, 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1')
+      );
+    }
+
     candidates.push(
-      path.join(docs, 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
-      path.join(docs, 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1')
+      path.join(homeDir, '.bashrc'),
+      path.join(homeDir, '.bash_profile'),
+      path.join(homeDir, '.zshrc'),
+      path.join(homeDir, '.config', 'fish', 'config.fish')
     );
   }
-
-  candidates.push(
-    path.join(homeDir, '.bashrc'),
-    path.join(homeDir, '.bash_profile'),
-    path.join(homeDir, '.zshrc'),
-    path.join(homeDir, '.config', 'fish', 'config.fish')
-  );
 
   for (const prof of candidates) {
     if (fs.existsSync(prof)) {
       try {
         const content = fs.readFileSync(prof, 'utf-8');
-        const lines = content.split(/\r?\n/);
-        const filtered = lines.filter((line) => {
-          if (/rtb\s+shell-init/i.test(line)) return false;
-          if (/#\s*RTB\s+Shell\s+Integration/i.test(line)) return false;
-          if (/Import-Module.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1/i.test(line)) return false;
-          if (/#\s*RTB.*?Module/i.test(line)) return false;
-          return true;
-        });
+        const newContent = cleanProfileContent(content);
 
-        if (filtered.length !== lines.length) {
-          fs.writeFileSync(prof, filtered.join(prof.endsWith('.ps1') ? '\r\n' : '\n'), 'utf-8');
+        if (newContent !== content) {
+          fs.writeFileSync(prof, newContent, 'utf-8');
           cleaned.push(prof);
         }
       } catch {}
