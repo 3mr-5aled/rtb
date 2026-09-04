@@ -155,7 +155,7 @@ export function registerUpgradeCommand(
 
       if (!ctx.isQuiet && !ctx.isJson) {
         console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-        console.log(`  ${chalk.bold('rtb (رتّب) » Self Upgrade')}`);
+        console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Self Upgrade')}`);
         console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
         console.log(`  Current version: ${chalk.green(`v${currentVersion}`)}`);
         console.log(chalk.gray('  Checking for updates...'));

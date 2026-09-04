@@ -24,7 +24,7 @@ export function registerIndexCommand(program: Command, getContext: () => CliCont
 
       if (!ctx.isJson) {
         console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-        console.log(`  ${chalk.bold('rtb (رتّب) » Project Index Generator')}`);
+        console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Project Index Generator')}`);
         console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
       }
 

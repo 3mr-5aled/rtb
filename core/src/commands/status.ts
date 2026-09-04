@@ -93,7 +93,7 @@ export function registerStatusCommand(program: Command, getContext: () => CliCon
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » Workspace Status')}`);
+      console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Workspace Status')}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       console.log(`  Current Directory: ${chalk.gray(status.cwd)}`);

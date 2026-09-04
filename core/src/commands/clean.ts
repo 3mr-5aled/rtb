@@ -104,7 +104,7 @@ export function registerCleanCommand(program: Command, getContext: () => CliCont
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold(`rtb (رتّب) » Dependency Pruning (${daysThreshold}d threshold)`)}`);
+      console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Dependency Pruning (${daysThreshold}d threshold)`)}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       if (!options.commit) {

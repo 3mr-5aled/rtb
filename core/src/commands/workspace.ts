@@ -32,7 +32,7 @@ export function registerWorkspaceCommand(program: Command, getContext: () => Cli
 
       console.log('');
       console.log(chalk.cyan('═'.repeat(60)));
-      console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Monorepo Workspace Inspector (${path.basename(targetPath)})`);
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Monorepo Workspace Inspector (${path.basename(targetPath)})`);
       console.log(chalk.cyan('═'.repeat(60)));
       console.log(`  Path:          ${chalk.gray(info.projectPath)}`);
       console.log(`  Monorepo Type: ${chalk.cyan(info.workspaceType)}`);

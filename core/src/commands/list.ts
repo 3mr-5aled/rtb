@@ -40,7 +40,7 @@ export function registerListCommand(program: Command, getContext: () => CliConte
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » Project List')}`);
+      console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Project List')}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       let total = 0;

@@ -58,7 +58,7 @@ export function createCli(argv: string[] = process.argv): Command {
 
   program
     .name('rtb')
-    .description('RTB (رتّب) — Unified developer workspace & project manager')
+    .description('RTB (ﺐﺗر) — Unified developer workspace & project manager')
     .version(RTB_VERSION, '-v, --version', 'Output the current version')
     .option('-c, --config <path>', 'Custom path to rtb.config.json')
     .option('--json', 'Output result in JSON format where supported', false)

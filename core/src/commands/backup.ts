@@ -33,7 +33,7 @@ export function registerBackupCommand(program: Command, getContext: () => CliCon
 
       console.log('');
       console.log(chalk.cyan('═'.repeat(60)));
-      console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Configuration Backup`);
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Configuration Backup`);
       console.log(chalk.cyan('═'.repeat(60)));
       console.log(`  ${result.success ? chalk.green('✓') : chalk.red('✗')} ${result.message}\n`);
     });

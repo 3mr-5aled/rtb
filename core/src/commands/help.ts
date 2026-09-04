@@ -9,7 +9,7 @@ export function getCustomHelpMenu(): string {
 
   const lines = [
     '',
-    `  ${c('rtb')} (${c('رتّب')}) - ${w('Repository & Tooling Base Developer Project Operations CLI')}`,
+    `  ${c('rtb')} (${c('ﺐﺗر')}) - ${w('Repository & Tooling Base Developer Project Operations CLI')}`,
     '',
     `  ${y('SETUP & CONFIG')}`,
     `    rtb init [--force]                   Interactive workspace setup wizard`,

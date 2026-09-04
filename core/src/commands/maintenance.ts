@@ -54,7 +54,7 @@ export function registerMaintenanceCommand(program: Command, getContext: () => C
 
       console.log('');
       console.log(chalk.cyan('═'.repeat(60)));
-      console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Workspace Maintenance`);
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Workspace Maintenance`);
       console.log(chalk.cyan('═'.repeat(60)));
       console.log('');
 

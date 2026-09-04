@@ -249,7 +249,7 @@ export async function runActionCommand(
     const leaf = path.basename(targetPath);
     const title = action.charAt(0).toUpperCase() + action.slice(1);
     console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-    console.log(`  ${chalk.bold(`rtb (رتّب) » ${title} (${leaf})`)}`);
+    console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » ${title} (${leaf})`)}`);
     console.log(`${chalk.cyan('══════════════════════════════════════════')}`);
     console.log(chalk.green(`  Running: ${resolved.executable} ${resolved.args.join(' ')}\n`));
   }

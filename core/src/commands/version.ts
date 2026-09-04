@@ -75,7 +75,7 @@ export function registerVersionCommand(program: Command, getContext: () => CliCo
           nodeVersion: process.version,
         });
       } else {
-        console.log(`RTB (${chalk.cyan('رتّب')}) CLI ${chalk.green(`v${RTB_VERSION}`)} [Node]`);
+        console.log(`RTB (${chalk.cyan('ﺐﺗر')}) CLI ${chalk.green(`v${RTB_VERSION}`)} [Node]`);
       }
     });
 }

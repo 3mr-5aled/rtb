@@ -168,7 +168,7 @@ show_header() {
     r="$(esc '0m')"
 
     printf '\n'
-    printf '  %s%sRTB%s %s(رتّب) Setup Wizard%s %sv%s%s\n' "$b" "$c" "$r" "$b" "$r" "$g" "$RTB_VERSION" "$r"
+    printf '  %s%sRTB%s %s(ﺐﺗر) Setup Wizard%s %sv%s%s\n' "$b" "$c" "$r" "$b" "$r" "$g" "$RTB_VERSION" "$r"
     printf '  %sCross-platform developer tooling & workspace manager (v%s)%s\n' "$d" "$RTB_VERSION" "$r"
     printf '\n'
 }

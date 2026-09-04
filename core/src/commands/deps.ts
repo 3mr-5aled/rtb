@@ -39,7 +39,7 @@ export function registerDepsCommand(program: Command, getContext: () => CliConte
 
       const leaf = path.basename(targetPath);
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold(`rtb (رتّب) » Dependency Inspector (${leaf})`)}`);
+      console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Dependency Inspector (${leaf})`)}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       if (deps.length === 0) {

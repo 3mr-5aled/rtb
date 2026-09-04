@@ -39,7 +39,7 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
       if (!isJson) {
         console.log('');
         console.log(chalk.cyan('═'.repeat(60)));
-        console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Git Repository Health`);
+        console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Git Repository Health`);
         console.log(chalk.cyan('═'.repeat(60)));
       }
 

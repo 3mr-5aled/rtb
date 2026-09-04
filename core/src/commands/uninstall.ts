@@ -163,7 +163,7 @@ export function registerUninstallCommand(program: Command, getContext: () => Cli
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » Uninstallation')}`);
+      console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Uninstallation')}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       if (result.removedPaths.length > 0) {

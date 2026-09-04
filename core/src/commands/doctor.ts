@@ -166,7 +166,7 @@ export function registerDoctorCommand(program: Command, getContext: () => CliCon
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » System Doctor')}`);
+      console.log(`  ${chalk.bold('rtb (ﺐﺗر) » System Doctor')}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       const categories = [...new Set(checks.map((c) => c.category))];

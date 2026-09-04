@@ -55,7 +55,7 @@ export function registerInfoCommand(program: Command, getContext: () => CliConte
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold(`rtb (رتّب) » Project Info: ${details.name}`)}`);
+      console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Project Info: ${details.name}`)}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       console.log(`  Name:            ${chalk.white.bold(details.name)}`);

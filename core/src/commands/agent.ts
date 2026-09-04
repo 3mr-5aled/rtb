@@ -65,7 +65,7 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
       }
 
       console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » Installed AI Agents')}`);
+      console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Installed AI Agents')}`);
       console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       for (const a of installedAgents) {
@@ -164,7 +164,7 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
     }
 
     console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-    console.log(`  ${chalk.bold(`rtb (رتّب) » Launching AI Agent: ${selectedAgent.name} (${selectedAgent.command})`)}`);
+    console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Launching AI Agent: ${selectedAgent.name} (${selectedAgent.command})`)}`);
     console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
     console.log(`  Project Name:  ${chalk.white.bold(targetName)}`);

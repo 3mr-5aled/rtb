@@ -33,7 +33,7 @@ export function registerGuardCommand(program: Command, getContext: () => CliCont
 
       console.log('');
       console.log(chalk.cyan('═'.repeat(60)));
-      console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Root Guardrail`);
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Root Guardrail`);
       console.log(chalk.cyan('═'.repeat(60)));
       console.log(`  ${result.success ? chalk.green('✓') : chalk.red('✗')} ${result.message}\n`);
     });
