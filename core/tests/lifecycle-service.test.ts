@@ -154,4 +154,100 @@ describe('ProjectLifecycle Domain Seam', () => {
       ).toThrowError(/already exists/);
     });
   });
+
+  describe('archive and unarchive', () => {
+    it('archives project into tar.gz and removes source folder, then unarchives cleanly', () => {
+      const backupDir = path.join(tmpDir, 'backup');
+      fs.mkdirSync(backupDir, { recursive: true });
+      config.backupRoot = backupDir;
+
+      const projDir = path.join(activeDir, 'snap-app');
+      fs.mkdirSync(projDir, { recursive: true });
+      fs.writeFileSync(path.join(projDir, 'data.txt'), 'snapshot content');
+
+      // Archive
+      const archiveResult = lifecycle.archive({
+        name: 'snap-app',
+        config,
+        force: true,
+      });
+
+      expect(archiveResult.archived).toBe(true);
+      expect(fs.existsSync(projDir)).toBe(false);
+      expect(fs.existsSync(archiveResult.archivePath)).toBe(true);
+
+      // Unarchive
+      const unarchiveResult = lifecycle.unarchive({
+        archiveName: path.basename(archiveResult.archivePath),
+        config,
+      });
+
+      expect(unarchiveResult.unarchived).toBe(true);
+      expect(fs.existsSync(path.join(activeDir, 'snap-app'))).toBe(true);
+      expect(fs.readFileSync(path.join(activeDir, 'snap-app', 'data.txt'), 'utf-8')).toBe('snapshot content');
+    });
+
+    it('blocks archive on dirty git working tree unless force is true', async () => {
+      const gitModule = await import('../src/utils/git.js');
+      vi.spyOn(gitModule, 'isGitClean').mockReturnValue(false);
+
+      const projDir = path.join(activeDir, 'dirty-archive-app');
+      fs.mkdirSync(projDir, { recursive: true });
+
+      expect(() =>
+        lifecycle.archive({
+          name: 'dirty-archive-app',
+          config,
+          force: false,
+        })
+      ).toThrow(DirtyGitError);
+    });
+  });
+
+  describe('deploy', () => {
+    it('promotes project from active to production root', () => {
+      const prodDir = path.join(tmpDir, '02-Production');
+      fs.mkdirSync(prodDir, { recursive: true });
+      config.projectRoots.production = { path: prodDir, label: 'Production', emoji: '🚀' };
+
+      const projDir = path.join(activeDir, 'prod-candidate');
+      fs.mkdirSync(projDir, { recursive: true });
+      fs.writeFileSync(path.join(projDir, 'index.html'), '<h1>Prod</h1>');
+
+      const deployResult = lifecycle.deploy({
+        name: 'prod-candidate',
+        config,
+        targetEnvironment: 'production',
+      });
+
+      expect(deployResult.deployed).toBe(true);
+      expect(fs.existsSync(projDir)).toBe(false);
+      const destPath = path.join(prodDir, 'prod-candidate');
+      expect(fs.existsSync(destPath)).toBe(true);
+      expect(fs.readFileSync(path.join(destPath, 'index.html'), 'utf-8')).toBe('<h1>Prod</h1>');
+    });
+
+    it('promotes project from staging to production if not in active', () => {
+      const stagingDir = path.join(tmpDir, '03-Staging');
+      const prodDir = path.join(tmpDir, '02-Production');
+      fs.mkdirSync(stagingDir, { recursive: true });
+      fs.mkdirSync(prodDir, { recursive: true });
+      config.projectRoots.staging = { path: stagingDir, label: 'Staging', emoji: '🧪' };
+      config.projectRoots.production = { path: prodDir, label: 'Production', emoji: '🚀' };
+
+      const stagingProj = path.join(stagingDir, 'staged-feature');
+      fs.mkdirSync(stagingProj, { recursive: true });
+      fs.writeFileSync(path.join(stagingProj, 'app.js'), 'console.log("staged")');
+
+      const deployResult = lifecycle.deploy({
+        name: 'staged-feature',
+        config,
+        targetEnvironment: 'production',
+      });
+
+      expect(deployResult.deployed).toBe(true);
+      expect(fs.existsSync(stagingProj)).toBe(false);
+      expect(fs.existsSync(path.join(prodDir, 'staged-feature'))).toBe(true);
+    });
+  });
 });
