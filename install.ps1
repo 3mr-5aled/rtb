@@ -155,15 +155,13 @@ function global:Get-RtbInstallerVersion {
     $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
     $candidates = @(
         (Join-Path $dir 'VERSION'),
-        (Join-Path $dir 'core\package.json'),
-        (Join-Path $dir 'cli\rtb.psd1')
+        (Join-Path $dir 'core\package.json')
     )
     $p = $dir
     for ($i = 0; $i -lt 3; $i++) {
         if ($p) {
             $candidates += (Join-Path $p 'VERSION')
             $candidates += (Join-Path $p 'core\package.json')
-            $candidates += (Join-Path $p 'cli\rtb.psd1')
             $p = Split-Path $p -Parent
         }
     }
@@ -173,9 +171,6 @@ function global:Get-RtbInstallerVersion {
                 if ($c.EndsWith('package.json')) {
                     $pkg = (Get-Content -LiteralPath $c -Raw) | ConvertFrom-Json
                     if ($pkg.version) { return [string]$pkg.version }
-                } elseif ($c.EndsWith('.psd1')) {
-                    $manifest = Import-PowerShellDataFile -Path $c -ErrorAction SilentlyContinue
-                    if ($manifest -and $manifest.ModuleVersion) { return [string]$manifest.ModuleVersion }
                 } else {
                     $raw = (Get-Content -LiteralPath $c -Raw).Trim()
                     if ($raw) { return [string]($raw -replace '^v','') }
@@ -332,7 +327,7 @@ function global:Ensure-Node {
 function global:Find-RepoRoot {
     $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
     while ($dir -and (Test-Path $dir)) {
-        if ((Test-Path (Join-Path $dir 'core\package.json')) -or (Test-Path (Join-Path $dir 'cli\rtb.psd1'))) {
+        if (Test-Path (Join-Path $dir 'core\package.json')) {
             return $dir
         }
         $parent = Split-Path $dir -Parent
@@ -357,10 +352,15 @@ function global:Install-Steps {
     Write-Step 1 $TOTAL 'Creating directories'
     $ctx = Start-Spinner 'Setting up install directories'
     try {
-        foreach ($d in @($script:scriptsDir, $script:userConfigDir, $script:moduleHome)) {
+        foreach ($d in @($script:scriptsDir, $script:userConfigDir)) {
             if (-not (Test-Path $d)) {
                 New-Item -ItemType Directory -Path $d -Force | Out-Null
             }
+        }
+        # Clean up stale legacy module directory if present
+        $staleModule = Join-Path $script:userConfigDir 'module'
+        if (Test-Path $staleModule) {
+            Remove-Item $staleModule -Recurse -Force -ErrorAction SilentlyContinue
         }
         Stop-Spinner $ctx $true
     } catch {
@@ -371,50 +371,47 @@ function global:Install-Steps {
     # Step 2: Deploy RTB Engine (Critical)
     Write-Step 2 $TOTAL 'Deploying RTB CLI engine'
     if ($isStandalone) {
-        $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
-        $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
-        $tmpExt = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random)"
-        $ctx = Start-Spinner 'Downloading rtb-cli.zip'
+        $bundleUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.js'
+        $versionUrl = 'https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION'
+        $destJs = Join-Path $script:scriptsDir 'rtb.js'
+        $ctx = Start-Spinner 'Downloading rtb-cli.js'
         try {
-            Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -EA Stop
-            Stop-Spinner $ctx $true
-
-            $ctx = Start-Spinner 'Extracting CLI files'
-            Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
-            $ec = Join-Path $tmpExt 'cli'
-            if (Test-Path $ec) {
-                Copy-Item "$ec\*" $script:moduleHome -Recurse -Force
-            }
-            if (Test-Path (Join-Path $tmpExt 'rtb.js')) {
-                Copy-Item (Join-Path $tmpExt 'rtb.js') "$script:scriptsDir\rtb.js" -Force
-            } elseif (Test-Path (Join-Path $tmpExt 'core\dist\index.js')) {
-                Copy-Item (Join-Path $tmpExt 'core\dist\index.js') "$script:scriptsDir\rtb.js" -Force
-            }
-            foreach ($f in @('logo.txt', 'uninstall.ps1', 'VERSION')) {
-                $src = Join-Path $tmpExt $f
-                if (Test-Path $src) {
-                    Copy-Item $src "$script:scriptsDir\$f" -Force
-                    Copy-Item $src "$script:moduleHome\$f" -Force -ErrorAction SilentlyContinue
-                }
-            }
-            $uninst = Join-Path $tmpExt 'uninstall.ps1'
-            if (Test-Path $uninst) {
-                Copy-Item $uninst "$script:userConfigDir\uninstall.ps1" -Force
-            }
+            Invoke-WebRequest -Uri $bundleUrl -OutFile $destJs -UseBasicParsing -TimeoutSec 120 -EA Stop
+            try {
+                Invoke-WebRequest -Uri $versionUrl -OutFile (Join-Path $script:userConfigDir 'VERSION') -UseBasicParsing -TimeoutSec 15 -EA SilentlyContinue
+                Copy-Item (Join-Path $script:userConfigDir 'VERSION') (Join-Path $script:scriptsDir 'VERSION') -Force -EA SilentlyContinue
+            } catch {}
             Stop-Spinner $ctx $true
         } catch {
-            Stop-Spinner $ctx $false
-            Write-Fail "Download failed: $_`nCheck https://github.com/3mr-5aled/rtb/releases"
-        } finally {
-            Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
+            # Fallback to rtb-cli.zip if standalone zip is published
+            $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
+            $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
+            $tmpExt = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random)"
+            try {
+                Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -EA Stop
+                Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
+                if (Test-Path (Join-Path $tmpExt 'rtb.js')) {
+                    Copy-Item (Join-Path $tmpExt 'rtb.js') "$script:scriptsDir\rtb.js" -Force
+                } elseif (Test-Path (Join-Path $tmpExt 'core\dist\index.js')) {
+                    Copy-Item (Join-Path $tmpExt 'core\dist\index.js') "$script:scriptsDir\rtb.js" -Force
+                }
+                foreach ($f in @('logo.txt', 'uninstall.ps1', 'VERSION')) {
+                    $src = Join-Path $tmpExt $f
+                    if (Test-Path $src) {
+                        Copy-Item $src "$script:scriptsDir\$f" -Force
+                        Copy-Item $src "$script:userConfigDir\$f" -Force -ErrorAction SilentlyContinue
+                    }
+                }
+                Stop-Spinner $ctx $true
+            } catch {
+                Stop-Spinner $ctx $false
+                Write-Fail "Download failed: $_`nCheck https://github.com/3mr-5aled/rtb/releases"
+            } finally {
+                Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     } else {
-        $ctx = Start-Spinner 'Deploying local CLI module & bundle'
-        $src = Join-Path $repoRoot 'cli'
-        if (Test-Path $src) {
-            Copy-Item "$src\*" $script:moduleHome -Recurse -Force
-        }
-
+        $ctx = Start-Spinner 'Deploying local CLI bundle'
         $coreDir = Join-Path $repoRoot 'core'
         $builtBundle = Join-Path $coreDir 'dist\index.js'
         if (-not (Test-Path $builtBundle)) {
@@ -429,6 +426,9 @@ function global:Install-Steps {
 
         if (Test-Path $builtBundle) {
             Copy-Item $builtBundle "$script:scriptsDir\rtb.js" -Force
+        } else {
+            Stop-Spinner $ctx $false
+            Write-Fail "Core bundle not found at $builtBundle after build."
         }
 
         Stop-Spinner $ctx $true
@@ -437,12 +437,8 @@ function global:Install-Steps {
             $s = Join-Path $repoRoot $f
             if (Test-Path $s) {
                 Copy-Item $s "$script:scriptsDir\$f" -Force
-                Copy-Item $s "$script:moduleHome\$f" -Force -ErrorAction SilentlyContinue
+                Copy-Item $s "$script:userConfigDir\$f" -Force -ErrorAction SilentlyContinue
             }
-        }
-        $uninst = Join-Path $repoRoot 'uninstall.ps1'
-        if (Test-Path $uninst) {
-            Copy-Item $uninst "$script:userConfigDir\uninstall.ps1" -Force
         }
     }
 
@@ -554,12 +550,7 @@ function global:Install-Steps {
 
     # Step 5: Profile Injection (Non-critical)
     Write-Step 5 $TOTAL 'Configuring PowerShell profile(s)'
-    $psd = Join-Path $script:moduleHome 'rtb.psd1'
-    $line = if (Test-Path $psd) {
-        "Import-Module '$psd' -DisableNameChecking -Force"
-    } else {
-        "Invoke-Expression (& rtb shell-init pwsh)"
-    }
+    $line = 'Invoke-Expression (& rtb shell-init pwsh)'
 
     foreach ($p in $script:resolvedProfiles) {
         if ($p) {
@@ -586,7 +577,7 @@ function global:Install-Steps {
                 $outputLines = [System.Collections.Generic.List[string]]::new()
                 foreach ($l in $clean) { $outputLines.Add($l) }
                 $outputLines.Add('')
-                $outputLines.Add('# RTB CLI Module')
+                $outputLines.Add('# RTB Shell Integration')
                 $outputLines.Add($line)
                 $newContent = ($outputLines -join "`r`n").TrimEnd() + "`r`n"
                 $newContent | Set-Content -LiteralPath $p -Encoding UTF8
@@ -606,7 +597,6 @@ function global:Main {
     $default = Join-Path $homeDir '.config\rtb'
 
     $script:userConfigDir = Prompt-InstallPath $default
-    $script:moduleHome    = Join-Path $script:userConfigDir 'module'
     $script:scriptsDir    = if ($env:RTB_BIN_DIR) { $env:RTB_BIN_DIR } else { Join-Path $script:userConfigDir 'bin' }
 
     $docs = [Environment]::GetFolderPath('MyDocuments')
@@ -627,11 +617,6 @@ function global:Main {
         Remove-Module rtb -Force -ErrorAction SilentlyContinue
         Remove-Item Function:\rtb -Force -ErrorAction SilentlyContinue
         Remove-Item Function:\Rtb-Init -Force -ErrorAction SilentlyContinue
-
-        $psd = Join-Path $script:moduleHome 'rtb.psd1'
-        if (Test-Path $psd) {
-            Import-Module $psd -DisableNameChecking -Force -ErrorAction SilentlyContinue
-        }
 
         $rtbCmd = Join-Path $script:scriptsDir 'rtb.cmd'
         if (Test-Path $rtbCmd) {
