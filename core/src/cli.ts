@@ -26,7 +26,11 @@ import { registerRunCommand } from './commands/run.js';
 import { registerBuildCommand } from './commands/build.js';
 import { registerTestCommand } from './commands/test.js';
 import { registerDepsCommand } from './commands/deps.js';
+import { registerWorkspaceCommand } from './commands/workspace.js';
+import { registerOpenCommand } from './commands/open.js';
+import { registerHealthCommand } from './commands/health.js';
 import { outputError } from './utils/output.js';
+
 
 export const EXEMPT_COMMANDS = new Set([
   'help',
@@ -143,6 +147,9 @@ export function createCli(argv: string[] = process.argv): Command {
   registerBuildCommand(program, getContext);
   registerTestCommand(program, getContext);
   registerDepsCommand(program, getContext);
+  registerWorkspaceCommand(program, getContext);
+  registerOpenCommand(program, getContext);
+  registerHealthCommand(program, getContext);
   registerHelpCommand(program);
 
   return program;
