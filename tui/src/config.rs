@@ -2,18 +2,30 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct DevConfig {
+    #[serde(default)]
     pub version: String,
+    #[serde(default)]
     pub project_roots: ProjectRoots,
+    #[serde(default)]
     pub backup_root: String,
+    #[serde(default)]
     pub config_root: String,
+    #[serde(default)]
     pub template_dir: String,
+    #[serde(default)]
     pub clean_deps: CleanDepsConfig,
+    #[serde(default = "default_stale_threshold")]
     pub stale_threshold_days: u64,
+    #[serde(default)]
     pub git_health: GitHealthConfig,
+}
+
+fn default_stale_threshold() -> u64 {
+    90
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -55,24 +67,31 @@ pub struct ProjectRoots {
     pub production: String,
     #[serde(deserialize_with = "deserialize_root_path", default)]
     pub staging: String,
-    #[serde(deserialize_with = "deserialize_root_path", default)]
+    #[serde(deserialize_with = "deserialize_root_path", alias = "vibeCoding", default)]
     pub vibe: String,
     #[serde(deserialize_with = "deserialize_root_path", default)]
     pub sandbox: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct CleanDepsConfig {
+    #[serde(default = "default_days_inactive")]
     pub days_inactive: u64,
+    #[serde(default)]
     pub targets: Vec<String>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+fn default_days_inactive() -> u64 {
+    30
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct GitHealthConfig {
+    #[serde(default)]
     pub scan_roots: Vec<String>,
 }
 
@@ -80,6 +99,21 @@ impl DevConfig {
     /// Returns the ordered list of config file paths to try, from highest to lowest priority.
     pub fn candidate_paths() -> Vec<std::path::PathBuf> {
         let mut paths: Vec<std::path::PathBuf> = Vec::new();
+
+        // 0. Environment variable RTB_CONFIG (highest priority)
+        if let Ok(env_path) = std::env::var("RTB_CONFIG") {
+            if !env_path.trim().is_empty() {
+                paths.push(PathBuf::from(env_path.trim()));
+            }
+        }
+
+        // 0b. CLI arguments: --config <path> or -c <path>
+        let args: Vec<String> = std::env::args().collect();
+        for i in 0..args.len() {
+            if (args[i] == "--config" || args[i] == "-c") && i + 1 < args.len() {
+                paths.push(PathBuf::from(&args[i + 1]));
+            }
+        }
 
         // 1. Home dot-config dir: %USERPROFILE%\.config\rtb\rtb.config.json (or ~/.config/rtb/rtb.config.json)
         #[cfg(not(test))]
@@ -240,6 +274,26 @@ mod tests {
         assert_eq!(config.version, "1.0.0");
         assert_eq!(config.project_roots.active, "D:/Projects/Active");
         assert_eq!(config.project_roots.paused, "D:/Projects/Paused");
+    }
+
+    #[test]
+    fn config_deserialize_minimal_standard_config() {
+        let minimal_json = r#"{
+            "version": "0.6.3",
+            "projectRoots": {
+                "active": { "path": "D:/Projects/Active", "label": "Active", "emoji": "📁" },
+                "vibeCoding": { "path": "D:/Projects/Vibe", "label": "Vibe", "emoji": "✨" }
+            },
+            "backupRoot": "D:/Backups"
+        }"#;
+
+        let config: Result<DevConfig, _> = serde_json::from_str(minimal_json);
+        assert!(config.is_ok(), "Minimal config should parse correctly without configRoot or templateDir");
+        let config = config.unwrap();
+        assert_eq!(config.version, "0.6.3");
+        assert_eq!(config.project_roots.active, "D:/Projects/Active");
+        assert_eq!(config.project_roots.vibe, "D:/Projects/Vibe");
+        assert_eq!(config.stale_threshold_days, 90);
     }
 }
 

@@ -56,4 +56,15 @@ describe('CLI Framework & Registry', () => {
     expect(parsed.projectRoots).toBeDefined();
     logSpy.mockRestore();
   });
+
+  it('should handle rtb ui gracefully when rtbtui binary is not found', async () => {
+    const doctorMod = await import('../src/commands/doctor.js');
+    vi.spyOn(doctorMod, 'findRtbtuiBinary').mockReturnValue(null);
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', '--json', 'ui']);
+
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
 });

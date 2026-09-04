@@ -24,10 +24,31 @@ export function registerUiCommand(program: Command, getContext: () => CliContext
       }
 
       const isWindows = process.platform === 'win32';
-      const child = spawn(binaryPath, [], {
-        stdio: 'inherit',
-        shell: isWindows,
-      });
+      const args: string[] = [];
+      const env = { ...process.env };
+
+      if (ctx.configPath) {
+        args.push('--config', ctx.configPath);
+        env.RTB_CONFIG = ctx.configPath;
+      }
+
+      const child = isWindows
+        ? spawn(
+            [
+              binaryPath.includes(' ') ? `"${binaryPath}"` : binaryPath,
+              ...args.map((a) => (a.includes(' ') ? `"${a}"` : a)),
+            ].join(' '),
+            {
+              stdio: 'inherit',
+              shell: true,
+              env,
+            }
+          )
+        : spawn(binaryPath, args, {
+            stdio: 'inherit',
+            shell: false,
+            env,
+          });
 
       child.on('error', (err) => {
         outputError(`Failed to spawn rtbtui: ${err.message}`, 'TUI_SPAWN_FAILED', ctx.isJson);
