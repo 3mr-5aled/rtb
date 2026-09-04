@@ -556,7 +556,7 @@ function global:Install-Steps {
 
     # Step 5: Profile Injection (Non-critical)
     Write-Step 5 $TOTAL 'Configuring PowerShell profile(s)'
-    $line = 'Invoke-Expression (& rtb shell-init pwsh)'
+    $line = '(& rtb shell-init pwsh | Out-String) | Invoke-Expression'
 
     foreach ($p in $script:resolvedProfiles) {
         if ($p) {
@@ -573,7 +573,7 @@ function global:Install-Steps {
                 $clean = if ($pLines) {
                     @($pLines | Where-Object {
                         $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
-                        $_ -notmatch 'Invoke-Expression\s+\(&\s*rtb\s+shell-init' -and
+                        $_ -notmatch 'rtb\s+shell-init' -and
                         $_ -notmatch '#\s*RTB.*?Module' -and
                         $_ -notmatch '#\s*RTB.*?Shell Integration'
                     })

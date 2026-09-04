@@ -95,7 +95,7 @@ end
     case 'posh':
       return `# rtb shell integration for PowerShell (pwsh / Windows PowerShell)
 # Add to $PROFILE:
-#   Invoke-Expression (& rtb shell-init pwsh)
+#   (& rtb shell-init pwsh | Out-String) | Invoke-Expression
 
 function rtb {
     $rtbApp = (Get-Command -CommandType Application,ExternalScript -Name rtb -ErrorAction SilentlyContinue | Select-Object -First 1)
