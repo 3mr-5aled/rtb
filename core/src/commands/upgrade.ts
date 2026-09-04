@@ -64,7 +64,7 @@ export async function executeUpgrade(): Promise<{ success: boolean; method: stri
   try {
     const isWindows = process.platform === 'win32';
     const res = isWindows
-      ? spawnSync('npm.cmd', ['install', '-g', '@3mr-5aled/rtb@latest'], {
+      ? spawnSync('npm.cmd install -g @3mr-5aled/rtb@latest', {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: true,
         })
