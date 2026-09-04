@@ -1,6 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import chalk from 'chalk';
+import type { Command } from 'commander';
 import type { RtbConfig } from '../types/config.js';
+import type { CliContext } from '../types/context.js';
+import { ConfigMissingError } from '../errors.js';
+import { outputJson } from '../utils/output.js';
 
 export interface MaintenanceTaskContext {
   config: RtbConfig;
@@ -173,3 +178,190 @@ export class MaintenanceTaskRegistry {
     });
   }
 }
+
+export function registerBackupCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('backup')
+    .description('Full workspace configuration backup')
+    .option('--json', 'Output backup results in JSON format')
+    .action(async (cmdOpts: { json?: boolean }) => {
+      const ctx = getContext();
+      const isJson = Boolean(cmdOpts.json || ctx.isJson);
+
+      if (!ctx.config) {
+        throw new ConfigMissingError('Configuration not loaded');
+      }
+
+      const registry = new MaintenanceTaskRegistry();
+      const result = await registry.runTask('backup', {
+        config: ctx.config,
+        configPath: ctx.configPath,
+        isJson,
+      });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+
+      if (isJson) {
+        outputJson(result);
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Configuration Backup`);
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${result.success ? chalk.green('✓') : chalk.red('✗')} ${result.message}\n`);
+    });
+}
+
+export function registerEnvCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('env')
+    .description('Backup all .env files across active projects')
+    .option('--json', 'Output env backup results in JSON format')
+    .action(async (cmdOpts: { json?: boolean }) => {
+      const ctx = getContext();
+      const isJson = Boolean(cmdOpts.json || ctx.isJson);
+
+      if (!ctx.config) {
+        throw new ConfigMissingError('Configuration not loaded');
+      }
+
+      const registry = new MaintenanceTaskRegistry();
+      const result = await registry.runTask('env', {
+        config: ctx.config,
+        isJson,
+      });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+
+      if (isJson) {
+        outputJson(result);
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Environment Files Backup`);
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${result.success ? chalk.green('✓') : chalk.red('✗')} ${result.message}\n`);
+    });
+}
+
+export function registerGuardCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('guard')
+    .description('D drive root guardrail inspection')
+    .option('--json', 'Output guard results in JSON format')
+    .action(async (cmdOpts: { json?: boolean }) => {
+      const ctx = getContext();
+      const isJson = Boolean(cmdOpts.json || ctx.isJson);
+
+      if (!ctx.config) {
+        throw new ConfigMissingError('Configuration not loaded');
+      }
+
+      const registry = new MaintenanceTaskRegistry();
+      const result = await registry.runTask('guard', {
+        config: ctx.config,
+        isReportOnly: true,
+        isJson,
+      });
+
+      if (!result.success) {
+        process.exitCode = 1;
+      }
+
+      if (isJson) {
+        outputJson(result);
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Root Guardrail`);
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${result.success ? chalk.green('✓') : chalk.red('✗')} ${result.message}\n`);
+    });
+}
+
+export function registerMaintenanceCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('maintenance [task]')
+    .description('Run all workspace maintenance tasks (backup, env, guard) or a specific task')
+    .option('--full', 'Run comprehensive full maintenance pass', false)
+    .option('--json', 'Output maintenance results in JSON format')
+    .action(async (taskName: string | undefined, cmdOpts: { full?: boolean; json?: boolean }) => {
+      const ctx = getContext();
+      const isJson = Boolean(cmdOpts.json || ctx.isJson);
+
+      if (!ctx.config) {
+        throw new ConfigMissingError('Configuration not loaded');
+      }
+
+      const registry = new MaintenanceTaskRegistry();
+
+      if (taskName) {
+        const result = await registry.runTask(taskName, {
+          config: ctx.config,
+          configPath: ctx.configPath,
+          isFull: Boolean(cmdOpts.full),
+          isJson,
+        });
+
+        if (!result.success) {
+          process.exitCode = 1;
+        }
+
+        if (isJson) {
+          outputJson(result);
+          return;
+        }
+
+        const icon = result.success ? chalk.green('✓') : chalk.red('✗');
+        console.log(`\n  ${icon} [${chalk.bold(result.task)}] ${result.message}\n`);
+        return;
+      }
+
+      const results = await registry.runAll({
+        config: ctx.config,
+        configPath: ctx.configPath,
+        isFull: Boolean(cmdOpts.full),
+        isJson,
+      });
+
+      const allSuccess = results.every((r) => r.success);
+      if (!allSuccess) {
+        process.exitCode = 1;
+      }
+
+      if (isJson) {
+        outputJson({ success: allSuccess, results });
+        return;
+      }
+
+      console.log('');
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log(`  ${chalk.bold.cyan('rtb (ﺐﺗر)')} » Workspace Maintenance`);
+      console.log(chalk.cyan('═'.repeat(60)));
+      console.log('');
+
+      for (const res of results) {
+        const icon = res.success ? chalk.green('✓') : chalk.red('✗');
+        console.log(`  ${icon} [${chalk.bold(res.task)}] ${res.message}`);
+      }
+      console.log('');
+    });
+}
+
+export function registerMaintenanceCommands(program: Command, getContext: () => CliContext): void {
+  registerMaintenanceCommand(program, getContext);
+  registerBackupCommand(program, getContext);
+  registerEnvCommand(program, getContext);
+  registerGuardCommand(program, getContext);
+}
+

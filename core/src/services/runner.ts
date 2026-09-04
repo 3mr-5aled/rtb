@@ -3,7 +3,9 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import chalk from 'chalk';
 import type { CliContext } from '../types/context.js';
+import type { Command } from 'commander';
 import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { ProjectNotFoundError, RtbError } from '../errors.js';
 import { outputError, outputJson } from '../utils/output.js';
 
 export interface ResolvedCommand {
@@ -211,13 +213,7 @@ export async function runActionCommand(
       if (matches.length > 0) {
         targetPath = matches[0].path;
       } else {
-        if (ctx.isJson) {
-          outputError(`Project '${projectName}' not found.`, 'PROJECT_NOT_FOUND', true);
-        } else {
-          console.error(chalk.red(`\n  ✗ Project '${projectName}' not found.\n`));
-        }
-        process.exit(1);
-        return;
+        throw new ProjectNotFoundError(projectName);
       }
     }
   }
@@ -225,13 +221,7 @@ export async function runActionCommand(
   const resolved = resolveProjectAction(action, targetPath, finalExtraArgs);
   if (!resolved) {
     const msg = `No ${action} configuration or entrypoint detected in ${targetPath}`;
-    if (ctx.isJson) {
-      outputError(msg, 'NO_ENTRYPOINT', true);
-    } else {
-      console.log(chalk.yellow(`\n  ⚠ ${msg}\n`));
-    }
-    process.exit(1);
-    return;
+    throw new RtbError(msg, 'NO_ENTRYPOINT', 1);
   }
 
   if (ctx.isJson && options.dryRun) {
@@ -242,6 +232,7 @@ export async function runActionCommand(
       args: resolved.args,
       dryRun: true,
     });
+    process.exitCode = 0;
     return;
   }
 
@@ -255,5 +246,45 @@ export async function runActionCommand(
   }
 
   const exitCode = await executeProjectAction(targetPath, resolved, { dryRun: options.dryRun });
-  process.exit(exitCode);
+  process.exitCode = exitCode;
 }
+
+export function registerRunCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('run [project] [args...]')
+    .description('Run project dev server or main entrypoint')
+    .allowUnknownOption(true)
+    .option('--dry-run', 'Inspect command resolution without executing', false)
+    .action((projectName: string | undefined, extraArgs: string[] | undefined, options: { dryRun?: boolean }) => {
+      return runActionCommand('run', projectName, extraArgs, options, getContext());
+    });
+}
+
+export function registerBuildCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('build [project] [args...]')
+    .description('Build project for release or compilation')
+    .allowUnknownOption(true)
+    .option('--dry-run', 'Inspect build command resolution without executing', false)
+    .action((projectName: string | undefined, extraArgs: string[] | undefined, options: { dryRun?: boolean }) => {
+      return runActionCommand('build', projectName, extraArgs, options, getContext());
+    });
+}
+
+export function registerTestCommand(program: Command, getContext: () => CliContext): void {
+  program
+    .command('test [project] [args...]')
+    .description('Run test suite in project directory')
+    .allowUnknownOption(true)
+    .option('--dry-run', 'Inspect test command resolution without executing', false)
+    .action((projectName: string | undefined, extraArgs: string[] | undefined, options: { dryRun?: boolean }) => {
+      return runActionCommand('test', projectName, extraArgs, options, getContext());
+    });
+}
+
+export function registerRunnerCommands(program: Command, getContext: () => CliContext): void {
+  registerRunCommand(program, getContext);
+  registerBuildCommand(program, getContext);
+  registerTestCommand(program, getContext);
+}
+

@@ -22,22 +22,18 @@ import { registerInfoCommand } from './commands/info.js';
 import { registerUiCommand } from './commands/ui.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerHelpCommand } from './commands/help.js';
-import { registerRunCommand } from './commands/run.js';
-import { registerBuildCommand } from './commands/build.js';
-import { registerTestCommand } from './commands/test.js';
+import { registerRunnerCommands } from './services/runner.js';
 import { registerDepsCommand } from './commands/deps.js';
 import { registerWorkspaceCommand } from './commands/workspace.js';
 import { registerOpenCommand } from './commands/open.js';
 import { registerHealthCommand } from './commands/health.js';
-import { registerMaintenanceCommand } from './commands/maintenance.js';
-import { registerBackupCommand } from './commands/backup.js';
-import { registerEnvCommand } from './commands/env.js';
-import { registerGuardCommand } from './commands/guard.js';
+import { registerMaintenanceCommands } from './services/maintenance.js';
 import { registerDeployCommand } from './commands/deploy.js';
 import { registerUninstallCommand } from './commands/uninstall.js';
 import { registerUpgradeCommand } from './commands/upgrade.js';
 import { registerCompletionCommand } from './commands/completion.js';
 import { outputError } from './utils/output.js';
+import { wrapAction } from './utils/envelope.js';
 
 
 export const EXEMPT_COMMANDS = new Set([
@@ -76,6 +72,18 @@ export function createCli(argv: string[] = process.argv): Command {
 
   const getContext = (): CliContext => currentContext;
 
+  // Automatically wrap all registered command action handlers in CommandEnvelope
+  const originalCommand = program.command.bind(program);
+  (program as any).command = function (...args: any[]) {
+    const cmd = originalCommand(...args);
+    const originalAction = cmd.action.bind(cmd);
+    cmd.action = function (fn: (...a: any[]) => any) {
+      const isExempt = EXEMPT_COMMANDS.has(cmd.name());
+      return originalAction(wrapAction(getContext, fn, { exemptFromConfig: isExempt }));
+    };
+    return cmd;
+  };
+
   // Config Gate Middleware via preAction hook
   program.hook('preAction', async (thisCommand, actionCommand) => {
     const opts = thisCommand.opts<{ config?: string; json?: boolean; quiet?: boolean }>();
@@ -100,8 +108,8 @@ export function createCli(argv: string[] = process.argv): Command {
           'NOT_CONFIGURED',
           true
         );
-        if (process.env.VITEST) return;
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
 
       console.log('');
@@ -125,13 +133,13 @@ export function createCli(argv: string[] = process.argv): Command {
         if (answer === '' || answer === 'y' || answer === 'yes') {
           // Future: launch init
           console.log(`\n  Please run '${chalk.cyan('rtb init')}' to proceed.\n`);
-          if (process.env.VITEST) return;
-          process.exit(0);
+          process.exitCode = 0;
+          return;
         }
       }
 
-      if (process.env.VITEST) return;
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
   });
 
@@ -154,17 +162,12 @@ export function createCli(argv: string[] = process.argv): Command {
   registerInfoCommand(program, getContext);
   registerUiCommand(program, getContext);
   registerInitCommand(program, getContext);
-  registerRunCommand(program, getContext);
-  registerBuildCommand(program, getContext);
-  registerTestCommand(program, getContext);
+  registerRunnerCommands(program, getContext);
   registerDepsCommand(program, getContext);
   registerWorkspaceCommand(program, getContext);
   registerOpenCommand(program, getContext);
   registerHealthCommand(program, getContext);
-  registerMaintenanceCommand(program, getContext);
-  registerBackupCommand(program, getContext);
-  registerEnvCommand(program, getContext);
-  registerGuardCommand(program, getContext);
+  registerMaintenanceCommands(program, getContext);
   registerDeployCommand(program, getContext);
   registerUninstallCommand(program, getContext);
   registerUpgradeCommand(program, getContext);

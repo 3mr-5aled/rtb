@@ -50,15 +50,9 @@ describe('Project Action Commands (rtb run, rtb build, rtb test)', () => {
     const program = new Command();
     registerRunCommand(program, () => mockCtx);
 
-    // Call dry-run mode
-    let exitCode = -1;
-    vi.spyOn(process, 'exit').mockImplementation((code?: any) => {
-      exitCode = code ?? 0;
-      return undefined as never;
-    });
-
+    process.exitCode = 0;
     await program.parseAsync(['node', 'rtb', 'run', 'my-app', '--dry-run']);
-    expect(exitCode).toBe(0);
+    expect(process.exitCode).toBe(0);
   });
 
   it('rtb build executes resolved build command in target project', async () => {
@@ -69,14 +63,9 @@ describe('Project Action Commands (rtb run, rtb build, rtb test)', () => {
     const program = new Command();
     registerBuildCommand(program, () => mockCtx);
 
-    let exitCode = -1;
-    vi.spyOn(process, 'exit').mockImplementation((code?: any) => {
-      exitCode = code ?? 0;
-      return undefined as never;
-    });
-
+    process.exitCode = 0;
     await program.parseAsync(['node', 'rtb', 'build', 'my-rust-app', '--dry-run']);
-    expect(exitCode).toBe(0);
+    expect(process.exitCode).toBe(0);
   });
 
   it('rtb test executes resolved test command in target project', async () => {
@@ -87,13 +76,8 @@ describe('Project Action Commands (rtb run, rtb build, rtb test)', () => {
     const program = new Command();
     registerTestCommand(program, () => mockCtx);
 
-    let exitCode = -1;
-    vi.spyOn(process, 'exit').mockImplementation((code?: any) => {
-      exitCode = code ?? 0;
-      return undefined as never;
-    });
-
+    process.exitCode = 0;
     await program.parseAsync(['node', 'rtb', 'test', 'my-py-app', '--dry-run']);
-    expect(exitCode).toBe(0);
+    expect(process.exitCode).toBe(0);
   });
 });

@@ -4,7 +4,8 @@ import path from 'node:path';
 import type { CliContext } from '../types/context.js';
 import { inspectWorkspace } from '../inspector/workspace.js';
 import { resolveProjectTarget } from '../navigation/fuzzy.js';
-import { outputJson, outputError } from '../utils/output.js';
+import { outputJson } from '../utils/output.js';
+import { ProjectNotFoundError } from '../errors.js';
 
 export function registerWorkspaceCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -17,9 +18,7 @@ export function registerWorkspaceCommand(program: Command, getContext: () => Cli
 
       const target = resolveProjectTarget(projectName, ctx.config);
       if (!target) {
-        outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', isJson);
-        if (process.env.VITEST) return;
-        process.exit(1);
+        throw new ProjectNotFoundError(`Project or path '${projectName}' not found.`, 'NOT_FOUND');
       }
 
       const { targetPath } = target;

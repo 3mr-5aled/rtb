@@ -4,6 +4,7 @@ import readline from 'node:readline';
 import type { CliContext } from '../types/context.js';
 import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
 import { outputError, outputJson } from '../utils/output.js';
+import { ConfigMissingError } from '../errors.js';
 
 export function registerGotoCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -33,7 +34,8 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
 
       if (!projectName) {
         if (options.print) {
-          process.exit(1);
+          process.exitCode = 1;
+          return;
         }
         console.log(`\n  ${chalk.yellow('Usage:')} rtb goto <project-name> [--agy|--claude|...]`);
         console.log(`  ${chalk.gray('Tip: Use fuzzy matching or partial names to jump instantly.')}\n`);
@@ -41,22 +43,25 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
       }
 
       if (!ctx.config) {
-        outputError('Configuration not loaded', 'CONFIG_MISSING', ctx.isJson);
-        process.exit(1);
+        throw new ConfigMissingError('Configuration not loaded');
       }
 
       const matches = findProjectPathFuzzy(projectName, ctx.config);
 
       if (matches.length === 0) {
         if (options.print) {
-          process.exit(1);
+          process.exitCode = 1;
+          return;
         }
         if (ctx.isJson) {
           outputJson({ found: false, matches: [] });
+          process.exitCode = 1;
+          return;
         } else {
           console.error(`\n  ${chalk.red('✗')} No project matching '${chalk.bold(projectName)}' found.\n`);
+          process.exitCode = 1;
+          return;
         }
-        process.exit(1);
       }
 
       let selected = matches[0];

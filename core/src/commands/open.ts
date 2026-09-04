@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import type { CliContext } from '../types/context.js';
 import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { openPath } from '../utils/opener.js';
-import { outputError } from '../utils/output.js';
+import { ProjectNotFoundError, RtbError } from '../errors.js';
 
 export function registerOpenCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -14,9 +14,7 @@ export function registerOpenCommand(program: Command, getContext: () => CliConte
       const target = resolveProjectTarget(projectName, ctx.config);
 
       if (!target) {
-        outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', ctx.isJson);
-        if (process.env.VITEST) return;
-        process.exit(1);
+        throw new ProjectNotFoundError(`Project or path '${projectName}' not found.`, 'NOT_FOUND');
       }
 
       const { targetPath, targetName } = target;
@@ -29,10 +27,9 @@ export function registerOpenCommand(program: Command, getContext: () => CliConte
       try {
         openPath(targetPath);
       } catch (err: unknown) {
-        outputError(
+        throw new RtbError(
           `Failed to open '${targetPath}': ${err instanceof Error ? err.message : String(err)}`,
-          'OPEN_FAILED',
-          ctx.isJson
+          'OPEN_FAILED'
         );
       }
     });
