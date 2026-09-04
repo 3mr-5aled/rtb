@@ -5,6 +5,11 @@ All notable changes to **RTB — رتّب (Repository & Tooling Base)** will be 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.1] - 2026-09-05
+
+### Changed
+- Align shell profile cleaning across all shells and legacy artifacts
+
 ## [v0.9.0] - 2026-09-05
 
 ### Changed
@@ -184,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial Beta Release featuring PowerShell CLI (
   rtb), Rust Terminal UI (
   rtbtui), project intelligence engine, git health monitoring, and AI agent launcher.
+
 
 
 
