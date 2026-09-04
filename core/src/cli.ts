@@ -34,6 +34,7 @@ import { registerBackupCommand } from './commands/backup.js';
 import { registerEnvCommand } from './commands/env.js';
 import { registerGuardCommand } from './commands/guard.js';
 import { registerDeployCommand } from './commands/deploy.js';
+import { registerUninstallCommand } from './commands/uninstall.js';
 import { outputError } from './utils/output.js';
 
 
@@ -160,6 +161,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerEnvCommand(program, getContext);
   registerGuardCommand(program, getContext);
   registerDeployCommand(program, getContext);
+  registerUninstallCommand(program, getContext);
   registerHelpCommand(program);
 
   return program;
