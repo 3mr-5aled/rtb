@@ -35,6 +35,7 @@ import { registerEnvCommand } from './commands/env.js';
 import { registerGuardCommand } from './commands/guard.js';
 import { registerDeployCommand } from './commands/deploy.js';
 import { registerUninstallCommand } from './commands/uninstall.js';
+import { registerUpgradeCommand } from './commands/upgrade.js';
 import { outputError } from './utils/output.js';
 
 
@@ -46,6 +47,7 @@ export const EXEMPT_COMMANDS = new Set([
   'doctor',
   'shell-init',
   'uninstall',
+  'upgrade',
 ]);
 
 export function createCli(argv: string[] = process.argv): Command {
@@ -162,6 +164,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerGuardCommand(program, getContext);
   registerDeployCommand(program, getContext);
   registerUninstallCommand(program, getContext);
+  registerUpgradeCommand(program, getContext);
   registerHelpCommand(program);
 
   return program;
