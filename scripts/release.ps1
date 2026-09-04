@@ -82,7 +82,7 @@ if (Test-Path $changelogFile) {
     $tagHeader = "## [v$targetVersion]"
     if ($changelog -notmatch [regex]::Escape($tagHeader)) {
         Write-Host "`n▶ Updating CHANGELOG.md..." -ForegroundColor Cyan
-        $entrySummary = if ($Message) { "- $Message" } else { "- Maintenance release and codebase updates." }
+        $entrySummary = $(if ($Message) { "- $Message" } else { "- Maintenance release and codebase updates." })
         $newSection = "## [v$targetVersion] - $today`n`n### Changed`n$entrySummary`n`n"
         # Insert before first release entry
         $idx = $changelog.IndexOf("`n## [v")
@@ -121,7 +121,7 @@ if ($NoCommit) {
 }
 
 Write-Host "`n▶ Preparing Git Commit & Tag..." -ForegroundColor Cyan
-$commitMsg = if ($Message) { "chore(release): v$targetVersion - $Message" } else { "chore(release): v$targetVersion" }
+$commitMsg = $(if ($Message) { "chore(release): v$targetVersion - $Message" } else { "chore(release): v$targetVersion" })
 
 git add -A
 git commit -m $commitMsg
