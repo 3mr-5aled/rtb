@@ -98,4 +98,18 @@ describe('Maintenance commands integration (maintenance, backup, env, guard)', (
     expect(parsed.success).toBe(true);
     expect(parsed.results.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('rtb maintenance <task> --json runs single task', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'maintenance', 'backup', '--config', configFile, '--json']);
+
+    expect(logSpy).toHaveBeenCalled();
+    const rawOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const parsed = JSON.parse(rawOutput);
+
+    expect(parsed.task).toBe('backup');
+    expect(parsed.success).toBe(true);
+  });
 });

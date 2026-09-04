@@ -6,11 +6,11 @@ import { outputJson, outputError } from '../utils/output.js';
 
 export function registerMaintenanceCommand(program: Command, getContext: () => CliContext): void {
   program
-    .command('maintenance')
-    .description('Run all workspace maintenance tasks (backup, env, guard, clean)')
+    .command('maintenance [task]')
+    .description('Run all workspace maintenance tasks (backup, env, guard) or a specific task')
     .option('--full', 'Run comprehensive full maintenance pass', false)
     .option('--json', 'Output maintenance results in JSON format')
-    .action(async (cmdOpts: { full?: boolean; json?: boolean }) => {
+    .action(async (taskName: string | undefined, cmdOpts: { full?: boolean; json?: boolean }) => {
       const ctx = getContext();
       const isJson = Boolean(cmdOpts.json || ctx.isJson);
 
@@ -21,6 +21,25 @@ export function registerMaintenanceCommand(program: Command, getContext: () => C
       }
 
       const registry = new MaintenanceTaskRegistry();
+
+      if (taskName) {
+        const result = await registry.runTask(taskName, {
+          config: ctx.config,
+          configPath: ctx.configPath,
+          isFull: Boolean(cmdOpts.full),
+          isJson,
+        });
+
+        if (isJson) {
+          outputJson(result);
+          return;
+        }
+
+        const icon = result.success ? chalk.green('✓') : chalk.red('✗');
+        console.log(`\n  ${icon} [${chalk.bold(result.task)}] ${result.message}\n`);
+        return;
+      }
+
       const results = await registry.runAll({
         config: ctx.config,
         configPath: ctx.configPath,

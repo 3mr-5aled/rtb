@@ -12,23 +12,26 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
     .description('Deploy a project from Active to Production or Staging')
     .option('--prod', 'Deploy to Production (default)', true)
     .option('--staging', 'Deploy to Staging', false)
-    .action((name: string | undefined, options: { prod?: boolean; staging?: boolean }) => {
+    .option('--json', 'Output deploy result in JSON format')
+    .action((name: string | undefined, options: { prod?: boolean; staging?: boolean; json?: boolean }) => {
       const ctx = getContext();
+      const isJson = Boolean(options.json || ctx.isJson);
 
       if (!name) {
-        console.log(`\n  ${chalk.yellow('Usage:')} rtb deploy <project-name> [--prod|--staging]\n`);
+        outputError('Usage: rtb deploy <project-name> [--prod|--staging]', 'USAGE_ERROR', isJson);
+        process.exitCode = 1;
         return;
       }
 
       if (!ctx.config) {
-        outputError('Configuration not loaded', 'CONFIG_MISSING', ctx.isJson);
+        outputError('Configuration not loaded', 'CONFIG_MISSING', isJson);
         process.exitCode = 1;
         return;
       }
 
       const activeRoot = ctx.config.projectRoots?.active?.path;
       if (!activeRoot || !fs.existsSync(activeRoot)) {
-        outputError('Active project root not configured or does not exist', 'CONFIG_INVALID', ctx.isJson);
+        outputError('Active project root not configured or does not exist', 'CONFIG_INVALID', isJson);
         process.exitCode = 1;
         return;
       }
@@ -37,7 +40,7 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
       const targetRootEntry = ctx.config.projectRoots?.[targetEnvironment];
 
       if (!targetRootEntry?.path) {
-        outputError(`Target root '${targetEnvironment}' not configured in rtb.config.json`, 'CONFIG_INVALID', ctx.isJson);
+        outputError(`Target root '${targetEnvironment}' not configured in rtb.config.json`, 'CONFIG_INVALID', isJson);
         process.exitCode = 1;
         return;
       }
@@ -49,7 +52,7 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
         // Fallback: check exact name
         sourcePath = path.join(activeRoot, name);
         if (!fs.existsSync(sourcePath)) {
-          outputError(`Project '${kebabName}' not found in Active!`, 'NOT_FOUND', ctx.isJson);
+          outputError(`Project '${kebabName}' not found in Active!`, 'NOT_FOUND', isJson);
           process.exitCode = 1;
           return;
         }
@@ -64,14 +67,23 @@ export function registerDeployCommand(program: Command, getContext: () => CliCon
       const destinationPath = path.join(deployRoot, projectName);
 
       if (fs.existsSync(destinationPath)) {
-        outputError(`Destination path already exists: ${destinationPath}`, 'ALREADY_EXISTS', ctx.isJson);
+        outputError(`Destination path already exists: ${destinationPath}`, 'ALREADY_EXISTS', isJson);
         process.exitCode = 1;
         return;
       }
 
-      fs.renameSync(sourcePath, destinationPath);
+      try {
+        fs.renameSync(sourcePath, destinationPath);
+      } catch (err: any) {
+        if (err.code === 'EXDEV') {
+          fs.cpSync(sourcePath, destinationPath, { recursive: true });
+          fs.rmSync(sourcePath, { recursive: true, force: true });
+        } else {
+          throw err;
+        }
+      }
 
-      if (ctx.isJson) {
+      if (isJson) {
         outputJson({
           deployed: true,
           name: projectName,
