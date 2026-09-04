@@ -373,22 +373,28 @@ function global:Install-Steps {
     if ($isStandalone) {
         $bundleUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.js'
         $versionUrl = 'https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION'
+        $uninstUrl = 'https://raw.githubusercontent.com/3mr-5aled/rtb/main/uninstall.ps1'
         $destJs = Join-Path $script:scriptsDir 'rtb.js'
         $ctx = Start-Spinner 'Downloading rtb-cli.js'
         try {
-            Invoke-WebRequest -Uri $bundleUrl -OutFile $destJs -UseBasicParsing -TimeoutSec 120 -EA Stop
+            Invoke-WebRequest -Uri $bundleUrl -OutFile $destJs -UseBasicParsing -TimeoutSec 120 -ErrorAction Stop
             try {
-                Invoke-WebRequest -Uri $versionUrl -OutFile (Join-Path $script:userConfigDir 'VERSION') -UseBasicParsing -TimeoutSec 15 -EA SilentlyContinue
-                Copy-Item (Join-Path $script:userConfigDir 'VERSION') (Join-Path $script:scriptsDir 'VERSION') -Force -EA SilentlyContinue
+                Invoke-WebRequest -Uri $versionUrl -OutFile (Join-Path $script:userConfigDir 'VERSION') -UseBasicParsing -TimeoutSec 15 -ErrorAction SilentlyContinue
+                Copy-Item (Join-Path $script:userConfigDir 'VERSION') (Join-Path $script:scriptsDir 'VERSION') -Force -ErrorAction SilentlyContinue
+            } catch {}
+            try {
+                Invoke-WebRequest -Uri $uninstUrl -OutFile (Join-Path $script:userConfigDir 'uninstall.ps1') -UseBasicParsing -TimeoutSec 15 -ErrorAction SilentlyContinue
             } catch {}
             Stop-Spinner $ctx $true
         } catch {
+            Stop-Spinner $ctx $false
             # Fallback to rtb-cli.zip if standalone zip is published
+            $ctxZip = Start-Spinner 'Downloading fallback rtb-cli.zip'
             $zipUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtb-cli.zip'
             $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random).zip"
             $tmpExt = Join-Path ([System.IO.Path]::GetTempPath()) "rtb-install-$(Get-Random)"
             try {
-                Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -EA Stop
+                Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
                 Expand-Archive -Path $tmpZip -DestinationPath $tmpExt -Force
                 if (Test-Path (Join-Path $tmpExt 'rtb.js')) {
                     Copy-Item (Join-Path $tmpExt 'rtb.js') "$script:scriptsDir\rtb.js" -Force
@@ -402,9 +408,9 @@ function global:Install-Steps {
                         Copy-Item $src "$script:userConfigDir\$f" -Force -ErrorAction SilentlyContinue
                     }
                 }
-                Stop-Spinner $ctx $true
+                Stop-Spinner $ctxZip $true
             } catch {
-                Stop-Spinner $ctx $false
+                Stop-Spinner $ctxZip $false
                 Write-Fail "Download failed: $_`nCheck https://github.com/3mr-5aled/rtb/releases"
             } finally {
                 Remove-Item $tmpZip, $tmpExt -Recurse -Force -ErrorAction SilentlyContinue
