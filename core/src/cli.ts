@@ -75,7 +75,7 @@ export function createCli(argv: string[] = process.argv): Command {
   // Automatically wrap all registered command action handlers in CommandEnvelope
   const originalCommand = program.command.bind(program);
   (program as any).command = function (...args: any[]) {
-    const cmd = originalCommand(...args);
+    const cmd = (originalCommand as any)(...args);
     const originalAction = cmd.action.bind(cmd);
     cmd.action = function (fn: (...a: any[]) => any) {
       const isExempt = EXEMPT_COMMANDS.has(cmd.name());

@@ -6,6 +6,18 @@
   "bin": {
     "rtb": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/3mr-5aled/rtb.git",
+    "directory": "core"
+  },
+  "homepage": "https://github.com/3mr-5aled/rtb#readme",
+  "bugs": {
+    "url": "https://github.com/3mr-5aled/rtb/issues"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

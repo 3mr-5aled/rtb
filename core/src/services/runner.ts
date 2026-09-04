@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import chalk from 'chalk';
+import type { Command } from 'commander';
 import type { CliContext } from '../types/context.js';
 import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { ProjectNotFoundError, RtbError } from '../errors.js';

@@ -106,6 +106,19 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  ✓ Built core/dist/index.js" -ForegroundColor Green
 
+# 5b. Verify npm Package Archive
+Write-Host "`n▶ Validating npm package archive..." -ForegroundColor Cyan
+Push-Location (Join-Path $repoRoot 'core')
+try {
+    npm pack --dry-run --silent
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "npm pack validation failed in core/!"
+    }
+    Write-Host "  ✓ Validated npm registry package archive (files: dist/)" -ForegroundColor Green
+} finally {
+    Pop-Location
+}
+
 # 6. Stage Standalone Release Assets
 $releaseDir = Join-Path $repoRoot 'dist\release'
 if (-not (Test-Path $releaseDir)) {
