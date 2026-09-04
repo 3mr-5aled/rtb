@@ -408,9 +408,16 @@ EOF
         rc_file="$1"
         shell_type="$2"
         [ -f "$rc_file" ] || return 0
-        if ! grep -qF "$BIN_DIR" "$rc_file" 2>/dev/null; then
-            printf '\n# RTB CLI\n%s\neval "$(rtb shell-init %s)"\n' "$EXPORT_LINE" "$shell_type" >> "$rc_file" 2>/dev/null || true
+
+        # Clean legacy RTB lines from profile first
+        tmp_rc="${rc_file}.rtb_clean.$$"
+        if sed '/# RTB Shell Integration/d; /eval "\$(rtb shell-init/d; /# RTB CLI/d; /rtb shell-init/d; /Import-Module.*rtb/d' "$rc_file" > "$tmp_rc" 2>/dev/null; then
+            mv "$tmp_rc" "$rc_file"
+        else
+            rm -f "$tmp_rc" 2>/dev/null || true
         fi
+
+        printf '\n# RTB CLI\n%s\neval "$(rtb shell-init %s)"\n' "$EXPORT_LINE" "$shell_type" >> "$rc_file" 2>/dev/null || true
     }
 
     inject_rc "$HOME/.bashrc" "bash"
@@ -421,13 +428,30 @@ EOF
     # Fish shell integration
     if [ -d "$HOME/.config/fish" ]; then
         FISH_CONF="$HOME/.config/fish/config.fish"
-        if [ -f "$FISH_CONF" ] && ! grep -qF "$BIN_DIR" "$FISH_CONF" 2>/dev/null; then
+        if [ -f "$FISH_CONF" ]; then
+            tmp_fish="${FISH_CONF}.rtb_clean.$$"
+            if sed '/# RTB CLI/d; /rtb shell-init fish/d' "$FISH_CONF" > "$tmp_fish" 2>/dev/null; then
+                mv "$tmp_fish" "$FISH_CONF"
+            else
+                rm -f "$tmp_fish" 2>/dev/null || true
+            fi
             printf '\n# RTB CLI\nset -gx PATH $PATH %s\nrtb shell-init fish | source\n' "$BIN_DIR" >> "$FISH_CONF" 2>/dev/null || true
         fi
     fi
 
     export PATH="$PATH:$BIN_DIR"
     stop_spinner 1 'Shell configuration updated'
+
+    # Step 5: Post-install Smoke Verification
+    if [ -x "$BIN_DIR/rtb" ]; then
+        start_spinner 'Verifying RTB installation'
+        if "$BIN_DIR/rtb" --version >/dev/null 2>&1; then
+            stop_spinner 1 'Verified RTB CLI installation'
+        else
+            stop_spinner 0 'Verify RTB CLI'
+            write_warn "Post-install verification returned a non-zero exit status."
+        fi
+    fi
 }
 
 main() {
