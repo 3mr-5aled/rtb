@@ -441,6 +441,84 @@ impl App {
         false
     }
 
+    #[allow(dead_code)]
+    pub fn execute_action(&mut self, action: crate::ui::tab::AppAction) {
+        use crate::ui::tab::{AppAction, ModalKind};
+        match action {
+            AppAction::None | AppAction::Handled => {}
+            AppAction::SwitchTab(tab) => {
+                self.current_tab = tab;
+                self.save_session_state();
+            }
+            AppAction::OpenModal(modal) => match modal {
+                ModalKind::Readme(name, content) => {
+                    self.readme_modal = Some((name, content, 0));
+                }
+                ModalKind::Scaffold => {
+                    self.scaffold_modal = Some(crate::ui::scaffold::ScaffoldModal::new());
+                }
+                ModalKind::GitDiff(path) => {
+                    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    if let Some(diff) = crate::ui::git_diff::GitDiffModal::load(name, &path) {
+                        self.git_diff_modal = Some(diff);
+                    }
+                }
+                ModalKind::EnvVault(path) => {
+                    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    if let Some(vault) = crate::ui::env_vault::EnvVaultModal::load(name, &path) {
+                        self.env_vault_modal = Some(vault);
+                    } else {
+                        self.status_message = Some(format!("No .env file found in {}", path.display()));
+                    }
+                }
+                ModalKind::BranchPicker(path) => {
+                    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    if let Some(picker) = crate::ui::branch_picker::BranchPickerModal::load(name, &path) {
+                        self.branch_picker_modal = Some(picker);
+                    }
+                }
+                ModalKind::Help => {
+                    self.show_help = true;
+                }
+                ModalKind::CommandPalette => {
+                    self.command_palette = Some(crate::ui::command_palette::CommandPalette::new());
+                }
+                ModalKind::Confirm(_) => {}
+            },
+            AppAction::CloseModal => {
+                self.show_help = false;
+                self.readme_modal = None;
+                self.git_diff_modal = None;
+                self.env_vault_modal = None;
+                self.branch_picker_modal = None;
+                self.scaffold_modal = None;
+                self.confirm_dialog = None;
+                self.command_palette = None;
+            }
+            AppAction::ShowToast(msg, _level) => {
+                self.status_message = Some(msg);
+            }
+            AppAction::StartScan(label) => {
+                self.start_background_scan(label);
+            }
+            AppAction::OpenEditor(path) => {
+                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                self.status_message = Some(format!("Opened {} in VS Code", name));
+            }
+            AppAction::OpenExplorer(path) => {
+                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                self.status_message = Some(format!("Opened {} in Explorer", name));
+            }
+            AppAction::ExecuteCommand(cmd, args) => {
+                let _ = std::process::Command::new(cmd).args(args).spawn();
+            }
+            AppAction::Quit => {
+                self.should_quit = true;
+                self.save_session_state();
+            }
+        }
+    }
+
     fn handle_command_palette_key(&mut self, key: KeyCode) -> bool {
         if let Some(ref mut palette) = self.command_palette {
             match key {
