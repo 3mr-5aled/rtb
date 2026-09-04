@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import readline from 'node:readline';
 import type { CliContext } from '../types/context.js';
 import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { AgentOrchestrator } from '../services/agent.js';
 import { outputError, outputJson } from '../utils/output.js';
 import { ConfigMissingError } from '../errors.js';
 
@@ -19,6 +20,7 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
     .option('--windsurf', 'Open project in Windsurf')
     .option('--aider', 'Launch Aider upon arrival')
     .option('--openhands', 'Launch OpenHands upon arrival')
+    .option('--no-launch', 'Generate context without launching agent')
     .action(async (projectName: string | undefined, options: {
       print?: boolean;
       choice?: string;
@@ -29,6 +31,8 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
       windsurf?: boolean;
       aider?: boolean;
       openhands?: boolean;
+      launch?: boolean;
+      noLaunch?: boolean;
     }) => {
       const ctx = getContext();
 
@@ -107,6 +111,39 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
         }
       }
 
+      const agentName = options.agy
+        ? 'agy'
+        : options.claude
+        ? 'claude'
+        : options.gemini
+        ? 'gemini'
+        : options.cursor
+        ? 'cursor'
+        : options.windsurf
+        ? 'windsurf'
+        : options.aider
+        ? 'aider'
+        : options.openhands
+        ? 'openhands'
+        : undefined;
+
+      let orchResult;
+      if (agentName) {
+        const orchestrator = new AgentOrchestrator();
+        orchResult = await orchestrator.orchestrate({
+          projectPath: selected.path,
+          projectName: selected.name,
+          agent: agentName,
+          config: ctx.config,
+          launch: options.noLaunch || options.launch === false ? false : true,
+          quiet: options.print || ctx.isJson,
+        });
+
+        if (orchResult.exitCode !== undefined && orchResult.exitCode !== 0) {
+          process.exitCode = orchResult.exitCode;
+        }
+      }
+
       if (options.print) {
         // Raw stdout output for shell cd hook
         process.stdout.write(selected.path);
@@ -117,10 +154,14 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
         outputJson({
           found: true,
           project: selected,
+          agent: orchResult?.agent,
+          contextFile: orchResult?.contextPath,
         });
         return;
       }
 
-      console.log(`  ${chalk.cyan(selected.status)} » ${chalk.green(selected.path)}`);
+      if (!agentName) {
+        console.log(`  ${chalk.cyan(selected.status)} » ${chalk.green(selected.path)}`);
+      }
     });
 }

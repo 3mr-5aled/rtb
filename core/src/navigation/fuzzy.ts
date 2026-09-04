@@ -54,7 +54,7 @@ export function findProjectPathFuzzy(query: string, config: RtbConfig): FuzzyMat
 export function resolveProjectTarget(
   projectName: string | undefined,
   config: RtbConfig | null
-): { targetPath: string; targetName: string } | null {
+): { targetPath: string; targetName: string; status?: string } | null {
   if (!projectName) {
     const cwd = process.cwd();
     return { targetPath: cwd, targetName: path.basename(cwd) };
@@ -68,7 +68,7 @@ export function resolveProjectTarget(
   if (config) {
     const matches = findProjectPathFuzzy(projectName, config);
     if (matches.length > 0) {
-      return { targetPath: matches[0].path, targetName: matches[0].name };
+      return { targetPath: matches[0].path, targetName: matches[0].name, status: matches[0].status };
     }
   }
 

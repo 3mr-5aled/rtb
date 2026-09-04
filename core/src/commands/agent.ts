@@ -1,41 +1,10 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
-import path from 'node:path';
-import fs from 'node:fs';
-import { spawn } from 'node:child_process';
 import type { CliContext } from '../types/context.js';
-import { getInstalledAgents, type AgentDefinition } from '../agent/discovery.js';
-import { generateAgentContextFile } from '../agent/context.js';
-import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
-import { inspectProject } from '../inspector/inspector.js';
-import { outputError, outputJson } from '../utils/output.js';
+import { AgentOrchestrator, launchAgentProcess } from '../services/agent.js';
+import { outputJson } from '../utils/output.js';
 
-export function launchAgentProcess(agent: AgentDefinition, projectPath: string): Promise<number> {
-  return new Promise((resolve) => {
-    const isWindows = process.platform === 'win32';
-    // Use shell on Windows for resolving .cmd, .bat, or path lookup cleanly
-    const child = isWindows
-      ? spawn(agent.command, {
-          cwd: projectPath,
-          stdio: 'inherit',
-          shell: true,
-        })
-      : spawn(agent.command, [], {
-          cwd: projectPath,
-          stdio: 'inherit',
-          shell: false,
-        });
-
-    child.on('error', (err) => {
-      console.error(`Failed to launch agent ${agent.command}: ${err.message}`);
-      resolve(1);
-    });
-
-    child.on('close', (code) => {
-      resolve(code ?? 0);
-    });
-  });
-}
+export { launchAgentProcess } from '../services/agent.js';
 
 export function registerAgentCommand(program: Command, getContext: () => CliContext): void {
   const handleAgent = async (
@@ -56,9 +25,10 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
     }
   ) => {
     const ctx = getContext();
-    const installedAgents = getInstalledAgents();
+    const orchestrator = new AgentOrchestrator();
 
     if (options.list) {
+      const installedAgents = orchestrator.listAgents();
       if (ctx.isJson) {
         outputJson(installedAgents);
         return;
@@ -89,98 +59,29 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
       else if (options.openhands) targetAgentName = 'openhands';
     }
 
-    let selectedAgent: AgentDefinition | undefined;
-    if (targetAgentName) {
-      const q = targetAgentName.toLowerCase();
-      selectedAgent = installedAgents.find(
-        (a) => a.command.toLowerCase() === q || a.name.toLowerCase().includes(q)
-      );
-      if (!selectedAgent) {
-        outputError(`Specified agent '${targetAgentName}' is not recognized.`, 'AGENT_UNKNOWN', ctx.isJson);
-        process.exitCode = 1;
-        return;
-      }
-      if (!selectedAgent.installed) {
-        outputError(`Agent '${selectedAgent.name}' (${selectedAgent.command}) is not installed or not in PATH.`, 'AGENT_NOT_INSTALLED', ctx.isJson);
-        process.exitCode = 1;
-        return;
-      }
-    } else {
-      // Default: prefer 'agy' if installed, otherwise first available installed agent
-      selectedAgent = installedAgents.find((a) => a.command === 'agy' && a.installed);
-      if (!selectedAgent) {
-        selectedAgent = installedAgents.find((a) => a.installed);
-      }
-    }
+    const shouldLaunch = options.launch !== false && !options.noLaunch;
 
-    if (!selectedAgent || !selectedAgent.installed) {
-      if (options.launch === false || options.noLaunch) {
-        selectedAgent = selectedAgent || installedAgents[0];
-      } else {
-        outputError('No installed AI agent found in PATH (agy, claude, gemini, codex, cursor, windsurf, aider, openhands).', 'NO_AGENTS', ctx.isJson);
-        console.error(chalk.gray("  Run 'rtb agent --list' to check agent status.\n"));
-        process.exitCode = 1;
-        return;
-      }
-    }
-
-    // Resolve target project path
-    let targetPath = process.cwd();
-    let targetName = path.basename(targetPath);
-
-    if (projectName) {
-      if (ctx.config) {
-        const matches = findProjectPathFuzzy(projectName, ctx.config);
-        if (matches.length > 0) {
-          targetPath = matches[0].path;
-          targetName = matches[0].name;
-        } else if (fs.existsSync(projectName)) {
-          targetPath = path.resolve(projectName);
-          targetName = path.basename(targetPath);
-        } else {
-          outputError(`Project or path '${projectName}' not found.`, 'NOT_FOUND', ctx.isJson);
-          process.exitCode = 1;
-          return;
-        }
-      } else if (fs.existsSync(projectName)) {
-        targetPath = path.resolve(projectName);
-        targetName = path.basename(targetPath);
-      }
-    }
-
-    // Generate .rtb_context.md
-    const details = inspectProject(targetPath);
-    const contextPath = generateAgentContextFile(targetPath, details);
+    const result = await orchestrator.orchestrate({
+      projectName,
+      agent: targetAgentName,
+      config: ctx.config,
+      launch: shouldLaunch,
+      quiet: ctx.isJson,
+    });
 
     if (ctx.isJson) {
       outputJson({
-        agent: selectedAgent,
-        project: targetName,
-        projectPath: targetPath,
-        contextFile: contextPath,
-        launched: options.launch !== false,
+        agent: result.agent,
+        project: result.projectName,
+        projectPath: result.projectPath,
+        contextFile: result.contextPath,
+        launched: result.launched,
       });
       return;
     }
 
-    console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-    console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Launching AI Agent: ${selectedAgent.name} (${selectedAgent.command})`)}`);
-    console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
-
-    console.log(`  Project Name:  ${chalk.white.bold(targetName)}`);
-    console.log(`  Project Path:  ${chalk.gray(targetPath)}`);
-    if (details?.stack) {
-      console.log(`  Stack:         ${chalk.yellow(details.stack.join(', '))}`);
-    }
-    if (details?.git) {
-      console.log(`  Git Branch:    ${chalk.cyan(details.git.branch)}`);
-    }
-    console.log(`  Context File:  ${chalk.cyan('.rtb_context.md')}`);
-    console.log(`\n  Launching process '${chalk.green(selectedAgent.command)}' in ${chalk.gray(targetPath)}...\n`);
-
-    if (options.launch !== false) {
-      const exitCode = await launchAgentProcess(selectedAgent, targetPath);
-      process.exitCode = exitCode;
+    if (result.exitCode !== undefined && result.exitCode !== 0) {
+      process.exitCode = result.exitCode;
     }
   };
 

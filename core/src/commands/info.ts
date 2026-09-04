@@ -3,14 +3,15 @@ import chalk from 'chalk';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { CliContext } from '../types/context.js';
-import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { inspectProject } from '../inspector/inspector.js';
 import { outputError, outputJson } from '../utils/output.js';
+import { ConfigMissingError, ProjectNotFoundError } from '../errors.js';
 
 export function registerInfoCommand(program: Command, getContext: () => CliContext): void {
   program
     .command('info [name]')
-    .description('Display detailed metadata, stack, git status, and inspection for a project')
+    .description('Display detailed health, dependency, and git metadata for a project')
     .action((name: string | undefined) => {
       const ctx = getContext();
 
@@ -20,31 +21,17 @@ export function registerInfoCommand(program: Command, getContext: () => CliConte
       }
 
       if (!ctx.config) {
-        outputError('Configuration not loaded', 'CONFIG_MISSING', ctx.isJson);
-        process.exitCode = 1;
-        return;
+        throw new ConfigMissingError('Configuration not loaded');
       }
 
-      const matches = findProjectPathFuzzy(name, ctx.config);
-      let targetPath: string | null = null;
-      let targetStatus = 'Active';
-
-      if (matches.length > 0) {
-        targetPath = matches[0].path;
-        targetStatus = matches[0].status;
-      } else if (fs.existsSync(name)) {
-        targetPath = path.resolve(name);
+      const target = resolveProjectTarget(name, ctx.config);
+      if (!target || !fs.existsSync(target.targetPath)) {
+        throw new ProjectNotFoundError(`Project '${name}' not found.`, 'NOT_FOUND');
       }
 
-      if (!targetPath || !fs.existsSync(targetPath)) {
-        outputError(`Project '${name}' not found.`, 'NOT_FOUND', ctx.isJson);
-        process.exitCode = 1;
-        return;
-      }
-
-      const details = inspectProject(targetPath, targetStatus);
+      const details = inspectProject(target.targetPath, target.status || 'Active');
       if (!details) {
-        outputError(`Could not inspect project at ${targetPath}`, 'INSPECTION_FAILED', ctx.isJson);
+        outputError(`Could not inspect project at ${target.targetPath}`, 'INSPECTION_FAILED', ctx.isJson);
         process.exitCode = 1;
         return;
       }

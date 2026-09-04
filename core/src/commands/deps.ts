@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import type { CliContext } from '../types/context.js';
 import { inspectDependencies } from '../inspector/dependencies.js';
-import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { outputJson } from '../utils/output.js';
 import { ProjectNotFoundError } from '../errors.js';
 
@@ -16,17 +16,12 @@ export function registerDepsCommand(program: Command, getContext: () => CliConte
       const ctx = getContext();
       let targetPath = process.cwd();
 
-      if (projectName && ctx.config) {
-        if (fs.existsSync(projectName)) {
-          targetPath = path.resolve(projectName);
-        } else {
-          const matches = findProjectPathFuzzy(projectName, ctx.config);
-          if (matches.length > 0) {
-            targetPath = matches[0].path;
-          } else {
-            throw new ProjectNotFoundError(projectName, 'PROJECT_NOT_FOUND');
-          }
+      if (projectName) {
+        const target = resolveProjectTarget(projectName, ctx.config);
+        if (!target) {
+          throw new ProjectNotFoundError(projectName, 'PROJECT_NOT_FOUND');
         }
+        targetPath = target.targetPath;
       }
 
       const deps = inspectDependencies(targetPath);

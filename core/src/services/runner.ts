@@ -3,8 +3,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import chalk from 'chalk';
 import type { CliContext } from '../types/context.js';
-import type { Command } from 'commander';
-import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
+import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { ProjectNotFoundError, RtbError } from '../errors.js';
 import { outputError, outputJson } from '../utils/output.js';
 
@@ -205,17 +204,12 @@ export async function runActionCommand(
   let targetPath = process.cwd();
   const finalExtraArgs = Array.isArray(extraArgs) ? extraArgs : [];
 
-  if (projectName && ctx.config) {
-    if (fs.existsSync(projectName)) {
-      targetPath = path.resolve(projectName);
-    } else {
-      const matches = findProjectPathFuzzy(projectName, ctx.config);
-      if (matches.length > 0) {
-        targetPath = matches[0].path;
-      } else {
-        throw new ProjectNotFoundError(projectName);
-      }
+  if (projectName) {
+    const target = resolveProjectTarget(projectName, ctx.config);
+    if (!target) {
+      throw new ProjectNotFoundError(projectName);
     }
+    targetPath = target.targetPath;
   }
 
   const resolved = resolveProjectAction(action, targetPath, finalExtraArgs);
