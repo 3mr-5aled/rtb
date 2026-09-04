@@ -51,6 +51,34 @@ export function findRtbtuiBinary(): string | null {
   return null;
 }
 
+export function getPlatformBinaryAsset(
+  platform: string = process.platform,
+  arch: string = process.arch
+): string | null {
+  if (platform === 'win32') {
+    return arch === 'x64' ? 'rtbtui-windows-amd64.exe' : null;
+  }
+  if (platform === 'linux') {
+    if (arch === 'x64') return 'rtbtui-linux-amd64';
+    if (arch === 'arm64') return 'rtbtui-linux-arm64';
+    return null;
+  }
+  if (platform === 'darwin') {
+    if (arch === 'x64') return 'rtbtui-macos-amd64';
+    if (arch === 'arm64') return 'rtbtui-macos-arm64';
+    return null;
+  }
+  return null;
+}
+
+export function getDefaultUserBinDir(): string {
+  if (process.env.RTB_BIN_DIR) return process.env.RTB_BIN_DIR;
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    return path.join(process.env.APPDATA, 'rtb', 'bin');
+  }
+  return path.join(os.homedir(), '.config', 'rtb', 'bin');
+}
+
 export function runDoctorChecks(ctx: CliContext): { allGood: boolean; checks: DoctorCheck[] } {
   const checks: DoctorCheck[] = [];
   let allGood = true;
