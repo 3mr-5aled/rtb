@@ -63,11 +63,15 @@ export function executeUpgrade(): { success: boolean; method: string; message: s
   // Strategy 1: npm global install
   try {
     const isWindows = process.platform === 'win32';
-    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
-    const res = spawnSync(npmCmd, ['install', '-g', '@3mr-5aled/rtb@latest'], {
-      stdio: 'inherit',
-      shell: isWindows,
-    });
+    const res = isWindows
+      ? spawnSync('npm.cmd install -g @3mr-5aled/rtb@latest', {
+          stdio: 'inherit',
+          shell: true,
+        })
+      : spawnSync('npm', ['install', '-g', '@3mr-5aled/rtb@latest'], {
+          stdio: 'inherit',
+          shell: false,
+        });
     if (res.status === 0) {
       return { success: true, method: 'npm', message: 'Successfully updated via npm' };
     }

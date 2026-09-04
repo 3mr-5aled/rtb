@@ -43,7 +43,7 @@ Cross-shell environment integration and directory switching engine.
 
 **User Configuration**: The unified `rtb.config.json` file at `~/.config/rtb/rtb.config.json` (`%USERPROFILE%\.config\rtb\rtb.config.json` on Windows, `$HOME/.config/rtb/rtb.config.json` on macOS and Linux). A user is considered **configured** when this file exists and `projectRoots.active.path` is a non-empty string.
 
-**Config Gate**: The middleware in `rtb` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `config`, `doctor`, `shell-init`, `uninstall`.
+**Config Gate**: The middleware in `rtb` that intercepts data-dependent subcommands before execution. If the user is not configured, it prints a message and offers `"Would you like to configure now? (Y/n)"`. Commands exempt from the gate: `help`, `--version`, `--help`, `init`, `config`, `doctor`, `shell-init`, `uninstall`, `upgrade`.
 
 **Project Root Entry**: A single entry in `projectRoots` in `rtb.config.json`. Structured as `{ path: String, label: String, emoji: String }`. Represents one lifecycle folder (e.g. Active, Paused, Deployed). Replaces the previous flat string schema.
 
