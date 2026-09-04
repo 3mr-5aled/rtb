@@ -16,7 +16,7 @@ describe('ProjectRunner - resolveProjectAction', () => {
   });
 
   describe('action: run', () => {
-    it('detects package.json with dev script', () => {
+    it('detects package.json with dev script and npm by default', () => {
       fs.writeFileSync(
         path.join(tmpDir, 'package.json'),
         JSON.stringify({ scripts: { dev: 'vite', start: 'node index.js' } })
@@ -29,23 +29,38 @@ describe('ProjectRunner - resolveProjectAction', () => {
       });
     });
 
-    it('detects package.json with start script when dev is absent', () => {
+    it('detects pnpm when pnpm-lock.yaml is present', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({ scripts: { dev: 'vite' } })
+      );
+      fs.writeFileSync(path.join(tmpDir, 'pnpm-lock.yaml'), '');
+
+      const res = resolveProjectAction('run', tmpDir, ['--port', '3000']);
+      expect(res).toEqual({
+        executable: 'pnpm',
+        args: ['dev', '--', '--port', '3000'],
+      });
+    });
+
+    it('detects yarn when yarn.lock is present', () => {
       fs.writeFileSync(
         path.join(tmpDir, 'package.json'),
         JSON.stringify({ scripts: { start: 'node index.js' } })
       );
+      fs.writeFileSync(path.join(tmpDir, 'yarn.lock'), '');
 
       const res = resolveProjectAction('run', tmpDir, []);
       expect(res).toEqual({
-        executable: 'npm',
+        executable: 'yarn',
         args: ['start'],
       });
     });
 
-    it('detects Cargo.toml for rust projects', () => {
+    it('detects Cargo.toml for rust projects with double dash for args', () => {
       fs.writeFileSync(path.join(tmpDir, 'Cargo.toml'), '[package]\nname = "foo"');
 
-      const res = resolveProjectAction('run', tmpDir, ['--', 'hello']);
+      const res = resolveProjectAction('run', tmpDir, ['hello']);
       expect(res).toEqual({
         executable: 'cargo',
         args: ['run', '--', 'hello'],
@@ -59,6 +74,26 @@ describe('ProjectRunner - resolveProjectAction', () => {
       expect(res).toEqual({
         executable: 'go',
         args: ['run', '.'],
+      });
+    });
+
+    it('detects .NET csproj/sln projects', () => {
+      fs.writeFileSync(path.join(tmpDir, 'App.csproj'), '<Project></Project>');
+
+      const res = resolveProjectAction('run', tmpDir, ['arg1']);
+      expect(res).toEqual({
+        executable: 'dotnet',
+        args: ['run', '--', 'arg1'],
+      });
+    });
+
+    it('detects Makefile for run target', () => {
+      fs.writeFileSync(path.join(tmpDir, 'Makefile'), 'run:\n\techo hi');
+
+      const res = resolveProjectAction('run', tmpDir, []);
+      expect(res).toEqual({
+        executable: 'make',
+        args: ['run'],
       });
     });
 
@@ -102,6 +137,16 @@ describe('ProjectRunner - resolveProjectAction', () => {
       });
     });
 
+    it('detects .NET project for dotnet build', () => {
+      fs.writeFileSync(path.join(tmpDir, 'App.sln'), '');
+
+      const res = resolveProjectAction('build', tmpDir, []);
+      expect(res).toEqual({
+        executable: 'dotnet',
+        args: ['build'],
+      });
+    });
+
     it('detects go.mod for go build', () => {
       fs.writeFileSync(path.join(tmpDir, 'go.mod'), 'module foo');
 
@@ -138,6 +183,16 @@ describe('ProjectRunner - resolveProjectAction', () => {
       const res = resolveProjectAction('test', tmpDir, []);
       expect(res).toEqual({
         executable: 'cargo',
+        args: ['test'],
+      });
+    });
+
+    it('detects .NET project for dotnet test', () => {
+      fs.writeFileSync(path.join(tmpDir, 'App.csproj'), '');
+
+      const res = resolveProjectAction('test', tmpDir, []);
+      expect(res).toEqual({
+        executable: 'dotnet',
         args: ['test'],
       });
     });
