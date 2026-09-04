@@ -29,6 +29,11 @@ import { registerDepsCommand } from './commands/deps.js';
 import { registerWorkspaceCommand } from './commands/workspace.js';
 import { registerOpenCommand } from './commands/open.js';
 import { registerHealthCommand } from './commands/health.js';
+import { registerMaintenanceCommand } from './commands/maintenance.js';
+import { registerBackupCommand } from './commands/backup.js';
+import { registerEnvCommand } from './commands/env.js';
+import { registerGuardCommand } from './commands/guard.js';
+import { registerDeployCommand } from './commands/deploy.js';
 import { outputError } from './utils/output.js';
 
 
@@ -150,6 +155,11 @@ export function createCli(argv: string[] = process.argv): Command {
   registerWorkspaceCommand(program, getContext);
   registerOpenCommand(program, getContext);
   registerHealthCommand(program, getContext);
+  registerMaintenanceCommand(program, getContext);
+  registerBackupCommand(program, getContext);
+  registerEnvCommand(program, getContext);
+  registerGuardCommand(program, getContext);
+  registerDeployCommand(program, getContext);
   registerHelpCommand(program);
 
   return program;

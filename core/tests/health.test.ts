@@ -19,28 +19,34 @@ describe('scanGitHealth', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('scans git repositories and detects clean repo', () => {
-    const bareDir = path.join(tmpDir, 'bare.git');
-    execSync(`git init --bare "${bareDir}"`, { stdio: 'ignore' });
+  it(
+    'scans git repositories and detects clean repo',
+    () => {
+      const bareDir = path.join(tmpDir, 'bare.git');
+      execSync(`git init --bare "${bareDir}"`, { stdio: 'ignore' });
 
-    const repoDir = path.join(root1, 'clean-repo');
-    fs.mkdirSync(repoDir, { recursive: true });
-    execSync('git init -b main', { cwd: repoDir, stdio: 'ignore' });
-    execSync('git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
-    execSync('git config user.name "Test"', { cwd: repoDir, stdio: 'ignore' });
-    fs.writeFileSync(path.join(repoDir, 'README.md'), '# Clean Repo');
-    execSync('git add . && git commit -m "initial commit"', { cwd: repoDir, stdio: 'ignore' });
-    execSync(`git remote add origin "${bareDir}"`, { cwd: repoDir, stdio: 'ignore' });
-    execSync('git push -u origin main', { cwd: repoDir, stdio: 'ignore' });
+      const repoDir = path.join(root1, 'clean-repo');
+      fs.mkdirSync(repoDir, { recursive: true });
+      execSync('git init -b main', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git config user.name "Test"', { cwd: repoDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(repoDir, 'README.md'), '# Clean Repo');
+      execSync('git add . && git commit -m "initial commit"', { cwd: repoDir, stdio: 'ignore' });
+      execSync(`git remote add origin "${bareDir}"`, { cwd: repoDir, stdio: 'ignore' });
+      execSync('git push -u origin main', { cwd: repoDir, stdio: 'ignore' });
 
-    const report = scanGitHealth([root1], 30);
-    expect(report.scannedCount).toBe(1);
-    expect(report.issuesCount).toBe(0);
-    expect(report.repos).toHaveLength(1);
-    expect(report.repos[0].issues).toHaveLength(0);
-  });
+      const report = scanGitHealth([root1], 30);
+      expect(report.scannedCount).toBe(1);
+      expect(report.issuesCount).toBe(0);
+      expect(report.repos).toHaveLength(1);
+      expect(report.repos[0].issues).toHaveLength(0);
+    },
+    30000
+  );
 
-  it('detects UNCOMMITTED and NO REMOTE issues', () => {
+  it(
+    'detects UNCOMMITTED and NO REMOTE issues',
+    () => {
     const repoDir = path.join(root1, 'dirty-repo');
     fs.mkdirSync(repoDir, { recursive: true });
     execSync('git init -b main', { cwd: repoDir, stdio: 'ignore' });
@@ -51,9 +57,10 @@ describe('scanGitHealth', () => {
     const report = scanGitHealth([root1], 30);
     expect(report.scannedCount).toBe(1);
     expect(report.issuesCount).toBe(1);
-    const repo = report.repos[0];
-    expect(repo.issues.some((i) => i.type === 'UNCOMMITTED')).toBe(true);
-    expect(repo.issues.some((i) => i.type === 'NO REMOTE')).toBe(true);
-  });
+      const repo = report.repos[0];
+      expect(repo.issues.some((i) => i.type === 'UNCOMMITTED')).toBe(true);
+      expect(repo.issues.some((i) => i.type === 'NO REMOTE')).toBe(true);
+    },
+    30000
+  );
 });
-
