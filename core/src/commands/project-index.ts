@@ -22,7 +22,20 @@ export function registerIndexCommand(program: Command, getContext: () => CliCont
         return;
       }
 
-      const projects = scanAllProjects(ctx.config, 'all');
+      if (!ctx.isJson) {
+        console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
+        console.log(`  ${chalk.bold('rtb (رتّب) » Project Index Generator')}`);
+        console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
+      }
+
+      const projects = scanAllProjects(ctx.config, 'all', {
+        onProject: (p) => {
+          if (!ctx.isJson) {
+            const stackStr = p.stack.filter((s) => s !== '-').join(', ') || 'General';
+            console.log(`  ${chalk.green('✓')} Discovered: ${chalk.white.bold(p.name.padEnd(28))} ${chalk.cyan(`[${stackStr}]`)}`);
+          }
+        },
+      });
 
       if (ctx.isJson) {
         outputJson({
@@ -32,10 +45,6 @@ export function registerIndexCommand(program: Command, getContext: () => CliCont
         });
         return;
       }
-
-      console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold('rtb (رتّب) » Project Index Generator')}`);
-      console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
       let md = `# Project Index\n\n> Generated ${nowStr}\n\n| Project | Status | Stack | Last Modified |\n|:---|:---|:---|:---|\n`;

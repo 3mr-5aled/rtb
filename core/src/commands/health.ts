@@ -11,7 +11,8 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
     .command('health')
     .description('Git repository health scan (uncommitted, unpushed, stale, remote status)')
     .option('--json', 'Output health scan results in JSON format')
-    .action((cmdOpts: { json?: boolean }) => {
+    .option('-v, --verbose', 'Show detailed verbose scan information')
+    .action((cmdOpts: { json?: boolean; verbose?: boolean }) => {
       const ctx = getContext();
       const isJson = Boolean(cmdOpts.json || ctx.isJson);
 
@@ -35,28 +36,42 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
         scanRoots.push(process.cwd());
       }
 
-      const staleThreshold = ctx.config?.staleThresholdDays || 30;
-      const report = scanGitHealth(scanRoots, staleThreshold);
-
-      if (isJson) {
-        outputJson(report);
-        return;
+      if (!isJson) {
+        console.log('');
+        console.log(chalk.cyan('═'.repeat(60)));
+        console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Git Repository Health`);
+        console.log(chalk.cyan('═'.repeat(60)));
       }
 
-      console.log('');
-      console.log(chalk.cyan('═'.repeat(60)));
-      console.log(`  ${chalk.bold.cyan('rtb (رتّب)')} » Git Repository Health`);
-      console.log(chalk.cyan('═'.repeat(60)));
+      const staleThreshold = ctx.config?.staleThresholdDays || 30;
+      const report = scanGitHealth(scanRoots, staleThreshold, (repo) => {
+        if (isJson) return;
 
-      for (const repo of report.repos) {
+        const branchPart = repo.branch ? chalk.magenta(`[${repo.branch}]`) : '';
+
         if (repo.issues.length > 0) {
-          console.log(`\n  ${chalk.bold.yellow(repo.repoPath)}`);
+          console.log(`\n  ${chalk.bold.yellow('⚠')} ${chalk.bold.yellow(repo.repoName.padEnd(25))} ${branchPart} ${chalk.gray(`(${repo.repoPath})`)}`);
           console.log(`    Last commit: ${chalk.gray(repo.lastCommitRelative)}`);
           for (const issue of repo.issues) {
             const color = issue.isCritical ? chalk.red : chalk.yellow;
             console.log(`    ${color(`⚠ ${issue.message}`)}`);
           }
+          if (cmdOpts.verbose) {
+            console.log(`    ${chalk.gray('Path:')} ${chalk.gray(repo.repoPath)}`);
+          }
+        } else {
+          console.log(
+            `  ${chalk.green('✓')} ${chalk.white(repo.repoName.padEnd(25))} ${branchPart} ${chalk.gray(`(${repo.lastCommitRelative})`)} ${chalk.green('• Clean')}`
+          );
+          if (cmdOpts.verbose) {
+            console.log(`    ${chalk.gray('Path:')} ${chalk.gray(repo.repoPath)}`);
+          }
         }
+      });
+
+      if (isJson) {
+        outputJson(report);
+        return;
       }
 
       const summaryColor = report.issuesCount > 0 ? chalk.yellow : chalk.green;

@@ -46,6 +46,7 @@ export function registerAgentCommand(program: Command, getContext: () => CliCont
       aider?: boolean;
       openhands?: boolean;
       launch?: boolean;
+      noLaunch?: boolean;
     }
   ) => {
     const ctx = getContext();

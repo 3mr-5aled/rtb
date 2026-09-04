@@ -14,6 +14,7 @@ export interface HealthIssue {
 export interface RepoHealthResult {
   repoPath: string;
   repoName: string;
+  branch?: string;
   lastCommitRelative: string;
   lastCommitDate: string | null;
   issues: HealthIssue[];
@@ -25,7 +26,7 @@ export interface HealthReport {
   repos: RepoHealthResult[];
 }
 
-function findGitRepos(dir: string, repos: string[]): void {
+function findGitRepos(dir: string, onFound: (repoDir: string) => void): void {
   if (!fs.existsSync(dir)) return;
 
   try {
@@ -33,34 +34,54 @@ function findGitRepos(dir: string, repos: string[]): void {
     const hasGit = entries.some((e) => e.isDirectory() && e.name === '.git');
 
     if (hasGit) {
-      repos.push(dir);
+      onFound(dir);
       return; // Do not recurse into subdirectories of a git repo
     }
 
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'target' || entry.name === 'vendor') {
+        const name = entry.name;
+        if (
+          name === 'node_modules' ||
+          name === '.git' ||
+          name === 'target' ||
+          name === 'vendor' ||
+          name === '.venv' ||
+          name === 'dist' ||
+          name === 'build' ||
+          name === '.next' ||
+          name === '.turbo' ||
+          name === '.cache'
+        ) {
           continue;
         }
-        findGitRepos(path.join(dir, entry.name), repos);
+        findGitRepos(path.join(dir, name), onFound);
       }
     }
   } catch {}
 }
 
-export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 30): HealthReport {
-  const repoPaths: string[] = [];
-
-  for (const root of scanRoots) {
-    findGitRepos(root, repoPaths);
-  }
-
+export function scanGitHealth(
+  scanRoots: string[],
+  staleThresholdDays: number = 30,
+  onRepo?: (repo: RepoHealthResult) => void
+): HealthReport {
   const results: RepoHealthResult[] = [];
   let totalIssues = 0;
 
-  for (const repoPath of repoPaths) {
+  const processRepo = (repoPath: string) => {
     const issues: HealthIssue[] = [];
     const repoName = path.basename(repoPath);
+    let branch = 'unknown';
+
+    try {
+      branch = execSync('git branch --show-current', {
+        cwd: repoPath,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .toString()
+        .trim() || 'HEAD';
+    } catch {}
 
     // 1. Check uncommitted changes
     try {
@@ -178,13 +199,21 @@ export function scanGitHealth(scanRoots: string[], staleThresholdDays: number = 
       totalIssues++;
     }
 
-    results.push({
+    const repoResult: RepoHealthResult = {
       repoPath,
       repoName,
+      branch,
       lastCommitRelative,
       lastCommitDate,
       issues,
-    });
+    };
+
+    results.push(repoResult);
+    onRepo?.(repoResult);
+  };
+
+  for (const root of scanRoots) {
+    findGitRepos(root, processRepo);
   }
 
   return {

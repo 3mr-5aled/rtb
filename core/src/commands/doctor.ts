@@ -56,7 +56,8 @@ export function runDoctorChecks(ctx: CliContext): { allGood: boolean; checks: Do
   let allGood = true;
 
   // 1. Config Check
-  const cfgPath = resolveConfigPath(ctx.configPath);
+  const cfgRes = resolveConfigPath(ctx.configPath);
+  const cfgPath = cfgRes.path;
   const cfgLoaded = ctx.config !== null;
   checks.push({
     category: 'Config',

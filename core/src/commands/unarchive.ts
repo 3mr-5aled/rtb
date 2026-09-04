@@ -28,16 +28,17 @@ export function registerUnarchiveCommand(program: Command, getContext: () => Cli
       const backupRoot = ctx.config.backupRoot || path.join(path.dirname(activeDir), 'backup');
       const snapshotDir = path.join(backupRoot, 'project-snapshots');
 
-      let archivePath = path.join(snapshotDir, archiveName);
+      let targetArchive = archiveName;
+      let archivePath = path.join(snapshotDir, targetArchive);
 
       // Search by partial name if exact match not found
       if (!fs.existsSync(archivePath) && fs.existsSync(snapshotDir)) {
         try {
           const files = fs.readdirSync(snapshotDir);
-          const match = files.find((f) => f.toLowerCase().includes(archiveName.toLowerCase()));
+          const match = files.find((f) => f.toLowerCase().includes(targetArchive.toLowerCase()));
           if (match) {
             archivePath = path.join(snapshotDir, match);
-            archiveName = match;
+            targetArchive = match;
           }
         } catch {}
       }

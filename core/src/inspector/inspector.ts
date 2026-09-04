@@ -216,9 +216,29 @@ export function inspectProject(projectPath: string, status: string = 'Active'): 
   };
 }
 
-export function scanAllProjects(config: RtbConfig, filter: string = 'all'): ProjectDetails[] {
+export interface ScanCategoryInfo {
+  key: string;
+  label: string;
+  emoji: string;
+  count: number;
+}
+
+export interface ScanAllProjectsCallbacks {
+  onCategory?: (category: ScanCategoryInfo) => void;
+  onProject?: (project: ProjectDetails, category: ScanCategoryInfo) => void;
+  onCategoryEnd?: (category: ScanCategoryInfo) => void;
+}
+
+export function scanAllProjects(
+  config: RtbConfig,
+  filter: string = 'all',
+  callbacks?: ScanAllProjectsCallbacks | ((project: ProjectDetails) => void)
+): ProjectDetails[] {
   const normFilter = filter.toLowerCase();
   const results: ProjectDetails[] = [];
+
+  const callbacksObj: ScanAllProjectsCallbacks =
+    typeof callbacks === 'function' ? { onProject: callbacks } : callbacks || {};
 
   const shouldInclude = (categoryKey: string): boolean => {
     if (normFilter === 'all') return true;
@@ -235,12 +255,28 @@ export function scanAllProjects(config: RtbConfig, filter: string = 'all'): Proj
 
     try {
       const items = fs.readdirSync(entry.path, { withFileTypes: true });
-      for (const item of items) {
-        if (!item.isDirectory()) continue;
+      const dirItems = items.filter((item) => item.isDirectory() && !item.name.startsWith('.'));
+      if (dirItems.length === 0) continue;
+
+      const catInfo: ScanCategoryInfo = {
+        key,
+        label: entry.label || key,
+        emoji: entry.emoji || '📁',
+        count: dirItems.length,
+      };
+
+      callbacksObj.onCategory?.(catInfo);
+
+      for (const item of dirItems) {
         const projectPath = path.join(entry.path, item.name);
         const details = inspectProject(projectPath, entry.label || key);
-        if (details) results.push(details);
+        if (details) {
+          results.push(details);
+          callbacksObj.onProject?.(details, catInfo);
+        }
       }
+
+      callbacksObj.onCategoryEnd?.(catInfo);
     } catch {}
   }
 

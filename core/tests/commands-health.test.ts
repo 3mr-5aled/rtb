@@ -53,4 +53,36 @@ describe('rtb health command integration', () => {
     expect(parsed).toHaveProperty('repos');
     expect(Array.isArray(parsed.repos)).toBe(true);
   });
+
+  it('outputs banner and streams repo discoveries one by one in human-readable mode', async () => {
+    const repoDir = path.join(activeDir, 'my-repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, '.git'), { recursive: true });
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'health', '--config', configFile]);
+
+    const calls = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(calls).toContain('Git Repository Health');
+    expect(calls).toContain('my-repo');
+    expect(calls).toContain('Scanned:');
+  });
+
+  it('outputs verbose path info when --verbose is passed', async () => {
+    const repoDir = path.join(activeDir, 'verbose-repo');
+    fs.mkdirSync(repoDir, { recursive: true });
+    fs.mkdirSync(path.join(repoDir, '.git'), { recursive: true });
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const cli = createCli();
+    await cli.parseAsync(['node', 'rtb', 'health', '--config', configFile, '--verbose']);
+
+    const calls = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(calls).toContain('Git Repository Health');
+    expect(calls).toContain('verbose-repo');
+    expect(calls).toContain('Path:');
+  });
 });
