@@ -80,7 +80,7 @@ impl SessionState {
     pub fn session_state_path() -> PathBuf {
         #[cfg(test)]
         {
-            return std::env::temp_dir().join("rtb_unit_test_state.json");
+            return std::env::temp_dir().join(format!("rtb_unit_test_state_{}.json", std::process::id()));
         }
 
         #[cfg(not(test))]
@@ -150,12 +150,28 @@ mod tests {
             selected_project_name: Some("test-project".into()),
         };
 
+        let path = SessionState::session_state_path();
+
+        // Ensure parent directory exists
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        // Clean up any stale file from previous runs
+        let _ = fs::remove_file(&path);
+
         assert!(state.save().is_ok());
 
+        // Verify file exists before loading
+        assert!(path.exists(), "Session state file was not created");
+
         let loaded = SessionState::load();
-        assert!(loaded.is_some());
+        assert!(loaded.is_some(), "Failed to load session state");
         let loaded_state = loaded.unwrap();
         assert_eq!(loaded_state.active_tab, 3);
         assert_eq!(loaded_state.selected_project_name.as_deref(), Some("test-project"));
+
+        // Cleanup
+        let _ = fs::remove_file(&path);
     }
 }
