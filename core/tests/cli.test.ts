@@ -31,6 +31,10 @@ describe('CLI Framework & Registry', () => {
     logSpy.mockRestore();
   });
 
+  it('should resolve RTB_VERSION as a valid SemVer string', () => {
+    expect(RTB_VERSION).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
   it('should support config --path option', async () => {
     const cli = createCli();
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

@@ -151,33 +151,78 @@ function global:Stop-Spinner([hashtable]$ctx, [bool]$success) {
     Write-Host "  $icon  ${color}$lbl${reset}"
 }
 
-function global:Get-RtbInstallerVersion {
-    $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-    $candidates = @(
-        (Join-Path $dir 'VERSION'),
-        (Join-Path $dir 'core\package.json')
-    )
-    $p = $dir
-    for ($i = 0; $i -lt 3; $i++) {
-        if ($p) {
-            $candidates += (Join-Path $p 'VERSION')
-            $candidates += (Join-Path $p 'core\package.json')
-            $p = Split-Path $p -Parent
+function global:Find-RepoRoot {
+    $candidates = @()
+    if ($script:scriptRoot) { $candidates += $script:scriptRoot }
+    if ($PSScriptRoot) { $candidates += $PSScriptRoot }
+    $candidates += (Get-Location).Path
+
+    foreach ($startDir in $candidates) {
+        if (-not $startDir) { continue }
+        $dir = $startDir
+        while ($dir -and (Test-Path $dir)) {
+            $pkgJson = Join-Path $dir 'core\package.json'
+            if (Test-Path -LiteralPath $pkgJson) {
+                try {
+                    $pkg = Get-Content -LiteralPath $pkgJson -Raw | ConvertFrom-Json
+                    if ($pkg.name -eq '@3mr-5aled/rtb') {
+                        return $dir
+                    }
+                } catch {}
+            }
+            $parent = Split-Path $dir -Parent
+            if (-not $parent -or $parent -eq $dir) { break }
+            $dir = $parent
         }
     }
-    foreach ($c in $candidates) {
-        if ($c -and (Test-Path -LiteralPath $c)) {
+    return $null
+}
+
+function global:Get-RtbInstallerVersion {
+    # 1. Local RTB repository checkout
+    $repoRoot = Find-RepoRoot
+    if ($repoRoot) {
+        $vFile = Join-Path $repoRoot 'VERSION'
+        if (Test-Path -LiteralPath $vFile) {
             try {
-                if ($c.EndsWith('package.json')) {
-                    $pkg = (Get-Content -LiteralPath $c -Raw) | ConvertFrom-Json
-                    if ($pkg.version) { return [string]$pkg.version }
-                } else {
-                    $raw = (Get-Content -LiteralPath $c -Raw).Trim()
-                    if ($raw) { return [string]($raw -replace '^v','') }
+                $raw = (Get-Content -LiteralPath $vFile -Raw).Trim()
+                if ($raw -and ($raw -replace '^v','') -match '^\d+\.\d+\.\d+') {
+                    return [string]($raw -replace '^v','')
+                }
+            } catch {}
+        }
+        $pkgFile = Join-Path $repoRoot 'core\package.json'
+        if (Test-Path -LiteralPath $pkgFile) {
+            try {
+                $pkg = (Get-Content -LiteralPath $pkgFile -Raw) | ConvertFrom-Json
+                if ($pkg.version -and [string]$pkg.version -match '^\d+\.\d+\.\d+') {
+                    return [string]$pkg.version
                 }
             } catch {}
         }
     }
+
+    # 2. Standalone / Web One-Liner (irm ... | iex): Query the latest remote version from GitHub
+    try {
+        $remoteRaw = (Invoke-RestMethod -Uri 'https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION' -TimeoutSec 5 -ErrorAction Stop)
+        if ($remoteRaw -and ($remoteRaw -is [string])) {
+            $cleaned = $remoteRaw.Trim() -replace '^v',''
+            if ($cleaned -match '^\d+\.\d+\.\d+') {
+                return $cleaned
+            }
+        }
+    } catch {}
+
+    try {
+        $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/3mr-5aled/rtb/releases/latest' -TimeoutSec 5 -Headers @{ 'User-Agent' = 'rtb-installer' } -ErrorAction Stop
+        if ($rel -and $rel.tag_name) {
+            $cleaned = ([string]$rel.tag_name).Trim() -replace '^v',''
+            if ($cleaned -match '^\d+\.\d+\.\d+') {
+                return $cleaned
+            }
+        }
+    } catch {}
+
     return '0.8.4'
 }
 
@@ -324,20 +369,7 @@ function global:Ensure-Node {
     Write-Fail "Node.js >= 18 is required to run RTB."
 }
 
-function global:Find-RepoRoot {
-    $dir = if ($script:scriptRoot) { $script:scriptRoot } elseif ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-    while ($dir -and (Test-Path $dir)) {
-        if (Test-Path (Join-Path $dir 'core\package.json')) {
-            return $dir
-        }
-        $parent = Split-Path $dir -Parent
-        if (-not $parent -or $parent -eq $dir) {
-            return $null
-        }
-        $dir = $parent
-    }
-    return $null
-}
+
 
 function global:Install-Steps {
     $TOTAL = 5
@@ -382,6 +414,10 @@ function global:Install-Steps {
                 Invoke-WebRequest -Uri $versionUrl -OutFile (Join-Path $script:userConfigDir 'VERSION') -UseBasicParsing -TimeoutSec 15 -ErrorAction SilentlyContinue
                 Copy-Item (Join-Path $script:userConfigDir 'VERSION') (Join-Path $script:scriptsDir 'VERSION') -Force -ErrorAction SilentlyContinue
             } catch {}
+            if (-not (Test-Path (Join-Path $script:scriptsDir 'VERSION')) -and $script:VERSION) {
+                Set-Content -Path (Join-Path $script:scriptsDir 'VERSION') -Value $script:VERSION -Encoding UTF8 -ErrorAction SilentlyContinue
+                Copy-Item (Join-Path $script:scriptsDir 'VERSION') (Join-Path $script:userConfigDir 'VERSION') -Force -ErrorAction SilentlyContinue
+            }
             try {
                 Invoke-WebRequest -Uri $uninstUrl -OutFile (Join-Path $script:userConfigDir 'uninstall.ps1') -UseBasicParsing -TimeoutSec 15 -ErrorAction SilentlyContinue
             } catch {}

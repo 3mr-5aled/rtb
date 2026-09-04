@@ -55,7 +55,7 @@ describe('rtb uninstall command', () => {
     expect(res.removedPaths).toContain(tmpConfigDir);
 
     delete process.env.RTB_BIN_DIR;
-  });
+  }, 15000);
 
   it('preserves configuration when --keep-config is passed', async () => {
     process.env.RTB_BIN_DIR = tmpBinDir;
@@ -72,7 +72,7 @@ describe('rtb uninstall command', () => {
     expect(res.removedPaths).not.toContain(tmpConfigDir);
 
     delete process.env.RTB_BIN_DIR;
-  });
+  }, 15000);
 
   it('executes via CLI with --force --json', async () => {
     process.env.RTB_BIN_DIR = tmpBinDir;

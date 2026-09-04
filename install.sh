@@ -108,21 +108,51 @@ stop_spinner() {
     fi
 }
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
+
+find_repo_root() {
+    for d in "$SCRIPT_DIR" "$PWD"; do
+        [ -n "$d" ] || continue
+        cur="$d"
+        while [ -n "$cur" ] && [ "$cur" != "/" ]; do
+            if [ -f "$cur/core/package.json" ]; then
+                if grep -q '"@3mr-5aled/rtb"' "$cur/core/package.json" 2>/dev/null; then
+                    echo "$cur"
+                    return
+                fi
+            fi
+            parent="$(dirname "$cur")"
+            [ "$parent" != "$cur" ] || break
+            cur="$parent"
+        done
+    done
+}
+
 get_rtb_version() {
-    for f in "./VERSION" "../VERSION" "$SCRIPT_DIR/VERSION" "core/package.json" "../core/package.json"; do
-        if [ -f "$f" ]; then
-            case "$f" in
-                *.json)
-                    v=$(grep '"version"' "$f" | head -n 1 | sed -E 's/.*"version": "([^"]+)".*/\1/')
-                    if [ -n "$v" ]; then echo "$v"; return; fi
-                    ;;
-                *)
-                    v=$(head -n 1 "$f" | tr -d '\r\n ' | sed 's/^v//')
-                    if [ -n "$v" ]; then echo "$v"; return; fi
-                    ;;
+    repo="$(find_repo_root)"
+    if [ -n "$repo" ]; then
+        if [ -f "$repo/VERSION" ]; then
+            v=$(head -n 1 "$repo/VERSION" | tr -d '\r\n ' | sed 's/^v//')
+            case "$v" in
+                [0-9]*.[0-9]*.[0-9]*) echo "$v"; return ;;
             esac
         fi
-    done
+        if [ -f "$repo/core/package.json" ]; then
+            v=$(grep '"version"' "$repo/core/package.json" | head -n 1 | sed -E 's/.*"version": "([^"]+)".*/\1/')
+            case "$v" in
+                [0-9]*.[0-9]*.[0-9]*) echo "$v"; return ;;
+            esac
+        fi
+    fi
+
+    # Web one-liner / Standalone: query GitHub
+    if command -v curl >/dev/null 2>&1; then
+        v=$(curl -fsSL --connect-timeout 5 https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION 2>/dev/null | tr -d '\r\n ' | sed 's/^v//')
+        case "$v" in
+            [0-9]*.[0-9]*.[0-9]*) echo "$v"; return ;;
+        esac
+    fi
+
     echo "0.8.4"
 }
 RTB_VERSION="$(get_rtb_version)"
@@ -272,9 +302,9 @@ install_steps() {
 
     # Step 2: Deploy TypeScript CLI Bundle
     write_step 2 $TOTAL 'Deploying RTB CLI engine'
-    SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
+    REPO_ROOT="$(find_repo_root)"
     IS_STANDALONE=1
-    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/core/package.json" ]; then
+    if [ -n "$REPO_ROOT" ]; then
         IS_STANDALONE=0
     fi
 
@@ -283,6 +313,13 @@ install_steps() {
         start_spinner 'Downloading rtb-cli.js'
         if curl -fsSL --max-time 120 "$RELEASE_URL" -o "$LIB_DIR/rtb.js" 2>/dev/null || wget -q "$RELEASE_URL" -O "$LIB_DIR/rtb.js" 2>/dev/null; then
             curl -fsSL --max-time 15 "https://raw.githubusercontent.com/3mr-5aled/rtb/main/VERSION" -o "$RTB_DIR/VERSION" 2>/dev/null || true
+            cp "$RTB_DIR/VERSION" "$BIN_DIR/VERSION" 2>/dev/null || true
+            cp "$RTB_DIR/VERSION" "$LIB_DIR/VERSION" 2>/dev/null || true
+            if [ ! -f "$RTB_DIR/VERSION" ] && [ -n "$RTB_VERSION" ]; then
+                echo "$RTB_VERSION" > "$RTB_DIR/VERSION"
+                echo "$RTB_VERSION" > "$BIN_DIR/VERSION"
+                echo "$RTB_VERSION" > "$LIB_DIR/VERSION"
+            fi
             stop_spinner 1 'Downloaded RTB CLI engine'
         else
             stop_spinner 0 'Download RTB CLI engine'
@@ -290,16 +327,17 @@ install_steps() {
         fi
     else
         start_spinner 'Deploying local CLI bundle'
-        if [ ! -f "$SCRIPT_DIR/core/dist/index.js" ]; then
-            (cd "$SCRIPT_DIR/core" && npm install --silent && npm run build --silent) || {
+        if [ ! -f "$REPO_ROOT/core/dist/index.js" ]; then
+            (cd "$REPO_ROOT/core" && npm install --silent && npm run build --silent) || {
                 stop_spinner 0 'Build CLI bundle'
                 write_fail "Failed to build core CLI with npm"
             }
         fi
-        cp "$SCRIPT_DIR/core/dist/index.js" "$LIB_DIR/rtb.js"
-        if [ -f "$SCRIPT_DIR/VERSION" ]; then
-            cp "$SCRIPT_DIR/VERSION" "$RTB_DIR/VERSION"
-            cp "$SCRIPT_DIR/VERSION" "$LIB_DIR/VERSION" 2>/dev/null || true
+        cp "$REPO_ROOT/core/dist/index.js" "$LIB_DIR/rtb.js"
+        if [ -f "$REPO_ROOT/VERSION" ]; then
+            cp "$REPO_ROOT/VERSION" "$RTB_DIR/VERSION"
+            cp "$REPO_ROOT/VERSION" "$BIN_DIR/VERSION" 2>/dev/null || true
+            cp "$REPO_ROOT/VERSION" "$LIB_DIR/VERSION" 2>/dev/null || true
         fi
         stop_spinner 1 'Deployed local CLI bundle'
     fi
