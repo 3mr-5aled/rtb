@@ -82,7 +82,7 @@ curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | sh
 The interactive Setup Wizard will automatically:
 - Display live animated progress and detect your OS, architecture, and shell environment.
 - Prompt for install location (defaulting to `%APPDATA%\rtb` on Windows or `~/.config/rtb` on Unix).
-- Download and extract the latest CLI module (`rtb.psd1`, `rtb.psm1`, commands, completions, utils).
+- Download and configure the cross-platform TypeScript CLI engine (`rtb.js`, `rtb` wrapper scripts).
 - Download the native TUI binary (`rtbtui`) and configure your system `PATH`.
 - Configure module autoload in your shell configuration (`$PROFILE`, `.bashrc`, `.zshrc`, etc.) with legacy import deduplication.
 - Prompt to immediately initialize your workspace via `rtb init`.
