@@ -1,6 +1,6 @@
 {
   "name": "@3mr5aled/rtb",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "description": "Unified workspace & project manager CLI",
   "type": "module",
   "publishConfig": {
