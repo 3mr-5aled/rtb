@@ -146,14 +146,20 @@ Write-Host "  ✓ Staged standalone release assets in dist/release/" -Foreground
 # 7. Copy build to local distribution bin if installed
 $userConfigBin = Join-Path $env:USERPROFILE '.config\rtb\bin'
 if (Test-Path $userConfigBin) {
-    Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $userConfigBin 'rtb.js') -Force
+    Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $userConfigBin 'rtb-cli.js') -Force
+    if (Test-Path (Join-Path $userConfigBin 'rtb.js')) {
+        Remove-Item (Join-Path $userConfigBin 'rtb.js') -Force
+    }
     Copy-Item $versionFile (Join-Path $userConfigBin 'VERSION') -Force
     Write-Host "  ✓ Synchronized local ~/.config/rtb/bin launcher" -ForegroundColor Green
 }
 
 $dBin = 'D:\bin'
 if ((Test-Path (Join-Path $dBin 'rtb.js')) -or (Test-Path (Join-Path $dBin 'rtb.ps1'))) {
-    Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $dBin 'rtb.js') -Force
+    Copy-Item (Join-Path $repoRoot 'core\dist\index.js') (Join-Path $dBin 'rtb-cli.js') -Force
+    if (Test-Path (Join-Path $dBin 'rtb.js')) {
+        Remove-Item (Join-Path $dBin 'rtb.js') -Force
+    }
     Copy-Item $versionFile (Join-Path $dBin 'VERSION') -Force
     Write-Host "  ✓ Synchronized local D:\bin launcher" -ForegroundColor Green
 }
