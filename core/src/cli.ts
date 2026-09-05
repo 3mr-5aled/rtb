@@ -32,6 +32,7 @@ import { registerDeployCommand } from './commands/deploy.js';
 import { registerUninstallCommand } from './commands/uninstall.js';
 import { registerUpgradeCommand } from './commands/upgrade.js';
 import { registerCompletionCommand } from './commands/completion.js';
+import { registerMenuCommand } from './commands/menu.js';
 import { outputError, outputJson } from './utils/output.js';
 import { wrapAction } from './utils/envelope.js';
 import { getHeroBanner } from './utils/banner.js';
@@ -174,6 +175,7 @@ export function createCli(argv: string[] = process.argv): Command {
   registerUninstallCommand(program, getContext);
   registerUpgradeCommand(program, getContext);
   registerCompletionCommand(program, getContext);
+  registerMenuCommand(program, getContext);
   registerHelpCommand(program, getContext);
 
   // Default action when bare `rtb` is executed without subcommands
