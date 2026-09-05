@@ -17,7 +17,7 @@
 ⠀⠀⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠀⠀⠀
 ```
 
-[![Version](https://img.shields.io/badge/version-v0.12.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![Version](https://img.shields.io/badge/version-v0.12.1-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
 [![npm version](https://img.shields.io/npm/v/@3mr5aled/rtb.svg?color=red)](https://www.npmjs.com/package/@3mr5aled/rtb)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
