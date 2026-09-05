@@ -90,6 +90,36 @@ if ($legacyRoaming -and (Test-Path $legacyRoaming)) {
     Write-Host "Removed legacy RTB directory: $legacyRoaming" -ForegroundColor Green
 }
 
+# 4b. Clean standalone or PATH-discovered launchers (e.g. D:\bin, npm globals, etc.)
+$foundCommands = @(Get-Command rtb, rtbtui -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+foreach ($exe in $foundCommands) {
+    if ($exe -and (Test-Path $exe) -and ($exe -notlike "*\rtb-command-tool\*")) {
+        $parent = Split-Path $exe -Parent
+        foreach ($comp in @('rtb', 'rtb.cmd', 'rtb.ps1', 'rtb.js', 'rtbtui', 'rtbtui.exe')) {
+            $compPath = Join-Path $parent $comp
+            if (Test-Path $compPath) {
+                Remove-Item -Force $compPath -ErrorAction SilentlyContinue
+                Write-Host "Removed RTB launcher: $compPath" -ForegroundColor Green
+            }
+        }
+    }
+}
+
+if (Test-Path 'D:\bin') {
+    foreach ($comp in @('rtb.cmd', 'rtb.ps1', 'rtb.js', 'rtbtui.exe')) {
+        $p = Join-Path 'D:\bin' $comp
+        if (Test-Path $p) {
+            Remove-Item -Force $p -ErrorAction SilentlyContinue
+            Write-Host "Removed RTB launcher: $p" -ForegroundColor Green
+        }
+    }
+}
+
+# 4c. Uninstall npm global packages if present
+try {
+    npm uninstall -g @3mr5aled/rtb @3mr-5aled/rtb 2>$null | Out-Null
+} catch {}
+
 # 5. Clean PATH environment variable
 try {
     $curPath = [Environment]::GetEnvironmentVariable('PATH', 'User')

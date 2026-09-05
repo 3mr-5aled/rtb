@@ -61,6 +61,59 @@ export function cleanShellProfiles(customCandidates?: string[]): string[] {
   return cleaned;
 }
 
+export function findRtbExecutables(): string[] {
+  const executables: string[] = [];
+  const candidateDirs: string[] = [];
+
+  if (process.platform === 'win32') {
+    if (fs.existsSync('D:\\bin')) {
+      candidateDirs.push('D:\\bin');
+    }
+    if (process.env.LOCALAPPDATA) {
+      candidateDirs.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'rtb', 'bin'));
+    }
+  }
+
+  // Probe via where.exe / which
+  try {
+    const isWindows = process.platform === 'win32';
+    const cmd = isWindows ? 'where.exe' : 'which';
+    for (const binName of ['rtb', 'rtbtui']) {
+      const binArgs = isWindows ? [binName] : ['-a', binName];
+      const res = spawnSync(cmd, binArgs, { encoding: 'utf-8' });
+      if (res.status === 0 && res.stdout) {
+        const found = res.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        for (const f of found) {
+          const dir = path.dirname(f);
+          if (!candidateDirs.includes(dir)) {
+            candidateDirs.push(dir);
+          }
+        }
+      }
+    }
+  } catch {}
+
+  const targetFilenames = ['rtb', 'rtb.cmd', 'rtb.ps1', 'rtb.js', 'rtbtui', 'rtbtui.exe'];
+
+  for (const dir of candidateDirs) {
+    for (const file of targetFilenames) {
+      const fullPath = path.join(dir, file);
+      if (fs.existsSync(fullPath)) {
+        const norm = path.normalize(fullPath).toLowerCase();
+        // Prevent deleting source or build files inside the development repository
+        if (
+          !norm.includes(path.normalize('rtb-command-tool').toLowerCase()) &&
+          !executables.includes(fullPath)
+        ) {
+          executables.push(fullPath);
+        }
+      }
+    }
+  }
+
+  return executables;
+}
+
 export function performUninstall(options: { keepConfig?: boolean; customConfigDir?: string } = {}): {
   removedPaths: string[];
   cleanedProfiles: string[];
@@ -81,12 +134,44 @@ export function performUninstall(options: { keepConfig?: boolean; customConfigDi
     } catch {}
   }
 
+  // 2b. Remove discovered standalone binary wrappers from PATH (e.g. D:\bin, etc.)
+  const discoveredExecutables = findRtbExecutables();
+  for (const exe of discoveredExecutables) {
+    try {
+      if (fs.existsSync(exe)) {
+        fs.unlinkSync(exe);
+        removedPaths.push(exe);
+      }
+    } catch {}
+  }
+
+  // 2c. Check and uninstall global npm package if present
+  try {
+    const isWindows = process.platform === 'win32';
+    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+    spawnSync(npmCmd, ['uninstall', '-g', '@3mr5aled/rtb', '@3mr-5aled/rtb'], { stdio: 'ignore' });
+  } catch {}
+
   // 3. Remove user configuration directory if not keepConfig
   if (!options.keepConfig && fs.existsSync(userConfigDir)) {
-    try {
-      fs.rmSync(userConfigDir, { recursive: true, force: true });
-      removedPaths.push(userConfigDir);
-    } catch {}
+    const normConfigDir = path.normalize(userConfigDir).toLowerCase();
+    const isInsideRepo = normConfigDir.includes(path.normalize('rtb-command-tool').toLowerCase());
+    const isTargetConfig =
+      path.basename(userConfigDir) === 'rtb' ||
+      normConfigDir.endsWith(path.normalize('.config/rtb').toLowerCase()) ||
+      normConfigDir.includes(path.normalize('rtb-uninstall-test').toLowerCase());
+
+    if (!isInsideRepo && isTargetConfig) {
+      try {
+        fs.rmSync(userConfigDir, { recursive: true, force: true });
+        removedPaths.push(userConfigDir);
+      } catch {}
+    } else if (!isInsideRepo && fs.existsSync(path.join(userConfigDir, 'rtb.config.json'))) {
+      try {
+        fs.unlinkSync(path.join(userConfigDir, 'rtb.config.json'));
+        removedPaths.push(path.join(userConfigDir, 'rtb.config.json'));
+      } catch {}
+    }
   }
 
   // 4. Legacy AppData cleanup on Windows
