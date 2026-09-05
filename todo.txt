@@ -1,4 +1,4 @@
-instead of the powershell and shell installers why don't we use npm installer ??
-organize the folders and md files and repo files recommendations before publishing the repos to dev communities
-how to contribute in readme
-license and user agreement if needed to save my rights and not being judged by any means
+- instead of the powershell and shell installers why don't we use npm installer ??
+- organize the folders and md files and repo files recommendations before publishing the repos to dev communities
+- how to contribute in readme
+- license and user agreement if needed to save my rights and not being judged by any means

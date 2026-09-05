@@ -3,15 +3,18 @@
   "version": "0.11.1",
   "description": "Unified workspace & project manager CLI",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
-    "rtb": "./dist/index.js"
+    "rtb": "dist/index.js"
   },
   "files": [
     "dist"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/3mr-5aled/rtb.git",
+    "url": "git+https://github.com/3mr-5aled/rtb.git",
     "directory": "core"
   },
   "homepage": "https://github.com/3mr-5aled/rtb#readme",

@@ -152,3 +152,27 @@ jobs:
             rtbtui-linux-amd64
             rtbtui-macos-amd64
           generate_release_notes: true
+
+  publish-npm:
+    name: Publish Package to npm
+    needs: [core-tests]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build & Publish to npm
+        run: |
+          cd core
+          npm ci
+          npm run build
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
