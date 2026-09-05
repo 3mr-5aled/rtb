@@ -9,12 +9,14 @@ describe('Shell Integration (shell-init)', () => {
     expect(script).toContain('goto');
     expect(script).toContain('cd "$target"');
     expect(script).toContain('command rtb goto "$@" --print');
+    expect(script).toContain('goto() {');
   });
 
   it('should generate valid zsh wrapper function', () => {
     const script = getShellScript('zsh');
     expect(script).toContain('rtb() {');
     expect(script).toContain('cd "$target"');
+    expect(script).toContain('goto() {');
   });
 
   it('should generate valid fish wrapper function', () => {
@@ -22,13 +24,15 @@ describe('Shell Integration (shell-init)', () => {
     expect(script).toContain('function rtb');
     expect(script).toContain('cd "$target"');
     expect(script).toContain('command rtb goto $goto_args --print');
+    expect(script).toContain('function goto');
   });
 
   it('should generate valid pwsh wrapper function', () => {
     const script = getShellScript('pwsh');
     expect(script).toContain('function rtb {');
-    expect(script).toContain('Set-Location $target');
-    expect(script).toContain('goto @gotoArgs --print');
+    expect(script).toContain('Set-Location -LiteralPath $target');
+    expect(script).toContain('@($args | Select-Object -Skip 1)');
+    expect(script).toContain('function goto {');
   });
 
   it('should throw for unsupported shells', () => {

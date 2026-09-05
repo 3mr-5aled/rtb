@@ -55,3 +55,120 @@ describe('Fuzzy Navigation Engine', () => {
     expect(matches.length).toBe(0);
   });
 });
+
+describe('rtb goto CLI integration', () => {
+  let tmpDir: string;
+  let activeDir: string;
+  let configFile: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rtb-cli-goto-test-'));
+    activeDir = path.join(tmpDir, '01-Active');
+    fs.mkdirSync(activeDir, { recursive: true });
+
+    configFile = path.join(tmpDir, 'rtb.config.json');
+    fs.writeFileSync(
+      configFile,
+      JSON.stringify(
+        {
+          version: '0.12.3',
+          projectRoots: {
+            active: { path: activeDir, label: 'Active', emoji: '🚀' },
+          },
+        },
+        null,
+        2
+      )
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('prints exact target path with --print flag', async () => {
+    const { createCli } = await import('../src/cli.js');
+    const projDir = path.join(activeDir, 'my-target-proj');
+    fs.mkdirSync(projDir, { recursive: true });
+
+    let stdoutData = '';
+    const origWrite = process.stdout.write;
+    process.stdout.write = ((chunk: any) => {
+      stdoutData += chunk;
+      return true;
+    }) as any;
+
+    try {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'goto', 'my-target-proj', '--print', '--config', configFile]);
+      expect(stdoutData.trim()).toBe(projDir);
+    } finally {
+      process.stdout.write = origWrite;
+    }
+  });
+
+  it('prints target path when using fuzzy matching with --print', async () => {
+    const { createCli } = await import('../src/cli.js');
+    const projDir = path.join(activeDir, 'frontend-dashboard');
+    fs.mkdirSync(projDir, { recursive: true });
+
+    let stdoutData = '';
+    const origWrite = process.stdout.write;
+    process.stdout.write = ((chunk: any) => {
+      stdoutData += chunk;
+      return true;
+    }) as any;
+
+    try {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'goto', 'dashboard', '--print', '--config', configFile]);
+      expect(stdoutData.trim()).toBe(projDir);
+    } finally {
+      process.stdout.write = origWrite;
+    }
+  });
+
+  it('sets process.exitCode = 1 on non-matching project with --print', async () => {
+    const { createCli } = await import('../src/cli.js');
+    const origCode = process.exitCode;
+    let stdoutData = '';
+    const origWrite = process.stdout.write;
+    process.stdout.write = ((chunk: any) => {
+      stdoutData += chunk;
+      return true;
+    }) as any;
+
+    try {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'goto', 'unknown-project', '--print', '--config', configFile]);
+      expect(process.exitCode).toBe(1);
+      expect(stdoutData).toBe('');
+    } finally {
+      process.stdout.write = origWrite;
+      process.exitCode = origCode;
+    }
+  });
+
+  it('supports --choice selection with --print flag', async () => {
+    const { createCli } = await import('../src/cli.js');
+    const projA = path.join(activeDir, 'proj-alpha');
+    const projB = path.join(activeDir, 'proj-beta');
+    fs.mkdirSync(projA, { recursive: true });
+    fs.mkdirSync(projB, { recursive: true });
+
+    let stdoutData = '';
+    const origWrite = process.stdout.write;
+    process.stdout.write = ((chunk: any) => {
+      stdoutData += chunk;
+      return true;
+    }) as any;
+
+    try {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'goto', 'proj', '--choice', '2', '--print', '--config', configFile]);
+      expect(stdoutData.trim()).toBe(projB);
+    } finally {
+      process.stdout.write = origWrite;
+    }
+  });
+});

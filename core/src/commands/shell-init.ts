@@ -38,6 +38,10 @@ rtb() {
         command rtb "$@"
     fi
 }
+
+goto() {
+    rtb goto "$@"
+}
 `;
       break;
 
@@ -66,6 +70,10 @@ rtb() {
         command rtb "$@"
     fi
 }
+
+goto() {
+    rtb goto "$@"
+}
 `;
       break;
 
@@ -93,6 +101,10 @@ function rtb
         command rtb $argv
     end
 end
+
+function goto
+    rtb goto $argv
+end
 `;
       break;
 
@@ -112,10 +124,10 @@ function rtb {
             & $invokeTarget @args
             return
         }
-        $gotoArgs = $args | Select-Object -Skip 1
-        $target = & $invokeTarget goto @gotoArgs --print 2>$null
-        if ($LASTEXITCODE -eq 0 -and $target -and (Test-Path $target)) {
-            Set-Location $target
+        $gotoArgs = @($args | Select-Object -Skip 1)
+        $target = (& $invokeTarget goto @gotoArgs --print 2>$null | Out-String).Trim()
+        if ($target -and (Test-Path -LiteralPath $target -PathType Container)) {
+            Set-Location -LiteralPath $target
             & $invokeTarget goto @gotoArgs
         } else {
             & $invokeTarget goto @gotoArgs
@@ -123,6 +135,10 @@ function rtb {
     } else {
         & $invokeTarget @args
     }
+}
+
+function goto {
+    rtb goto @args
 }
 `;
       break;

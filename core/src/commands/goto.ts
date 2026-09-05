@@ -111,6 +111,12 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
         }
       }
 
+      if (options.print) {
+        // Raw stdout output for shell cd hook
+        process.stdout.write(selected.path);
+        return;
+      }
+
       const agentName = options.agy
         ? 'agy'
         : options.claude
@@ -136,18 +142,12 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
           agent: agentName,
           config: ctx.config,
           launch: options.noLaunch || options.launch === false ? false : true,
-          quiet: options.print || ctx.isJson,
+          quiet: ctx.isJson,
         });
 
         if (orchResult.exitCode !== undefined && orchResult.exitCode !== 0) {
           process.exitCode = orchResult.exitCode;
         }
-      }
-
-      if (options.print) {
-        // Raw stdout output for shell cd hook
-        process.stdout.write(selected.path);
-        return;
       }
 
       if (ctx.isJson) {
