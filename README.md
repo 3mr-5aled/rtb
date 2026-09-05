@@ -18,6 +18,7 @@
 ```
 
 [![Version](https://img.shields.io/badge/version-v0.10.0-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
+[![npm version](https://img.shields.io/npm/v/@3mr-5aled/rtb.svg?color=red)](https://www.npmjs.com/package/@3mr-5aled/rtb)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
@@ -57,9 +58,10 @@ rtb/
 ├── install.ps1             # Windows interactive Setup Wizard (PowerShell / cmd)
 ├── install.sh              # Linux / macOS POSIX Setup Wizard (Node.js runtime)
 ├── uninstall.ps1           # Standalone automated uninstaller
+├── CONTRIBUTING.md         # Developer setup & contribution guidelines
 ├── PROJECT.md              # Project architecture & milestone metadata
 ├── CONTEXT.md              # Domain model & architectural glossary
-├── LICENSE                 # MIT License
+├── LICENSE                 # MIT License & Liability Disclaimers
 └── README.md
 ```
 
@@ -67,7 +69,29 @@ rtb/
 
 ## 🚀 Quick Start & Installation
 
-### Option 1: Standalone One-Liner (Recommended)
+### Option 1: npm / npx (Primary & Recommended)
+
+Install globally via npm to have `rtb` available everywhere on your system:
+
+```bash
+npm install -g @3mr-5aled/rtb
+```
+
+Or run directly without permanent installation using `npx`:
+
+```bash
+npx @3mr-5aled/rtb init
+npx @3mr-5aled/rtb ui
+```
+
+> [!TIP]
+> On first invocation of `rtb ui`, RTB automatically detects your operating system and CPU architecture, downloads the matching prebuilt native Terminal UI binary (`rtbtui`) from GitHub Releases, and caches it in `~/.config/rtb/bin/` with zero manual configuration.
+
+---
+
+### Option 2: Standalone Setup Wizard (No Node.js Required)
+
+If you prefer a standalone installation with native shell integration and automated PATH configuration:
 
 #### 🪟 Windows (PowerShell 5.1+ / PowerShell 7+)
 ```powershell
@@ -80,16 +104,15 @@ curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | sh
 ```
 
 The interactive Setup Wizard will automatically:
-- Display live animated progress and detect your OS, architecture, and shell environment.
-- Prompt for install location (defaulting to `%APPDATA%\rtb` on Windows or `~/.config/rtb` on Unix).
-- Download and configure the cross-platform TypeScript CLI engine (`rtb.js`, `rtb` wrapper scripts).
-- Download the native TUI binary (`rtbtui`) and configure your system `PATH`.
-- Configure module autoload in your shell configuration (`$PROFILE`, `.bashrc`, `.zshrc`, etc.) with legacy import deduplication.
+- Detect your OS, architecture, and active shell environment (`pwsh`, `bash`, `zsh`, `fish`).
+- Configure install directory (defaulting to `%APPDATA%\rtb` on Windows or `~/.config/rtb` on Unix).
+- Download the bundled CLI engine and native TUI binary (`rtbtui`).
+- Configure your shell profile autoload with legacy duplicate cleanup.
 - Prompt to immediately initialize your workspace via `rtb init`.
 
 ---
 
-### Option 2: CI / Non-Interactive Automation
+### Option 3: CI / Non-Interactive Automation
 
 For headless pipelines (GitHub Actions, Docker, Azure Pipelines), pass quiet flags or environment variables:
 
@@ -114,7 +137,9 @@ curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB
 
 ---
 
-### Option 3: Local Repository Installation (Developers & Contributors)
+### Option 4: Local Repository Installation (Developers & Contributors)
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full developer prerequisites, local build setup, and testing instructions.
 
 1. Clone the repository:
    ```bash
@@ -313,6 +338,15 @@ Found a bug or have a suggestion?
 
 ---
 
-## 📄 License
+## 🤝 Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for development prerequisites, local setup, test execution, and commit conventions before submitting pull requests.
+
+---
+
+## 📄 License & Liability Disclaimer
 
 Distributed under the [MIT License](LICENSE). © 2026 Amr Khaled ([@3mr-5aled](https://github.com/3mr-5aled)).
+
+> [!CAUTION]
+> **Workspace Operations Disclaimer**: RTB performs automated local file operations including dependency pruning (`node_modules`, `target`, build artifacts), project archival, directory moves, and Git synchronizations. While confirmation prompts safeguard destructive actions, users remain solely responsible for backing up critical data and configurations. The authors and maintainers assume no liability for data loss or repository corruption.
