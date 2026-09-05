@@ -41,7 +41,13 @@ describe('AgentOrchestrator domain service and goto integration', () => {
     vi.restoreAllMocks();
   });
 
-  it('orchestrator generates .rtb_context.md without spawning when launch is false', async () => {
+  it('orchestrator generates .rtb_context.md without spawning when launch is false even if agent is not installed', async () => {
+    // Simulate CI environment where agent is not installed in PATH
+    vi.spyOn(AgentOrchestrator.prototype, 'listAgents').mockReturnValue([
+      { name: 'Google Antigravity', command: 'agy', installed: false },
+      { name: 'Claude Code', command: 'claude', installed: false },
+    ]);
+
     const orchestrator = new AgentOrchestrator();
     const result = await orchestrator.orchestrate({
       projectPath: sampleProj,
@@ -57,7 +63,28 @@ describe('AgentOrchestrator domain service and goto integration', () => {
     expect(contextContent).toContain('my-orch-app');
   });
 
-  it('rtb goto with --agy and --no-launch triggers AgentOrchestrator and creates .rtb_context.md', async () => {
+  it('orchestrator throws AGENT_NOT_INSTALLED when launch is true and agent is not installed', async () => {
+    vi.spyOn(AgentOrchestrator.prototype, 'listAgents').mockReturnValue([
+      { name: 'Google Antigravity', command: 'agy', installed: false },
+    ]);
+
+    const orchestrator = new AgentOrchestrator();
+    await expect(
+      orchestrator.orchestrate({
+        projectPath: sampleProj,
+        agent: 'agy',
+        launch: true,
+      })
+    ).rejects.toThrow("Agent 'Google Antigravity' (agy) is not installed or not in PATH.");
+  });
+
+  it('rtb goto with --agy and --no-launch triggers AgentOrchestrator and creates .rtb_context.md even if agent not installed', async () => {
+    // Simulate CI environment where agent is not installed in PATH
+    vi.spyOn(AgentOrchestrator.prototype, 'listAgents').mockReturnValue([
+      { name: 'Google Antigravity', command: 'agy', installed: false },
+      { name: 'Claude Code', command: 'claude', installed: false },
+    ]);
+
     const cli = createCli();
     await cli.parseAsync([
       'node',

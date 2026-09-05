@@ -69,6 +69,9 @@ export class AgentOrchestrator {
         throw new RtbError(`Specified agent '${targetAgentName}' is not recognized.`, 'AGENT_UNKNOWN');
       }
       if (!match.installed) {
+        if (allowFallback) {
+          return match;
+        }
         throw new RtbError(
           `Agent '${match.name}' (${match.command}) is not installed or not in PATH.`,
           'AGENT_NOT_INSTALLED'
