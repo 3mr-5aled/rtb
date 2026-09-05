@@ -148,7 +148,7 @@ impl App {
         let maintenance_state = MaintenanceState::new();
 
         // 1. Fast Cache Loading (0ms Startup)
-        let (cached_projects, cached_disk, had_cache) = if let Some((p, d)) = load_cache() {
+        let (cached_projects, cached_disk, _had_cache) = if let Some((p, d)) = load_cache() {
             (p, d, true)
         } else {
             (
@@ -187,7 +187,7 @@ impl App {
             }
         }
 
-        let mut app = App {
+        let app = App {
             config: config.clone(),
             current_tab: initial_tab,
             dashboard_selected_index: 0,
@@ -483,7 +483,27 @@ impl App {
                 ModalKind::CommandPalette => {
                     self.command_palette = Some(crate::ui::command_palette::CommandPalette::new());
                 }
-                ModalKind::Confirm(_) => {}
+                ModalKind::Confirm(action) => {
+                    let title = match &action {
+                        ConfirmAction::PruneDependencies => "Prune Dependencies".into(),
+                        ConfirmAction::PauseProject(name) => format!("Pause Project: {}", name),
+                        ConfirmAction::ResumeProject(name) => format!("Resume Project: {}", name),
+                        ConfirmAction::ArchiveProject(name) => format!("Archive Project: {}", name),
+                        ConfirmAction::DeployProject(name, _) => format!("Deploy Project: {}", name),
+                        ConfirmAction::GitCommitAndPush(name, _) => format!("Sync Git: {}", name),
+                        ConfirmAction::GitPush(name, _) => format!("Push Git: {}", name),
+                        ConfirmAction::GitPull(name, _) => format!("Pull Git: {}", name),
+                        ConfirmAction::DeleteGitBranch(branch, _) => format!("Delete Branch: {}", branch),
+                    };
+                    self.confirm_dialog = Some(ConfirmDialog {
+                        title,
+                        message: "Proceed with this action?".into(),
+                        action,
+                    });
+                }
+                ModalKind::Commit(name, path) => {
+                    self.commit_dialog = Some(CommitDialog::new(name, path));
+                }
             },
             AppAction::CloseModal => {
                 self.show_help = false;
@@ -493,6 +513,7 @@ impl App {
                 self.branch_picker_modal = None;
                 self.scaffold_modal = None;
                 self.confirm_dialog = None;
+                self.commit_dialog = None;
                 self.command_palette = None;
             }
             AppAction::ShowToast(msg, _level) => {
@@ -501,16 +522,200 @@ impl App {
             AppAction::StartScan(label) => {
                 self.start_background_scan(label);
             }
-            AppAction::OpenEditor(path) => {
-                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                self.status_message = Some(format!("Opened {} in VS Code", name));
+            AppAction::OpenEditor(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let name = project.name.clone();
+                    actions::open_in_editor(project);
+                    self.status_message = Some(format!("Opened {} in VS Code", name));
+                }
             }
-            AppAction::OpenExplorer(path) => {
-                let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                self.status_message = Some(format!("Opened {} in Explorer", name));
+            AppAction::OpenExplorer(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let name = project.name.clone();
+                    actions::open_in_explorer(project);
+                    self.status_message = Some(format!("Opened {} in Explorer", name));
+                }
             }
             AppAction::ExecuteCommand(cmd, args) => {
                 let _ = std::process::Command::new(cmd).args(args).spawn();
+            }
+            AppAction::RunProgram(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let cmd = project.get_dev_command();
+                    actions::run_live_program(project);
+                    self.status_message = Some(format!("Launched live runner for {}: {}", project.name, cmd));
+                }
+            }
+            AppAction::OpenEnvVault(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if let Some(vault) = crate::ui::env_vault::EnvVaultModal::load(project.name.clone(), &project.path) {
+                        self.env_vault_modal = Some(vault);
+                    } else {
+                        self.status_message = Some(format!("No .env file found in {}", project.name));
+                    }
+                }
+            }
+            AppAction::OpenGitDiff(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if let Some(diff) = crate::ui::git_diff::GitDiffModal::load(project.name.clone(), &project.path) {
+                        self.git_diff_modal = Some(diff);
+                    }
+                }
+            }
+            AppAction::OpenBranchPicker(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if let Some(picker) = crate::ui::branch_picker::BranchPickerModal::load(project.name.clone(), &project.path) {
+                        self.branch_picker_modal = Some(picker);
+                    }
+                }
+            }
+            AppAction::OpenCommitDialog(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    self.commit_dialog = Some(CommitDialog::new(project.name.clone(), project.path.clone()));
+                }
+            }
+            AppAction::GitPush(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let path = project.path.clone();
+                    let name = project.name.clone();
+                    self.status_message = Some(format!("Pushing {}...", name));
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("git").args(["push"]).current_dir(&path).output();
+                    });
+                }
+            }
+            AppAction::GitPull(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let path = project.path.clone();
+                    let name = project.name.clone();
+                    self.status_message = Some(format!("Pulling {}...", name));
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("git").args(["pull"]).current_dir(&path).output();
+                    });
+                }
+            }
+            AppAction::GitSync(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let path = project.path.clone();
+                    let name = project.name.clone();
+                    self.status_message = Some(format!("Syncing {} in background...", name));
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("git").args(["add", "."]).current_dir(&path).output();
+                        let _ = std::process::Command::new("git").args(["commit", "-m", "update: sync workspace changes"]).current_dir(&path).output();
+                        let _ = std::process::Command::new("git").args(["push"]).current_dir(&path).output();
+                    });
+                }
+            }
+            AppAction::StageUntracked(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let path = project.path.clone();
+                    let _ = std::process::Command::new("git").args(["add", "."]).current_dir(&path).output();
+                    self.status_message = Some(format!("Staged untracked files for {}", project.name));
+                    self.start_background_scan("Re-scanning Git health...");
+                }
+            }
+            AppAction::OpenReadme(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    let readme_path = project.path.join("README.md");
+                    let content = if readme_path.exists() {
+                        std::fs::read_to_string(&readme_path).unwrap_or_else(|_| "Error: Unable to read README.md".into())
+                    } else {
+                        format!("# {}\n\nNo README.md file found in this project.", project.name)
+                    };
+                    self.readme_modal = Some((project.name.clone(), content, 0));
+                }
+            }
+            AppAction::ToggleDepSelection(idx) => {
+                if let Some(folder) = self.dep_folders.get_mut(idx) {
+                    folder.is_selected = !folder.is_selected;
+                }
+            }
+            AppAction::SelectAllDeps => {
+                for folder in &mut self.dep_folders {
+                    if let Some(cat) = &self.cleaner_category_filter {
+                        if &folder.project_status == cat {
+                            folder.is_selected = true;
+                        }
+                    } else {
+                        folder.is_selected = true;
+                    }
+                }
+            }
+            AppAction::UnselectAllDeps => {
+                for folder in &mut self.dep_folders {
+                    folder.is_selected = false;
+                }
+            }
+            AppAction::PruneSelectedDeps => {
+                let selected_count = self.dep_folders.iter().filter(|f| f.is_selected).count();
+                let selected_bytes: u64 = self.dep_folders.iter().filter(|f| f.is_selected).map(|f| f.size_bytes).sum();
+                if selected_count > 0 {
+                    self.confirm_dialog = Some(ConfirmDialog {
+                        title: "Prune Selected Dependencies".into(),
+                        message: format!(
+                            "Permanently delete {} dependency folder(s) reclaiming {}?",
+                            selected_count,
+                            format_bytes(selected_bytes)
+                        ),
+                        action: ConfirmAction::PruneDependencies,
+                    });
+                } else {
+                    self.status_message = Some("No folders selected for pruning".into());
+                }
+            }
+            AppAction::StartMaintenance(task_idx) => {
+                if self.maintenance_state.is_running {
+                    self.status_message = Some("Maintenance tasks are already running in background".into());
+                } else {
+                    self.maintenance_state.is_running = true;
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    self.maintenance_receiver = Some(rx);
+                    if let Some(idx) = task_idx {
+                        if let Some(task) = self.maintenance_state.tasks.get(idx).cloned() {
+                            crate::data::maintenance::MaintenanceState::start_background_tasks(vec![task], vec![idx], tx);
+                            self.status_message = Some(format!("Running task #{} in background...", idx + 1));
+                        }
+                    } else {
+                        self.maintenance_state.logs.clear();
+                        let all_tasks = self.maintenance_state.tasks.clone();
+                        let indices: Vec<usize> = (0..all_tasks.len()).collect();
+                        crate::data::maintenance::MaintenanceState::start_background_tasks(all_tasks, indices, tx);
+                        self.status_message = Some("Running all maintenance tasks in background...".into());
+                    }
+                }
+            }
+            AppAction::ClearMaintenanceLogs => {
+                self.maintenance_state.logs.clear();
+            }
+            AppAction::KillPort(idx) => {
+                if let Some(port) = self.active_ports.get(idx) {
+                    let pid = port.pid;
+                    if crate::data::ports::kill_port_process(pid) {
+                        self.status_message = Some(format!("Terminated process PID {} on port :{}", pid, port.port));
+                    } else {
+                        self.status_message = Some(format!("Failed to kill PID {}", pid));
+                    }
+                    self.active_ports = crate::data::ports::scan_dev_ports();
+                }
+            }
+            AppAction::OpenPortUrl(idx) => {
+                if let Some(port) = self.active_ports.get(idx) {
+                    let url = format!("http://localhost:{}", port.port);
+                    let _ = std::process::Command::new("cmd").args(["/C", "start", &url]).spawn();
+                    self.status_message = Some(format!("Opening {}", url));
+                }
             }
             AppAction::Quit => {
                 self.should_quit = true;
