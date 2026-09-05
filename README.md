@@ -18,7 +18,7 @@
 ```
 
 [![Version](https://img.shields.io/badge/version-v0.11.2-blue.svg)](https://github.com/3mr-5aled/rtb/releases)
-[![npm version](https://img.shields.io/npm/v/@3mr-5aled/rtb.svg?color=red)](https://www.npmjs.com/package/@3mr-5aled/rtb)
+[![npm version](https://img.shields.io/npm/v/@3mr5aled/rtb.svg?color=red)](https://www.npmjs.com/package/@3mr5aled/rtb)
 [![Status: Beta](https://img.shields.io/badge/status-BETA-orange.svg)](https://github.com/3mr-5aled/rtb/issues)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
@@ -39,7 +39,7 @@ rtb/
 ├── config/
 │   └── rtb.config.json     # Default JSON configuration template
 ├── core/                   # Unified Cross-Platform TypeScript/Node.js CLI engine
-│   ├── package.json        # Pure ESM module (@3mr-5aled/rtb)
+│   ├── package.json        # Pure ESM module (@3mr5aled/rtb)
 │   ├── tsup.config.ts      # Multiplatform ESM bundler
 │   ├── src/
 │   │   ├── agent/          # AI agent discovery & .rtb_context.md generator
@@ -74,14 +74,14 @@ rtb/
 Install globally via npm to have `rtb` available everywhere on your system:
 
 ```bash
-npm install -g @3mr-5aled/rtb
+npm install -g @3mr5aled/rtb
 ```
 
 Or run directly without permanent installation using `npx`:
 
 ```bash
-npx @3mr-5aled/rtb init
-npx @3mr-5aled/rtb ui
+npx @3mr5aled/rtb init
+npx @3mr5aled/rtb ui
 ```
 
 > [!TIP]

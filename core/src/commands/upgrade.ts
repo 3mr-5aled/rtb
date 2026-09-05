@@ -42,7 +42,7 @@ export async function fetchLatestVersion(): Promise<string | null> {
       return text.trim().replace(/^v/, '') || null;
     },
     async () => {
-      const res = await fetch('https://registry.npmjs.org/@3mr-5aled/rtb/latest');
+      const res = await fetch('https://registry.npmjs.org/@3mr5aled/rtb/latest');
       if (!res.ok) return null;
       const data: any = await res.json();
       return data.version || null;
@@ -64,11 +64,11 @@ export async function executeUpgrade(): Promise<{ success: boolean; method: stri
   try {
     const isWindows = process.platform === 'win32';
     const res = isWindows
-      ? spawnSync('npm.cmd install -g @3mr-5aled/rtb@latest', {
+      ? spawnSync('npm.cmd install -g @3mr5aled/rtb@latest', {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: true,
         })
-      : spawnSync('npm', ['install', '-g', '@3mr-5aled/rtb@latest'], {
+      : spawnSync('npm', ['install', '-g', '@3mr5aled/rtb@latest'], {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: false,
         });

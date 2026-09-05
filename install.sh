@@ -116,7 +116,7 @@ find_repo_root() {
         cur="$d"
         while [ -n "$cur" ] && [ "$cur" != "/" ]; do
             if [ -f "$cur/core/package.json" ]; then
-                if grep -q '"@3mr-5aled/rtb"' "$cur/core/package.json" 2>/dev/null; then
+                if grep -E -q '"@3mr5?aled/rtb"' "$cur/core/package.json" 2>/dev/null; then
                     echo "$cur"
                     return
                 fi

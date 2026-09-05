@@ -34,12 +34,12 @@ export function resolveVersion(): string {
       if (existsSync(pkgPath)) {
         try {
           const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-          if (pkg.name === '@3mr-5aled/rtb') isRtbRepo = true;
+          if (pkg.name === '@3mr5aled/rtb' || pkg.name === '@3mr-5aled/rtb') isRtbRepo = true;
         } catch {}
       } else if (existsSync(rootPkgPath)) {
         try {
           const pkg = JSON.parse(readFileSync(rootPkgPath, 'utf-8'));
-          if (pkg.name === '@3mr-5aled/rtb') isRtbRepo = true;
+          if (pkg.name === '@3mr5aled/rtb' || pkg.name === '@3mr-5aled/rtb') isRtbRepo = true;
         } catch {}
       }
 

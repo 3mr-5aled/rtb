@@ -1,5 +1,5 @@
 {
-  "name": "@3mr-5aled/rtb",
+  "name": "@3mr5aled/rtb",
   "version": "0.11.2",
   "description": "Unified workspace & project manager CLI",
   "type": "module",
@@ -7,7 +7,7 @@
     "access": "public"
   },
   "bin": {
-    "rtb": "dist/index.js"
+    "rtb": "./dist/index.js"
   },
   "files": [
     "dist"

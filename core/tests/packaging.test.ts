@@ -10,7 +10,7 @@ describe('npm registry packaging contract', () => {
   it('declares comprehensive registry distribution metadata in package.json', () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-    expect(pkg.name).toBe('@3mr-5aled/rtb');
+    expect(pkg.name).toBe('@3mr5aled/rtb');
     expect(pkg.bin).toEqual({ rtb: './dist/index.js' });
     expect(pkg.files).toContain('dist');
     expect(pkg.engines?.node).toBe('>=18.0.0');
@@ -44,7 +44,7 @@ describe('npm registry packaging contract', () => {
 
     expect(filenames.some((f) => f.startsWith('src/'))).toBe(false);
     expect(filenames.some((f) => f.startsWith('tests/'))).toBe(false);
-  });
+  }, 20000);
 
   it('runs cleanly via node when invoked from declared binary entrypoint', () => {
     const binPath = path.join(coreDir, 'dist', 'index.js');

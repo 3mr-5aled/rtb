@@ -35,7 +35,7 @@ Cross-shell environment integration and directory switching engine.
 
 **Installation Mode**: Either `repo` (developer running from a cloned source tree) or `standalone` (end user piping `install.ps1` or `install.sh`). Detected automatically: if source directories exist → repo mode; otherwise downloads release assets from GitHub Releases.
 
-**Core CLI Runtime**: Node.js (>= 18) pure ESM distribution bundle (`rtb-cli.js` / `@3mr-5aled/rtb` compiled from `core/`). Installed to `$RTB_DIR/lib/rtb.js` on Unix or `$script:scriptsDir\rtb.js` on Windows with native shell wrappers (`rtb`, `rtb.cmd`, `rtb.ps1`).
+**Core CLI Runtime**: Node.js (>= 18) pure ESM distribution bundle (`rtb-cli.js` / `@3mr5aled/rtb` compiled from `core/`). Installed to `$RTB_DIR/lib/rtb.js` on Unix or `$script:scriptsDir\rtb.js` on Windows with native shell wrappers (`rtb`, `rtb.cmd`, `rtb.ps1`).
 
 **Module Home**: The directory where the CLI files live after installation (`~/.config/rtb` or `$APPDATA\rtb`).
 

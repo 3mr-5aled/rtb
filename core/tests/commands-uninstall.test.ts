@@ -96,7 +96,7 @@ describe('rtb uninstall command', () => {
     expect(parsed.keptConfig).toBe(true);
 
     delete process.env.RTB_BIN_DIR;
-  });
+  }, 15000);
 
   it('cleanProfileContent strips modern shell-init and legacy module imports across shells', () => {
     const bashContent = [

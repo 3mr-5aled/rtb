@@ -165,7 +165,7 @@ function global:Find-RepoRoot {
             if (Test-Path -LiteralPath $pkgJson) {
                 try {
                     $pkg = Get-Content -LiteralPath $pkgJson -Raw | ConvertFrom-Json
-                    if ($pkg.name -eq '@3mr-5aled/rtb') {
+                    if ($pkg.name -eq '@3mr5aled/rtb' -or $pkg.name -eq '@3mr-5aled/rtb') {
                         return $dir
                     }
                 } catch {}
