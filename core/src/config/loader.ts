@@ -16,6 +16,9 @@ export interface ConfigResolution {
  * On macOS / Linux: ~/.config/rtb (or $XDG_CONFIG_HOME/rtb)
  */
 export function getStandardConfigDir(): string {
+  if (process.env.RTB_CONFIG_DIR && process.env.RTB_CONFIG_DIR.trim().length > 0) {
+    return process.env.RTB_CONFIG_DIR;
+  }
   const xdg = process.env.XDG_CONFIG_HOME;
   if (xdg && xdg.trim().length > 0) {
     return path.join(xdg, 'rtb');

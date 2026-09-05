@@ -1,0 +1,232 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { createCli } from '../src/cli.js';
+import {
+  prompts,
+  LIFECYCLE_OPTIONS,
+  getShellIntegrationSnippet,
+  getShellProfilePath,
+  configureShellIntegration,
+} from '../src/commands/init.js';
+import type { RtbConfig } from '../src/types/config.js';
+
+describe('rtb init onboarding wizard & configuration', () => {
+  let tmpHome: string;
+  let tmpConfigDir: string;
+  let tmpWorkspace: string;
+  let origConfigDirEnv: string | undefined;
+
+  beforeEach(() => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'rtb-init-test-'));
+    tmpConfigDir = path.join(tmpHome, '.config', 'rtb');
+    tmpWorkspace = path.join(tmpHome, 'Projects');
+
+    origConfigDirEnv = process.env.RTB_CONFIG_DIR;
+    process.env.RTB_CONFIG_DIR = tmpConfigDir;
+  });
+
+  afterEach(() => {
+    if (origConfigDirEnv !== undefined) {
+      process.env.RTB_CONFIG_DIR = origConfigDirEnv;
+    } else {
+      delete process.env.RTB_CONFIG_DIR;
+    }
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  describe('Lifecycle Scaffolding Options', () => {
+    it('should define all 8 lifecycle folders', () => {
+      const keys = LIFECYCLE_OPTIONS.map((o) => o.key);
+      expect(keys).toEqual([
+        'active',
+        'planning',
+        'testing',
+        'paused',
+        'abandoned',
+        'production',
+        'staging',
+        'vibe',
+      ]);
+    });
+  });
+
+  describe('Shell Integration Helpers', () => {
+    it('should generate correct integration snippets for all shells', () => {
+      expect(getShellIntegrationSnippet('pwsh')).toContain('(& rtb shell-init pwsh | Out-String) | Invoke-Expression');
+      expect(getShellIntegrationSnippet('bash')).toContain('eval "$(rtb shell-init bash)"');
+      expect(getShellIntegrationSnippet('zsh')).toContain('eval "$(rtb shell-init zsh)"');
+      expect(getShellIntegrationSnippet('fish')).toContain('rtb shell-init fish | source');
+    });
+
+    it('should configure shell profile file and handle idempotency', () => {
+      const mockProfile = path.join(tmpHome, '.mock_profile');
+      const res1 = configureShellIntegration('bash', mockProfile);
+      expect(res1.success).toBe(true);
+      expect(fs.existsSync(mockProfile)).toBe(true);
+
+      const content = fs.readFileSync(mockProfile, 'utf8');
+      expect(content).toContain('rtb shell-init bash');
+
+      // Second invocation should be idempotent
+      const res2 = configureShellIntegration('bash', mockProfile);
+      expect(res2.success).toBe(true);
+      expect(res2.message).toContain('already configured');
+
+      const contentAfter = fs.readFileSync(mockProfile, 'utf8');
+      const occurrences = (contentAfter.match(/rtb shell-init/g) || []).length;
+      expect(occurrences).toBe(1);
+    });
+  });
+
+  describe('Headless / Flag Invocations', () => {
+    it('should initialize headless workspace when --force and --root are passed', async () => {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'init', '--force', '--root', tmpWorkspace]);
+
+      const configFile = path.join(tmpConfigDir, 'rtb.config.json');
+      expect(fs.existsSync(configFile)).toBe(true);
+
+      const config: RtbConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      expect(config.version).toBe('1.0');
+      expect(config.projectRoots.active.path).toBe(path.join(tmpWorkspace, '01-Active'));
+      expect(config.projectRoots.paused.path).toBe(path.join(tmpWorkspace, '04-Paused'));
+      expect(fs.existsSync(path.join(tmpWorkspace, '01-Active'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpWorkspace, '04-Paused'))).toBe(true);
+    });
+
+    it('should support --flat option headlessly', async () => {
+      const cli = createCli();
+      await cli.parseAsync(['node', 'rtb', 'init', '--force', '--root', tmpWorkspace, '--flat']);
+
+      const configFile = path.join(tmpConfigDir, 'rtb.config.json');
+      const config: RtbConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      expect(config.projectRoots.projects.path).toBe(tmpWorkspace);
+      expect(config.projectRoots.active.path).toBe(tmpWorkspace);
+    });
+
+    it('should return JSON format when --json is passed', async () => {
+      let logged = '';
+      const logSpy = vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+        logged += args.join(' ') + '\n';
+      });
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init', '--force', '--root', tmpWorkspace, '--json']);
+
+        expect(logged).toContain('"status": "success"');
+        const parsed = JSON.parse(logged.trim());
+        expect(parsed.status).toBe('success');
+        expect(parsed.config.projectRoots.active).toBeDefined();
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('should return status: already_configured when config exists without --force under --json', async () => {
+      fs.mkdirSync(tmpConfigDir, { recursive: true });
+      fs.writeFileSync(path.join(tmpConfigDir, 'rtb.config.json'), '{"version":"1.0"}');
+
+      let logged = '';
+      const logSpy = vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+        logged += args.join(' ') + '\n';
+      });
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init', '--json']);
+
+        const parsed = JSON.parse(logged.trim());
+        expect(parsed.status).toBe('already_configured');
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('Interactive Wizard Flow (@clack/prompts)', () => {
+    let origIsTTY: any;
+    let origCI: string | undefined;
+    let origNonInteractive: string | undefined;
+
+    beforeEach(() => {
+      origIsTTY = process.stdin.isTTY;
+      origCI = process.env.CI;
+      origNonInteractive = process.env.RTB_NON_INTERACTIVE;
+
+      (process.stdin as any).isTTY = true;
+      delete process.env.CI;
+      delete process.env.RTB_NON_INTERACTIVE;
+    });
+
+    afterEach(() => {
+      (process.stdin as any).isTTY = origIsTTY;
+      if (origCI !== undefined) process.env.CI = origCI;
+      if (origNonInteractive !== undefined) process.env.RTB_NON_INTERACTIVE = origNonInteractive;
+    });
+
+    it('should execute full 5-step interactive wizard with custom folder selection', async () => {
+      const introSpy = vi.spyOn(prompts, 'intro').mockImplementation(() => {});
+      const selectSpy = vi.spyOn(prompts, 'select').mockResolvedValue(tmpWorkspace);
+      const multiselectSpy = vi.spyOn(prompts, 'multiselect').mockResolvedValue(['active', 'vibe', 'staging']);
+      const confirmSpy = vi.spyOn(prompts, 'confirm').mockResolvedValue(false);
+      const outroSpy = vi.spyOn(prompts, 'outro').mockImplementation(() => {});
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init']);
+
+        expect(introSpy).toHaveBeenCalled();
+        expect(selectSpy).toHaveBeenCalled();
+        expect(multiselectSpy).toHaveBeenCalled();
+        expect(confirmSpy).toHaveBeenCalled();
+        expect(outroSpy).toHaveBeenCalled();
+
+        const configFile = path.join(tmpConfigDir, 'rtb.config.json');
+        expect(fs.existsSync(configFile)).toBe(true);
+
+        const config: RtbConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+        expect(config.projectRoots.active).toBeDefined();
+        expect(config.projectRoots.vibe).toBeDefined();
+        expect(config.projectRoots.staging).toBeDefined();
+        expect(fs.existsSync(path.join(tmpWorkspace, '01-Active'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpWorkspace, '08-Vibe'))).toBe(true);
+        expect(fs.existsSync(path.join(tmpWorkspace, '07-Staging'))).toBe(true);
+      } finally {
+        introSpy.mockRestore();
+        selectSpy.mockRestore();
+        multiselectSpy.mockRestore();
+        confirmSpy.mockRestore();
+        outroSpy.mockRestore();
+      }
+    });
+
+    it('should handle cancellation at prompt gracefully without writing config', async () => {
+      const cancelSymbol = Symbol('clack:cancel');
+      const introSpy = vi.spyOn(prompts, 'intro').mockImplementation(() => {});
+      const selectSpy = vi.spyOn(prompts, 'select').mockResolvedValue(cancelSymbol as any);
+      const isCancelSpy = vi.spyOn(prompts, 'isCancel').mockReturnValue(true);
+      const cancelSpy = vi.spyOn(prompts, 'cancel').mockImplementation(() => {});
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init']);
+
+        expect(introSpy).toHaveBeenCalled();
+        expect(selectSpy).toHaveBeenCalled();
+        expect(cancelSpy).toHaveBeenCalledWith('Setup cancelled.');
+
+        const configFile = path.join(tmpConfigDir, 'rtb.config.json');
+        expect(fs.existsSync(configFile)).toBe(false);
+      } finally {
+        introSpy.mockRestore();
+        selectSpy.mockRestore();
+        isCancelSpy.mockRestore();
+        cancelSpy.mockRestore();
+      }
+    });
+  });
+});
