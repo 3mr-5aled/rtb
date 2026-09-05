@@ -7,7 +7,7 @@
     "access": "public"
   },
   "bin": {
-    "rtb": "./dist/index.js"
+    "rtb": "dist/index.js"
   },
   "files": [
     "dist"
