@@ -282,9 +282,16 @@ export function deployCliLauncher(customBinDir?: string): DeployLauncherResult {
       }
     }
 
-    const destJs = path.join(binDir, 'rtb.js');
+    const destJs = path.join(binDir, 'rtb-cli.js');
     if (fs.existsSync(sourceBundle)) {
       fs.copyFileSync(sourceBundle, destJs);
+    }
+    // Clean up legacy rtb.js in binDir to prevent Windows PATHEXT collision
+    const legacyJs = path.join(binDir, 'rtb.js');
+    if (fs.existsSync(legacyJs)) {
+      try {
+        fs.unlinkSync(legacyJs);
+      } catch {}
     }
 
     const versionDest = path.join(binDir, 'VERSION');
@@ -296,15 +303,15 @@ export function deployCliLauncher(customBinDir?: string): DeployLauncherResult {
 
     // 2. Create launcher wrappers
     if (isWindows) {
-      const cmdContent = `@echo off\r\nnode "%~dp0rtb.js" %*\r\n`;
+      const cmdContent = `@echo off\r\nnode "%~dp0rtb-cli.js" %*\r\n`;
       fs.writeFileSync(path.join(binDir, 'rtb.cmd'), cmdContent, 'utf8');
 
-      const ps1Content = `& node (Join-Path $PSScriptRoot 'rtb.js') @args\r\n`;
+      const ps1Content = `& node (Join-Path $PSScriptRoot 'rtb-cli.js') @args\r\n`;
       fs.writeFileSync(path.join(binDir, 'rtb.ps1'), ps1Content, 'utf8');
 
       launcherPath = path.join(binDir, 'rtb.cmd');
     } else {
-      const shContent = `#!/usr/bin/env sh\nRTB_LIB_PATH="$(cd "$(dirname "$0")" && pwd)/rtb.js"\nexec node "$RTB_LIB_PATH" "$@"\n`;
+      const shContent = `#!/usr/bin/env sh\nRTB_LIB_PATH="$(cd "$(dirname "$0")" && pwd)/rtb-cli.js"\nexec node "$RTB_LIB_PATH" "$@"\n`;
       const shPath = path.join(binDir, 'rtb');
       fs.writeFileSync(shPath, shContent, { mode: 0o755 });
       try {

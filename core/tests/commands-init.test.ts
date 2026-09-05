@@ -359,7 +359,7 @@ describe('rtb init onboarding wizard & configuration', () => {
 
         // Launcher should be deployed
         const binDir = path.join(tmpConfigDir, 'bin');
-        expect(fs.existsSync(path.join(binDir, 'rtb.js'))).toBe(true);
+        expect(fs.existsSync(path.join(binDir, 'rtb-cli.js'))).toBe(true);
       } finally {
         introSpy.mockRestore();
         confirmSpy.mockRestore();
@@ -376,7 +376,7 @@ describe('rtb init onboarding wizard & configuration', () => {
       expect(res.success).toBe(true);
       expect(res.binDir).toBe(customBin);
       expect(fs.existsSync(customBin)).toBe(true);
-      expect(fs.existsSync(path.join(customBin, 'rtb.js'))).toBe(true);
+      expect(fs.existsSync(path.join(customBin, 'rtb-cli.js'))).toBe(true);
       expect(fs.existsSync(path.join(customBin, 'VERSION'))).toBe(true);
 
       if (process.platform === 'win32') {

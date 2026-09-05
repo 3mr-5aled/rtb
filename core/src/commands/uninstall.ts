@@ -93,7 +93,7 @@ export function findRtbExecutables(): string[] {
     }
   } catch {}
 
-  const targetFilenames = ['rtb', 'rtb.cmd', 'rtb.ps1', 'rtb.js', 'rtbtui', 'rtbtui.exe'];
+  const targetFilenames = ['rtb', 'rtb.cmd', 'rtb.ps1', 'rtb.js', 'rtb-cli.js', 'rtbtui', 'rtbtui.exe'];
 
   for (const dir of candidateDirs) {
     for (const file of targetFilenames) {

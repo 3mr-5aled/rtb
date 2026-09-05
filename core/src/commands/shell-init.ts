@@ -116,7 +116,7 @@ end
 #   (& rtb shell-init pwsh | Out-String) | Invoke-Expression
 
 function rtb {
-    $rtbApp = (Get-Command -CommandType Application,ExternalScript -Name rtb -ErrorAction SilentlyContinue | Select-Object -First 1)
+    $rtbApp = (Get-Command -CommandType Application,ExternalScript -Name rtb.cmd, rtb.ps1, rtb.exe, rtb -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch '\.js$' } | Select-Object -First 1)
     $invokeTarget = if ($rtbApp) { $rtbApp.Source } else { 'rtb' }
 
     if ($args.Count -gt 0 -and $args[0] -eq 'goto') {

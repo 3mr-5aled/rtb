@@ -90,6 +90,7 @@ export async function executeUpgrade(): Promise<{ success: boolean; method: stri
     const homeDir = os.homedir();
     const configDir = path.join(homeDir, '.config', 'rtb');
     const binDir = process.env.RTB_BIN_DIR || path.join(configDir, 'bin');
+    possibleTargets.push(path.join(binDir, 'rtb-cli.js'));
     possibleTargets.push(path.join(binDir, 'rtb.js'));
 
     if (process.platform === 'win32') {
