@@ -1,4 +1,14 @@
-- instead of the powershell and shell installers why don't we use npm installer ??
-- organize the folders and md files and repo files recommendations before publishing the repos to dev communities
-- how to contribute in readme
-- license and user agreement if needed to save my rights and not being judged by any means
+# Next to implement
+
+- create a new modern cli installer like nextjs / vercel skills installers , (it uses the command tool logo)
+
+
+
+# to Edit
+- on typing rtb it displays the commands i want it to display before them the logo or the app + notes like project name , version , and these things 
+
+- use logo in cli not TUI only
+
+- upgrading loading spinner
+
+- loading spinner for loading states

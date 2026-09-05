@@ -32,11 +32,13 @@ import { registerDeployCommand } from './commands/deploy.js';
 import { registerUninstallCommand } from './commands/uninstall.js';
 import { registerUpgradeCommand } from './commands/upgrade.js';
 import { registerCompletionCommand } from './commands/completion.js';
-import { outputError } from './utils/output.js';
+import { outputError, outputJson } from './utils/output.js';
 import { wrapAction } from './utils/envelope.js';
-
+import { getHeroBanner } from './utils/banner.js';
 
 export const EXEMPT_COMMANDS = new Set([
+  'rtb',
+  'menu',
   'help',
   'version',
   'init',
@@ -172,7 +174,23 @@ export function createCli(argv: string[] = process.argv): Command {
   registerUninstallCommand(program, getContext);
   registerUpgradeCommand(program, getContext);
   registerCompletionCommand(program, getContext);
-  registerHelpCommand(program);
+  registerHelpCommand(program, getContext);
+
+  // Default action when bare `rtb` is executed without subcommands
+  program.action(() => {
+    const ctx = getContext();
+    if (ctx.isJson) {
+      outputJson({
+        name: 'rtb',
+        version: RTB_VERSION,
+        status: 'ready',
+        configured: ctx.isConfigured,
+      });
+      return;
+    }
+    console.log(getHeroBanner(ctx));
+  });
 
   return program;
 }
+

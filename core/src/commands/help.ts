@@ -1,15 +1,24 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
+import type { CliContext } from '../types/context.js';
+import { RTB_BRAND_ARABIC } from '../utils/output.js';
+import { renderLogo } from '../utils/logo.js';
 
-export function getCustomHelpMenu(): string {
+export function getCustomHelpMenu(options?: { quiet?: boolean; json?: boolean; isQuiet?: boolean; isJson?: boolean }): string {
   const c = chalk.cyan;
   const y = chalk.yellow;
   const w = chalk.white;
   const g = chalk.gray;
+  const gold = chalk.hex('#FFD700');
+
+  const isQuiet = Boolean(options?.quiet || options?.isQuiet);
+  const isJson = Boolean(options?.json || options?.isJson);
+  const logo = renderLogo({ quiet: isQuiet, json: isJson });
 
   const lines = [
+    ...(logo ? ['', logo] : []),
     '',
-    `  ${c('rtb')} (${c('ﺐﺗر')}) - ${w('Repository & Tooling Base Developer Project Operations CLI')}`,
+    `  ${gold.bold('rtb')} (${gold(RTB_BRAND_ARABIC)}) - ${w('Repository & Tooling Base Developer Project Operations CLI')}`,
     '',
     `  ${y('SETUP & CONFIG')}`,
     `    rtb init [--force]                   Interactive workspace setup wizard`,
@@ -19,6 +28,9 @@ export function getCustomHelpMenu(): string {
     `    rtb uninstall [--force]              Cleanly uninstall RTB from system`,
     `    rtb --version                        Display RTB version`,
     `    rtb --help                           Display this help menu`,
+    '',
+    `  ${y('QUICK INTERACTION')}`,
+    `    rtb menu                             Interactive prompt menu (select & run)`,
     '',
     `  ${y('PROJECT OPERATIONS')}`,
     `    rtb run [project]                    Auto-detect and run dev/start script`,
@@ -65,7 +77,7 @@ export function getCustomHelpMenu(): string {
     `  ${y('UI')}`,
     `    rtb ui (or rtbtui)                   Launch interactive TUI operations center`,
     '',
-    `  ${g('Tip: Press TAB after any command for auto-completion!')}`,
+    `  ${g('Tip: Run rtb menu for interactive launcher, or press TAB for auto-completion!')}`,
     `  ${g("Run 'rtb <command> --help' for details on a specific command.")}`,
     '',
   ];
@@ -73,18 +85,20 @@ export function getCustomHelpMenu(): string {
   return lines.join('\n');
 }
 
-export function registerHelpCommand(program: Command): void {
+export function registerHelpCommand(program: Command, getContext?: () => CliContext): void {
   // Override the root helpInformation so rtb --help, rtb -h, and rtb help use the rich menu
   program.helpInformation = function () {
-    return getCustomHelpMenu();
+    const ctx = getContext ? getContext() : undefined;
+    return getCustomHelpMenu(ctx);
   };
 
   program
     .command('help [command]')
     .description('Display this help menu')
     .action((subCmd?: string) => {
+      const ctx = getContext ? getContext() : undefined;
       if (!subCmd) {
-        console.log(getCustomHelpMenu());
+        console.log(getCustomHelpMenu(ctx));
         return;
       }
       const target = program.commands.find((c) => c.name() === subCmd || c.aliases().includes(subCmd));
@@ -92,7 +106,8 @@ export function registerHelpCommand(program: Command): void {
         target.outputHelp();
       } else {
         console.log(chalk.red(`Unknown command: ${subCmd}`));
-        console.log(getCustomHelpMenu());
+        console.log(getCustomHelpMenu(ctx));
       }
     });
 }
+

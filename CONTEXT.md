@@ -50,3 +50,14 @@ Cross-shell environment integration and directory switching engine.
 **Workspace Scaffold**: The directory tree created by `rtb init` under the user's chosen root. Folders are selected interactively via a multi-select list; each has a default emoji and label that the user may customize.
 
 **Setup Wizard**: The interactive installation flow that collects user decisions (install path, shell hooks) and executes installer steps with real-time progress feedback. Implemented via `install.ps1` (Windows) and `install.sh` (POSIX Linux/macOS) with zero PowerShell prerequisite on Unix.
+
+## CLI Visual Design & Interaction Glossary
+
+**Hero Banner**: The stylized, context-aware visual greeting rendered when `rtb` is executed without arguments (or with `--help`) in an interactive terminal. Combines the golden braille logo, version identifier, workspace root status, detected local project intelligence (if invoked inside a managed project), and organized command categories.
+
+**Task Spinner**: The centralized progress indicator engine (`TaskSpinner`) that wraps long-running asynchronous operations (`rtb health`, `rtb deps`, `rtb clean`, `rtb doctor`, `rtb upgrade`) with animated frames, timing diagnostics, and graceful non-TTY/CI fallbacks.
+
+**Setup Prompt Wizard**: The modern interactive workspace onboarding engine (`rtb init`) built with `@clack/prompts`, guiding developers through visual path discovery, multi-select workspace scaffolding, shell integration opt-in, and configuration verification.
+
+**Interactive Command Menu**: The arrow-navigable CLI quick-action menu (`rtb menu` or interactive prompt) powered by `@clack/prompts`, offering rapid fuzzy selection for daily development tasks (running projects, navigation, launching TUI, health diagnostics, agent orchestrators).
+
