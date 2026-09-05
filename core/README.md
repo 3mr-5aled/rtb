@@ -11,11 +11,11 @@
 ⠀ ⢸⣿⠃⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿ ⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀
 ⠀⠀⢸⡟⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀
 ⠀⠀⢸⡇⢸⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⣿ ⣿⣿⣿ ⣿⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀
-⠀⠀⢸⠁⣿⣿⣿⣿⣿⣿⣿          ⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀
+⠀⠀⢸⠁⣿⣿⣿⣿⣿⣿⣿           ⣿⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀
 ⠀⠀⢸⢀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⡟⠀⠀⠀⠀
-⠀⠀⠘⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⣿⣿⣿⣿  ⣿⣿⣿⡿⠀⠀⠀⠀
+⠀⠀⠘⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿ ⣿⣿⣿⣿⣿⣿⣿  ⣿⣿⣿⣿⡿⠀⠀⠀⠀
 ⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇⠀⠀⠀⠀
-⠀ ⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉   
+⠀ ⠈⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉
 ```
 
 [![npm version](https://img.shields.io/npm/v/@3mr5aled/rtb.svg?color=red)](https://www.npmjs.com/package/@3mr5aled/rtb)
@@ -29,19 +29,25 @@
 ## ⚡ Quick Start
 
 ### 1-Line Setup & Install (Recommended)
+
 Run the guided installation setup directly with `npx`. It configures your workspace roots, lifecycle folders, terminal hooks, downloads the native TUI (or lets you defer it), and installs the `rtb` CLI launcher directly into your PATH:
+
 ```bash
 npx @3mr5aled/rtb install
 ```
 
 ### Global Installation via npm
+
 Install globally with npm to have `rtb` available across your terminal:
+
 ```bash
 npm install -g @3mr5aled/rtb
 ```
 
 ### Instant Execution with `npx`
+
 Run commands directly on demand without permanent installation:
+
 ```bash
 # Full interactive setup & launcher install
 npx @3mr5aled/rtb install
@@ -76,10 +82,13 @@ npx @3mr5aled/rtb ui
 ## 🎮 Interactive CLI Experience
 
 ### 1. Interactive Command Menu (`rtb menu`)
+
 ```bash
 rtb menu
 ```
+
 Navigate with arrow keys and press Enter:
+
 - **Run / Build / Test**: Select a project and execute its detected start, build, or test scripts.
 - **Quick Goto**: Interactive project picker to switch directories.
 - **Launch TUI**: Start the full Ratatui interactive operations dashboard (`rtbtui`).
@@ -88,9 +97,11 @@ Navigate with arrow keys and press Enter:
 - **Configuration**: Edit `rtb.config.json` in your favorite editor.
 
 ### 2. Guided Workspace Setup (`rtb init`)
+
 ```bash
 rtb init
 ```
+
 1. **Brand Intro**: Welcomes you with the Golden Braille emblem.
 2. **Project Root Selection**: Auto-detects workspace directory or prompts for custom path.
 3. **Lifecycle Scaffolding**: Checkbox multi-select for lifecycle folders (`01-Active`, `04-Paused`, `05-Archive`, etc.).
@@ -101,27 +112,27 @@ rtb init
 
 ## 🛠️ Command Reference
 
-| Command | Description |
-| :--- | :--- |
-| `rtb menu` | Launch interactive prompt command cockpit |
-| `rtb init [--force]` | Run interactive 5-step onboarding wizard |
-| `rtb goto <name> [--<agent>]` | Fuzzy project search & fast directory jump |
-| `rtb run [project]` | Auto-detect and run dev/start scripts |
-| `rtb build [project]` | Auto-detect and run project build pipelines |
-| `rtb test [project]` | Auto-detect and run project test suites |
-| `rtb list [--active\|--paused\|--json]` | List managed projects with status & timestamps |
-| `rtb status [--json]` | Fast one-line prompt status segment |
-| `rtb doctor` | System health check (roots, git, runtimes, agents) |
-| `rtb health` | Git repository health scan across project roots |
-| `rtb deps [project]` | Audit declared project dependencies |
-| `rtb new <name> [--stack <type>]` | Scaffold a new project in `01-Active` |
-| `rtb pause <name> [--prune]` | Move project to `04-Paused` |
-| `rtb resume <name> [--install]` | Move project back to `01-Active` |
-| `rtb ui` | Launch native interactive Rust Terminal UI (`rtbtui`) |
-| `rtb agy\|claude\|gemini [project]` | Launch AI agent with auto-generated context |
-| `rtb config` | Open `rtb.config.json` in default editor |
-| `rtb completion <shell>` | Output autocompletion script (pwsh, bash, zsh, fish) |
-| `rtb shell-init <shell>` | Output directory changing wrapper function |
+| Command                                 | Description                                           |
+| :-------------------------------------- | :---------------------------------------------------- |
+| `rtb menu`                              | Launch interactive prompt command cockpit             |
+| `rtb init [--force]`                    | Run interactive 5-step onboarding wizard              |
+| `rtb goto <name> [--<agent>]`           | Fuzzy project search & fast directory jump            |
+| `rtb run [project]`                     | Auto-detect and run dev/start scripts                 |
+| `rtb build [project]`                   | Auto-detect and run project build pipelines           |
+| `rtb test [project]`                    | Auto-detect and run project test suites               |
+| `rtb list [--active\|--paused\|--json]` | List managed projects with status & timestamps        |
+| `rtb status [--json]`                   | Fast one-line prompt status segment                   |
+| `rtb doctor`                            | System health check (roots, git, runtimes, agents)    |
+| `rtb health`                            | Git repository health scan across project roots       |
+| `rtb deps [project]`                    | Audit declared project dependencies                   |
+| `rtb new <name> [--stack <type>]`       | Scaffold a new project in `01-Active`                 |
+| `rtb pause <name> [--prune]`            | Move project to `04-Paused`                           |
+| `rtb resume <name> [--install]`         | Move project back to `01-Active`                      |
+| `rtb ui`                                | Launch native interactive Rust Terminal UI (`rtbtui`) |
+| `rtb agy\|claude\|gemini [project]`     | Launch AI agent with auto-generated context           |
+| `rtb config`                            | Open `rtb.config.json` in default editor              |
+| `rtb completion <shell>`                | Output autocompletion script (pwsh, bash, zsh, fish)  |
+| `rtb shell-init <shell>`                | Output directory changing wrapper function            |
 
 ---
 
@@ -130,6 +141,7 @@ rtb init
 To enable directory changes on `rtb goto` and tab autocompletion in your shell:
 
 ### PowerShell (`$PROFILE`)
+
 ```powershell
 # Directory switching function
 Invoke-Expression (& rtb shell-init pwsh)
@@ -139,18 +151,21 @@ rtb completion pwsh | Out-String | Invoke-Expression
 ```
 
 ### Bash (`~/.bashrc`)
+
 ```bash
 eval "$(rtb shell-init bash)"
 eval "$(rtb completion bash)"
 ```
 
 ### Zsh (`~/.zshrc`)
+
 ```bash
 eval "$(rtb shell-init zsh)"
 eval "$(rtb completion zsh)"
 ```
 
 ### Fish (`~/.config/fish/config.fish`)
+
 ```fish
 rtb shell-init fish | source
 rtb completion fish | source
