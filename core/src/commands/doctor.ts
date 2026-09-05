@@ -7,6 +7,7 @@ import type { CliContext } from '../types/context.js';
 import { findExecutableInPath, getInstalledAgents } from '../agent/discovery.js';
 import { resolveConfigPath } from '../config/loader.js';
 import { outputJson } from '../utils/output.js';
+import { withSpinner } from '../utils/spinner.js';
 
 export interface DoctorCheck {
   category: string;
@@ -180,9 +181,13 @@ export function registerDoctorCommand(program: Command, getContext: () => CliCon
   program
     .command('doctor')
     .description('Run comprehensive environment, tool, config, and diagnostic checks')
-    .action(() => {
+    .action(async () => {
       const ctx = getContext();
-      const { allGood, checks } = runDoctorChecks(ctx);
+      const { allGood, checks } = await withSpinner(
+        'Diagnosing system environment and toolchains...',
+        () => runDoctorChecks(ctx),
+        { quiet: ctx.isQuiet, json: ctx.isJson }
+      );
 
       if (ctx.isJson) {
         outputJson({

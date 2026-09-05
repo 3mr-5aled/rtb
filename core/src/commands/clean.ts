@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { CliContext } from '../types/context.js';
 import { outputError, outputJson } from '../utils/output.js';
+import { withSpinner } from '../utils/spinner.js';
 
 export interface CleanTargetItem {
   project: string;
@@ -65,7 +66,7 @@ export function registerCleanCommand(program: Command, getContext: () => CliCont
     .description('Prune inactive dependency directories (node_modules, .venv, target, dist, etc.)')
     .option('-c, --commit', 'Perform actual deletion (defaults to dry-run)', false)
     .option('-d, --days <days>', 'Inactivity threshold in days', '60')
-    .action((options: { commit?: boolean; days?: string }) => {
+    .action(async (options: { commit?: boolean; days?: string }) => {
       const ctx = getContext();
 
       if (!ctx.config) {
@@ -91,7 +92,11 @@ export function registerCleanCommand(program: Command, getContext: () => CliCont
         if (p) searchPaths.push(p);
       }
 
-      const flagged = scanCleanTargets(searchPaths, targets, daysThreshold);
+      const flagged = await withSpinner(
+        'Scanning project roots for inactive dependency directories...',
+        () => scanCleanTargets(searchPaths, targets, daysThreshold),
+        { quiet: ctx.isQuiet, json: ctx.isJson }
+      );
 
       if (ctx.isJson) {
         outputJson({
@@ -121,15 +126,20 @@ export function registerCleanCommand(program: Command, getContext: () => CliCont
       }
 
       if (options.commit) {
-        console.log(`\n  ${chalk.yellow('Pruning directories...')}`);
         let deleted = 0;
-        for (const item of flagged) {
-          try {
-            fs.rmSync(item.path, { recursive: true, force: true });
-            deleted++;
-          } catch {}
-        }
-        console.log(`  ${chalk.green('✓')} Successfully pruned ${deleted} folders.\n`);
+        await withSpinner(
+          `Pruning ${flagged.length} inactive directories...`,
+          () => {
+            for (const item of flagged) {
+              try {
+                fs.rmSync(item.path, { recursive: true, force: true });
+                deleted++;
+              } catch {}
+            }
+          },
+          { quiet: ctx.isQuiet, json: ctx.isJson }
+        );
+        console.log(`\n  ${chalk.green('✓')} Successfully pruned ${deleted} folders.\n`);
       } else {
         console.log(`\n  Found ${flagged.length} target directories to reclaim.`);
         console.log(`  Run ${chalk.cyan(`rtb clean --commit --days ${daysThreshold}`)} to prune them.\n`);

@@ -7,12 +7,13 @@ import { inspectDependencies } from '../inspector/dependencies.js';
 import { resolveProjectTarget } from '../navigation/fuzzy.js';
 import { outputJson } from '../utils/output.js';
 import { ProjectNotFoundError } from '../errors.js';
+import { withSpinner } from '../utils/spinner.js';
 
 export function registerDepsCommand(program: Command, getContext: () => CliContext): void {
   program
     .command('deps [project]')
     .description('Audit declared project dependencies across ecosystems')
-    .action((projectName?: string) => {
+    .action(async (projectName?: string) => {
       const ctx = getContext();
       let targetPath = process.cwd();
 
@@ -24,17 +25,23 @@ export function registerDepsCommand(program: Command, getContext: () => CliConte
         targetPath = target.targetPath;
       }
 
-      const deps = inspectDependencies(targetPath);
+      const leaf = path.basename(targetPath);
+      if (!ctx.isJson) {
+        console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
+        console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Dependency Inspector (${leaf})`)}`);
+        console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
+      }
+
+      const deps = await withSpinner(
+        `Auditing dependencies for ${leaf}...`,
+        () => inspectDependencies(targetPath),
+        { quiet: ctx.isQuiet, json: ctx.isJson }
+      );
 
       if (ctx.isJson) {
         outputJson(deps);
         return;
       }
-
-      const leaf = path.basename(targetPath);
-      console.log(`\n${chalk.cyan('══════════════════════════════════════════')}`);
-      console.log(`  ${chalk.bold(`rtb (ﺐﺗر) » Dependency Inspector (${leaf})`)}`);
-      console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
 
       if (deps.length === 0) {
         console.log(chalk.yellow(`  No dependencies found in ${targetPath}\n`));

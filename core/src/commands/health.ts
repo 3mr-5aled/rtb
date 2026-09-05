@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import type { CliContext } from '../types/context.js';
 import { scanGitHealth } from '../inspector/health.js';
 import { outputJson } from '../utils/output.js';
+import { TaskSpinner } from '../utils/spinner.js';
 
 export function registerHealthCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -43,6 +44,12 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
         console.log(chalk.cyan('═'.repeat(60)));
       }
 
+      const spinner = new TaskSpinner('Scanning Git repositories across project roots...', {
+        quiet: ctx.isQuiet,
+        json: isJson,
+      });
+      spinner.start();
+
       const staleThreshold = ctx.config?.staleThresholdDays || 30;
       const report = scanGitHealth(scanRoots, staleThreshold, (repo) => {
         if (isJson) return;
@@ -70,8 +77,15 @@ export function registerHealthCommand(program: Command, getContext: () => CliCon
       });
 
       if (isJson) {
+        spinner.stop();
         outputJson(report);
         return;
+      }
+
+      if (report.issuesCount > 0) {
+        spinner.warn(`Scan complete: ${report.scannedCount} repos scanned (${report.issuesCount} issues found)`);
+      } else {
+        spinner.succeed(`Scan complete: ${report.scannedCount} repos scanned (all clean)`);
       }
 
       const summaryColor = report.issuesCount > 0 ? chalk.yellow : chalk.green;

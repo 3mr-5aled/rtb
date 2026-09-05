@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import type { CliContext } from '../types/context.js';
 import { RTB_VERSION } from './version.js';
 import { outputError, outputJson } from '../utils/output.js';
+import { withSpinner } from '../utils/spinner.js';
 
 export function parseSemver(v: string): [number, number, number] {
   const cleaned = v.trim().replace(/^v/, '').split('-')[0];
@@ -158,10 +159,13 @@ export function registerUpgradeCommand(
         console.log(`  ${chalk.bold('rtb (ﺐﺗر) » Self Upgrade')}`);
         console.log(`${chalk.cyan('══════════════════════════════════════════')}\n`);
         console.log(`  Current version: ${chalk.green(`v${currentVersion}`)}`);
-        console.log(chalk.gray('  Checking for updates...'));
       }
 
-      const latestVersion = await service.fetchLatestVersion();
+      const latestVersion = await withSpinner(
+        'Checking for updates from remote sources...',
+        () => service.fetchLatestVersion(),
+        { quiet: ctx.isQuiet, json: ctx.isJson }
+      );
 
       if (!latestVersion) {
         if (ctx.isJson) {
@@ -217,11 +221,11 @@ export function registerUpgradeCommand(
         return;
       }
 
-      if (!ctx.isQuiet && !ctx.isJson) {
-        console.log(`  ${chalk.cyan('→')} Upgrading RTB to v${latestVersion}...`);
-      }
-
-      const result = await service.executeUpgrade();
+      const result = await withSpinner(
+        `Upgrading RTB to v${latestVersion}...`,
+        () => service.executeUpgrade(),
+        { quiet: ctx.isQuiet, json: ctx.isJson }
+      );
 
       if (ctx.isJson) {
         outputJson({
