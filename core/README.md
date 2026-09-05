@@ -52,7 +52,7 @@ npx @3mr5aled/rtb ui
 ## ✨ Features
 
 - ⚡ **Interactive Command Menu (`rtb menu`)**: Arrow-navigable command cockpit powered by `@clack/prompts` to run scripts, switch directories, and launch agents with zero memorization.
-- 🧙 **Modern Onboarding Wizard (`rtb init`)**: 5-step guided setup with workspace root discovery, 8 lifecycle multi-select folders (`01-Active`, `02-Backlog`, etc.), and automated shell hook integration.
+- 🧙 **Modern Onboarding Wizard (`rtb init`)**: Guided setup with workspace root discovery, 8 lifecycle multi-select folders (`01-Active`, `02-Backlog`, etc.), automated shell hook integration, and interactive choice to download or defer the native Terminal UI.
 - 🧭 **Context-Aware Hero Banner**: Golden Braille brand logo, current workspace metrics, and local project environment detection on bare `rtb` or `rtb --help`.
 - 🔄 **Unified Ora Task Spinners**: Custom animated golden braille spinner frames with elapsed time diagnostics across long-running async tasks.
 - 🚀 **Multi-Runtime Project Operations**: Auto-detects and runs dev/build/test scripts across Node.js (`npm`, `pnpm`, `yarn`, `bun`), Rust (`cargo`), Python (`pytest`, `poetry`, `uv`), and Go.

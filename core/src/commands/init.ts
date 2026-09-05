@@ -9,6 +9,8 @@ import { getStandardConfigDir, getStandardConfigPath } from '../config/loader.js
 import { outputJson } from '../utils/output.js';
 import { getLogo } from '../utils/logo.js';
 import { detectCurrentShell } from './shell-init.js';
+import { findRtbtuiBinary } from './doctor.js';
+import { provisionRtbtuiBinary } from './ui.js';
 import type { RtbConfig } from '../types/config.js';
 
 export const prompts = {
@@ -21,6 +23,7 @@ export const prompts = {
   cancel: p.cancel,
   isCancel: p.isCancel,
   log: p.log,
+  spinner: p.spinner,
 };
 
 export interface LifecycleOption {
@@ -215,11 +218,15 @@ export function configureShellIntegration(
 export function registerInitCommand(program: Command, getContext: () => CliContext): void {
   program
     .command('init')
+    .alias('setup')
     .description('Initialize and configure your RTB workspace')
     .option('-f, --force', 'Overwrite existing configuration', false)
     .option('-r, --root <path>', 'Custom workspace root directory')
     .option('--flat', 'Use flat workspace structure instead of lifecycle folders', false)
-    .action(async (options: { force?: boolean; root?: string; flat?: boolean }) => {
+    .option('--skip-ui', 'Skip downloading rtbtui binary', false)
+    .option('--no-ui', 'Skip downloading rtbtui binary', false)
+    .option('--ui', 'Download rtbtui binary during initialization', false)
+    .action(async (options: { force?: boolean; root?: string; flat?: boolean; skipUi?: boolean; noUi?: boolean; ui?: boolean }) => {
       const ctx = getContext();
       const configDir = getStandardConfigDir();
       const configFile = getStandardConfigPath();
@@ -441,7 +448,40 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
         }
       }
 
-      // Step 5: Completion Outro
+      // Step 5: Terminal UI Binary (Interactive or explicit flags)
+      const hasTui = Boolean(findRtbtuiBinary());
+      const skipUi = Boolean(options.skipUi || options.noUi || process.env.RTB_SKIP_UI === '1' || process.env.RTB_SKIP_UI === 'true');
+      let shouldInstallTui = Boolean(options.ui || process.env.RTB_INSTALL_UI === '1' || process.env.RTB_INSTALL_UI === 'true');
+
+      if (!hasTui && !skipUi && !shouldInstallTui && ctx.isInteractive && !ctx.isJson) {
+        const tuiChoice = await prompts.select({
+          message: 'Download RTB Terminal UI (rtbtui) dashboard?',
+          options: [
+            { value: 'now', label: 'Download now (Recommended)', hint: 'Prebuilt native dashboard binary' },
+            { value: 'later', label: 'Download later', hint: "Downloads automatically on first 'rtb ui' run" },
+          ],
+          initialValue: 'now',
+        });
+
+        if (!prompts.isCancel(tuiChoice) && tuiChoice === 'now') {
+          shouldInstallTui = true;
+        } else {
+          prompts.log.info(chalk.dim("Skipped rtbtui download. Run 'rtb ui' anytime to download on demand."));
+        }
+      }
+
+      if (shouldInstallTui && !hasTui) {
+        const s = prompts.spinner();
+        s.start('Downloading prebuilt rtbtui binary...');
+        const dest = await provisionRtbtuiBinary();
+        if (dest) {
+          s.stop(chalk.green(`Installed rtbtui binary: ${dest}`));
+        } else {
+          s.stop(chalk.yellow('Download failed. You can download later via "rtb ui --download".'));
+        }
+      }
+
+      // Step 6: Completion Outro
       const newConfig: RtbConfig = {
         version: '1.0',
         projectRoots,
@@ -471,10 +511,16 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
 
       console.log(`  ${chalk.cyan('Config:')}  ${configFile}`);
       console.log(`  ${chalk.cyan('Root:')}    ${chosenRoot}`);
+      if (hasTui || shouldInstallTui) {
+        console.log(`  ${chalk.cyan('TUI:')}     Installed`);
+      } else {
+        console.log(`  ${chalk.cyan('TUI:')}     Skipped (run 'rtb ui' to download anytime)`);
+      }
       console.log(`\n  ${chalk.bold('Next steps:')}`);
       console.log(`    ${chalk.green('rtb list')}        - list registered projects`);
       console.log(`    ${chalk.green('rtb new <name>')}  - scaffold a new project`);
       console.log(`    ${chalk.green('rtb doctor')}      - verify toolchain health`);
+      console.log(`    ${chalk.green('rtb ui')}          - open interactive terminal dashboard`);
       console.log(`    ${chalk.green('rtb help')}        - view all available commands\n`);
     });
 }

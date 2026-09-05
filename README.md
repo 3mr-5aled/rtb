@@ -86,7 +86,7 @@ npx @3mr5aled/rtb ui
 ```
 
 > [!TIP]
-> On first invocation of `rtb ui`, RTB automatically detects your operating system and CPU architecture, downloads the matching prebuilt native Terminal UI binary (`rtbtui`) from GitHub Releases, and caches it in `~/.config/rtb/bin/` with zero manual configuration.
+> During `npx @3mr5aled/rtb init`, you can choose to download the native Terminal UI (`rtbtui`) immediately or download later on demand (or bypass via `--skip-ui`). On first invocation of `rtb ui`, RTB automatically detects your operating system and CPU architecture, downloads the matching prebuilt binary from GitHub Releases, and caches it in `~/.config/rtb/bin/` with zero manual configuration.
 
 ---
 

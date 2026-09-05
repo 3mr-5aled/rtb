@@ -228,5 +228,70 @@ describe('rtb init onboarding wizard & configuration', () => {
         cancelSpy.mockRestore();
       }
     });
+
+    it('should prompt to download rtbtui now and invoke provisionRtbtuiBinary when chosen', async () => {
+      const introSpy = vi.spyOn(prompts, 'intro').mockImplementation(() => {});
+      const selectSpy = vi
+        .spyOn(prompts, 'select')
+        .mockResolvedValueOnce(tmpWorkspace) // workspace root
+        .mockResolvedValueOnce('now'); // UI choice
+      const multiselectSpy = vi.spyOn(prompts, 'multiselect').mockResolvedValue(['active']);
+      const confirmSpy = vi.spyOn(prompts, 'confirm').mockResolvedValue(false);
+      const outroSpy = vi.spyOn(prompts, 'outro').mockImplementation(() => {});
+      const spinnerSpy = vi.spyOn(prompts, 'spinner').mockReturnValue({
+        start: vi.fn(),
+        stop: vi.fn(),
+        message: vi.fn(),
+      } as any);
+
+      const doctorMod = await import('../src/commands/doctor.js');
+      const tuiSpy = vi.spyOn(doctorMod, 'findRtbtuiBinary').mockReturnValue(null);
+
+      const uiMod = await import('../src/commands/ui.js');
+      const provisionSpy = vi.spyOn(uiMod, 'provisionRtbtuiBinary').mockResolvedValue('/mock/bin/rtbtui');
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init']);
+
+        expect(selectSpy).toHaveBeenCalledTimes(2);
+        expect(provisionSpy).toHaveBeenCalled();
+      } finally {
+        introSpy.mockRestore();
+        selectSpy.mockRestore();
+        multiselectSpy.mockRestore();
+        confirmSpy.mockRestore();
+        outroSpy.mockRestore();
+        spinnerSpy.mockRestore();
+        tuiSpy.mockRestore();
+        provisionSpy.mockRestore();
+      }
+    });
+
+    it('should skip UI download prompt when --skip-ui is passed', async () => {
+      const introSpy = vi.spyOn(prompts, 'intro').mockImplementation(() => {});
+      const selectSpy = vi.spyOn(prompts, 'select').mockResolvedValue(tmpWorkspace);
+      const multiselectSpy = vi.spyOn(prompts, 'multiselect').mockResolvedValue(['active']);
+      const confirmSpy = vi.spyOn(prompts, 'confirm').mockResolvedValue(false);
+      const outroSpy = vi.spyOn(prompts, 'outro').mockImplementation(() => {});
+
+      const uiMod = await import('../src/commands/ui.js');
+      const provisionSpy = vi.spyOn(uiMod, 'provisionRtbtuiBinary').mockResolvedValue('/mock/bin/rtbtui');
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'init', '--skip-ui']);
+
+        expect(selectSpy).toHaveBeenCalledTimes(1); // Only root prompt
+        expect(provisionSpy).not.toHaveBeenCalled();
+      } finally {
+        introSpy.mockRestore();
+        selectSpy.mockRestore();
+        multiselectSpy.mockRestore();
+        confirmSpy.mockRestore();
+        outroSpy.mockRestore();
+        provisionSpy.mockRestore();
+      }
+    });
   });
 });
