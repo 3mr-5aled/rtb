@@ -3,14 +3,17 @@ import chalk from 'chalk';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import * as p from '@clack/prompts';
 import type { CliContext } from '../types/context.js';
 import { getStandardConfigDir, getStandardConfigPath } from '../config/loader.js';
 import { outputJson } from '../utils/output.js';
 import { getLogo } from '../utils/logo.js';
 import { detectCurrentShell } from './shell-init.js';
-import { findRtbtuiBinary } from './doctor.js';
+import { findRtbtuiBinary, getDefaultUserBinDir } from './doctor.js';
 import { provisionRtbtuiBinary } from './ui.js';
+import { RTB_VERSION } from './version.js';
 import type { RtbConfig } from '../types/config.js';
 
 export const prompts = {
@@ -215,21 +218,124 @@ export function configureShellIntegration(
   }
 }
 
+export interface DeployLauncherResult {
+  success: boolean;
+  binDir: string;
+  launcherPath: string;
+  pathUpdated: boolean;
+  message?: string;
+}
+
+export function deployCliLauncher(customBinDir?: string): DeployLauncherResult {
+  const binDir = customBinDir || getDefaultUserBinDir();
+  const isWindows = process.platform === 'win32';
+
+  try {
+    if (!fs.existsSync(binDir)) {
+      fs.mkdirSync(binDir, { recursive: true });
+    }
+
+    // 1. Locate current bundle
+    let sourceBundle = fileURLToPath(import.meta.url);
+    if (sourceBundle.endsWith('.ts')) {
+      const builtDist = path.resolve(path.dirname(sourceBundle), '../../dist/index.js');
+      if (fs.existsSync(builtDist)) {
+        sourceBundle = builtDist;
+      }
+    }
+
+    const destJs = path.join(binDir, 'rtb.js');
+    if (fs.existsSync(sourceBundle)) {
+      fs.copyFileSync(sourceBundle, destJs);
+    }
+
+    const versionDest = path.join(binDir, 'VERSION');
+    try {
+      fs.writeFileSync(versionDest, RTB_VERSION, 'utf8');
+    } catch {}
+
+    let launcherPath = destJs;
+
+    // 2. Create launcher wrappers
+    if (isWindows) {
+      const cmdContent = `@echo off\r\nnode "%~dp0rtb.js" %*\r\n`;
+      fs.writeFileSync(path.join(binDir, 'rtb.cmd'), cmdContent, 'utf8');
+
+      const ps1Content = `& node (Join-Path $PSScriptRoot 'rtb.js') @args\r\n`;
+      fs.writeFileSync(path.join(binDir, 'rtb.ps1'), ps1Content, 'utf8');
+
+      launcherPath = path.join(binDir, 'rtb.cmd');
+    } else {
+      const shContent = `#!/usr/bin/env sh\nRTB_LIB_PATH="$(cd "$(dirname "$0")" && pwd)/rtb.js"\nexec node "$RTB_LIB_PATH" "$@"\n`;
+      const shPath = path.join(binDir, 'rtb');
+      fs.writeFileSync(shPath, shContent, { mode: 0o755 });
+      try {
+        fs.chmodSync(shPath, 0o755);
+      } catch {}
+      launcherPath = shPath;
+    }
+
+    // 3. Configure PATH on Windows (skip during automated test runs)
+    let pathUpdated = false;
+    const isTest = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
+    if (isWindows && !isTest) {
+      try {
+        const psScript = `
+          $target = '${binDir.replace(/'/g, "''")}';
+          $cur = [Environment]::GetEnvironmentVariable('PATH', 'User');
+          $parts = if ($cur) { $cur -split ';' | Where-Object { $_ -and $_.Trim() } } else { @() };
+          if ($parts -notcontains $target) {
+            $new = @($target) + $parts -join ';';
+            [Environment]::SetEnvironmentVariable('PATH', $new, 'User');
+          }
+        `.replace(/\r?\n\s*/g, ' ');
+
+        execSync(`powershell.exe -NoProfile -NonInteractive -Command "${psScript}"`, {
+          stdio: 'ignore',
+          timeout: 5000,
+        });
+        pathUpdated = true;
+      } catch {}
+    } else {
+      pathUpdated = true;
+    }
+
+    if (process.env.PATH) {
+      const parts = process.env.PATH.split(path.delimiter);
+      if (!parts.includes(binDir)) {
+        process.env.PATH = `${binDir}${path.delimiter}${process.env.PATH}`;
+      }
+    }
+
+    return {
+      success: true,
+      binDir,
+      launcherPath,
+      pathUpdated,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      binDir,
+      launcherPath: '',
+      pathUpdated: false,
+      message: err?.message || String(err),
+    };
+  }
+}
+
 export function registerInitCommand(program: Command, getContext: () => CliContext): void {
-  program
-    .command('init')
-    .alias('setup')
-    .description('Initialize and configure your RTB workspace')
-    .option('-f, --force', 'Overwrite existing configuration', false)
-    .option('-r, --root <path>', 'Custom workspace root directory')
-    .option('--flat', 'Use flat workspace structure instead of lifecycle folders', false)
-    .option('--skip-ui', 'Skip downloading rtbtui binary', false)
-    .option('--no-ui', 'Skip downloading rtbtui binary', false)
-    .option('--ui', 'Download rtbtui binary during initialization', false)
-    .action(async (options: { force?: boolean; root?: string; flat?: boolean; skipUi?: boolean; noUi?: boolean; ui?: boolean }) => {
-      const ctx = getContext();
-      const configDir = getStandardConfigDir();
-      const configFile = getStandardConfigPath();
+  const initAction = async (options: {
+    force?: boolean;
+    root?: string;
+    flat?: boolean;
+    skipUi?: boolean;
+    noUi?: boolean;
+    ui?: boolean;
+  }) => {
+    const ctx = getContext();
+    const configDir = getStandardConfigDir();
+    const configFile = getStandardConfigPath();
 
       // Check existing config
       if (fs.existsSync(configFile) && !options.force) {
@@ -481,7 +587,10 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
         }
       }
 
-      // Step 6: Completion Outro
+      // Step 6: Deploy CLI Launcher & Configure PATH
+      const launcherRes = deployCliLauncher();
+
+      // Step 7: Completion Outro
       const newConfig: RtbConfig = {
         version: '1.0',
         projectRoots,
@@ -499,28 +608,58 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
       fs.writeFileSync(configFile, JSON.stringify(newConfig, null, 2) + '\n', 'utf-8');
 
       if (ctx.isJson) {
-        outputJson({ status: 'success', configPath: configFile, config: newConfig });
+        outputJson({
+          status: 'success',
+          configPath: configFile,
+          launcherPath: launcherRes.launcherPath,
+          config: newConfig,
+        });
         return;
       }
 
       if (ctx.isInteractive) {
-        prompts.outro(chalk.bold.green('✨ Workspace initialized successfully!'));
+        prompts.outro(chalk.bold.green('✔ RTB installation setup complete!'));
       } else {
-        console.log(`\n  ${chalk.green('✔')} ${chalk.bold('RTB workspace successfully initialized!')}`);
+        console.log(`\n  ${chalk.green('✔')} ${chalk.bold('RTB installation setup complete!')}`);
       }
 
-      console.log(`  ${chalk.cyan('Config:')}  ${configFile}`);
-      console.log(`  ${chalk.cyan('Root:')}    ${chosenRoot}`);
-      if (hasTui || shouldInstallTui) {
-        console.log(`  ${chalk.cyan('TUI:')}     Installed`);
-      } else {
-        console.log(`  ${chalk.cyan('TUI:')}     Skipped (run 'rtb ui' to download anytime)`);
-      }
-      console.log(`\n  ${chalk.bold('Next steps:')}`);
-      console.log(`    ${chalk.green('rtb list')}        - list registered projects`);
-      console.log(`    ${chalk.green('rtb new <name>')}  - scaffold a new project`);
-      console.log(`    ${chalk.green('rtb doctor')}      - verify toolchain health`);
-      console.log(`    ${chalk.green('rtb ui')}          - open interactive terminal dashboard`);
-      console.log(`    ${chalk.green('rtb help')}        - view all available commands\n`);
-    });
+      console.log('');
+      console.log(`  ${chalk.bold.hex('#FFD700')('rtb')} ${chalk.green('is now installed and ready for use!')}`);
+      console.log('');
+      console.log(`  ${chalk.cyan('Launcher:')}   ${launcherRes.launcherPath || launcherRes.binDir}`);
+      console.log(`  ${chalk.cyan('Workspace:')}  ${chosenRoot}`);
+      console.log(`  ${chalk.cyan('Config:')}     ${configFile}`);
+      console.log(`  ${chalk.cyan('TUI Binary:')} ${hasTui || shouldInstallTui ? chalk.green('Installed') : chalk.gray("Skipped (run 'rtb ui' to download anytime)")}`);
+      console.log('');
+      console.log(`  ${chalk.bold('Try running:')}`);
+      console.log(`    ${chalk.green.bold('rtb')}                  ${chalk.dim('— open RTB workspace cockpit')}`);
+      console.log(`    ${chalk.green.bold('rtb menu')}             ${chalk.dim('— interactive prompt launcher')}`);
+      console.log(`    ${chalk.green.bold('rtb goto')} ${chalk.cyan('<project>')}   ${chalk.dim('— switch directory into any project')}`);
+      console.log(`    ${chalk.green.bold('rtb ui')}               ${chalk.dim('— interactive terminal dashboard')}`);
+      console.log(`    ${chalk.green.bold('rtb doctor')}           ${chalk.dim('— verify toolchain health & agents')}`);
+      console.log(`    ${chalk.green.bold('rtb help')}             ${chalk.dim('— view all available commands')}\n`);
+    };
+
+  program
+    .command('init')
+    .alias('setup')
+    .description('Initialize and configure your RTB workspace')
+    .option('-f, --force', 'Overwrite existing configuration', false)
+    .option('-r, --root <path>', 'Custom workspace root directory')
+    .option('--flat', 'Use flat workspace structure instead of lifecycle folders', false)
+    .option('--skip-ui', 'Skip downloading rtbtui binary', false)
+    .option('--no-ui', 'Skip downloading rtbtui binary', false)
+    .option('--ui', 'Download rtbtui binary during initialization', false)
+    .action(initAction);
+
+  program
+    .command('install')
+    .description('Full interactive installation setup for RTB')
+    .option('-f, --force', 'Overwrite existing configuration', false)
+    .option('-r, --root <path>', 'Custom workspace root directory')
+    .option('--flat', 'Use flat workspace structure instead of lifecycle folders', false)
+    .option('--skip-ui', 'Skip downloading rtbtui binary', false)
+    .option('--no-ui', 'Skip downloading rtbtui binary', false)
+    .option('--ui', 'Download rtbtui binary during installation', false)
+    .action(initAction);
 }

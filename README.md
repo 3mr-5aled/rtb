@@ -70,23 +70,30 @@ rtb/
 
 ## 🚀 Quick Start & Installation
 
-### Option 1: npm / npx (Primary & Recommended)
+### Option 1: 1-Line Setup & Install with npx (Recommended)
 
-Install globally via npm to have `rtb` available everywhere on your system:
+Run the interactive setup wizard directly with `npx`. It configures your workspace roots, lifecycle folders, terminal hooks, downloads the native TUI (or lets you defer it), deploys the CLI launcher to your PATH, and announces readiness:
+
+```bash
+npx @3mr5aled/rtb install
+```
+
+Or install globally via npm:
 
 ```bash
 npm install -g @3mr5aled/rtb
 ```
 
-Or run directly without permanent installation using `npx`:
+You can also run any command on demand without permanent installation:
 
 ```bash
-npx @3mr5aled/rtb init
+npx @3mr5aled/rtb menu
 npx @3mr5aled/rtb ui
+npx @3mr5aled/rtb doctor
 ```
 
 > [!TIP]
-> During `npx @3mr5aled/rtb init`, you can choose to download the native Terminal UI (`rtbtui`) immediately or download later on demand (or bypass via `--skip-ui`). On first invocation of `rtb ui`, RTB automatically detects your operating system and CPU architecture, downloads the matching prebuilt binary from GitHub Releases, and caches it in `~/.config/rtb/bin/` with zero manual configuration.
+> During `npx @3mr5aled/rtb install` (or `rtb init`), you can choose to download the native Terminal UI (`rtbtui`) immediately or download later on demand (or bypass via `--skip-ui`). When ready, `rtb` is immediately available in your terminal.
 
 ---
 

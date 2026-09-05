@@ -74,9 +74,7 @@ export function getPlatformBinaryAsset(
 
 export function getDefaultUserBinDir(): string {
   if (process.env.RTB_BIN_DIR) return process.env.RTB_BIN_DIR;
-  if (process.platform === 'win32' && process.env.APPDATA) {
-    return path.join(process.env.APPDATA, 'rtb', 'bin');
-  }
+  if (process.env.RTB_CONFIG_DIR) return path.join(process.env.RTB_CONFIG_DIR, 'bin');
   return path.join(os.homedir(), '.config', 'rtb', 'bin');
 }
 

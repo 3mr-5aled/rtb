@@ -9,6 +9,7 @@ import {
   getShellIntegrationSnippet,
   getShellProfilePath,
   configureShellIntegration,
+  deployCliLauncher,
 } from '../src/commands/init.js';
 import type { RtbConfig } from '../src/types/config.js';
 
@@ -141,6 +142,26 @@ describe('rtb init onboarding wizard & configuration', () => {
 
         const parsed = JSON.parse(logged.trim());
         expect(parsed.status).toBe('already_configured');
+      } finally {
+        logSpy.mockRestore();
+      }
+    });
+
+    it('should execute full installation setup via rtb install command', async () => {
+      let logged = '';
+      const logSpy = vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+        logged += args.join(' ') + '\n';
+      });
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'install', '--force', '--root', tmpWorkspace, '--json']);
+
+        const parsed = JSON.parse(logged.trim());
+        expect(parsed.status).toBe('success');
+        expect(parsed.configPath).toBe(path.join(tmpConfigDir, 'rtb.config.json'));
+        expect(parsed.launcherPath).toBeDefined();
+        expect(fs.existsSync(parsed.configPath)).toBe(true);
       } finally {
         logSpy.mockRestore();
       }
@@ -291,6 +312,28 @@ describe('rtb init onboarding wizard & configuration', () => {
         confirmSpy.mockRestore();
         outroSpy.mockRestore();
         provisionSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('deployCliLauncher', () => {
+    it('should deploy launcher files into specified bin directory', () => {
+      const customBin = path.join(tmpHome, 'custom-bin');
+      const res = deployCliLauncher(customBin);
+
+      expect(res.success).toBe(true);
+      expect(res.binDir).toBe(customBin);
+      expect(fs.existsSync(customBin)).toBe(true);
+      expect(fs.existsSync(path.join(customBin, 'rtb.js'))).toBe(true);
+      expect(fs.existsSync(path.join(customBin, 'VERSION'))).toBe(true);
+
+      if (process.platform === 'win32') {
+        expect(fs.existsSync(path.join(customBin, 'rtb.cmd'))).toBe(true);
+        expect(fs.existsSync(path.join(customBin, 'rtb.ps1'))).toBe(true);
+        expect(res.launcherPath).toBe(path.join(customBin, 'rtb.cmd'));
+      } else {
+        expect(fs.existsSync(path.join(customBin, 'rtb'))).toBe(true);
+        expect(res.launcherPath).toBe(path.join(customBin, 'rtb'));
       }
     });
   });

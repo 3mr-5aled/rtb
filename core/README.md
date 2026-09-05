@@ -28,15 +28,24 @@
 
 ## ⚡ Quick Start
 
-### Global Installation (Recommended)
+### 1-Line Setup & Install (Recommended)
+Run the guided installation setup directly with `npx`. It configures your workspace roots, lifecycle folders, terminal hooks, downloads the native TUI (or lets you defer it), and installs the `rtb` CLI launcher directly into your PATH:
+```bash
+npx @3mr5aled/rtb install
+```
+
+### Global Installation via npm
 Install globally with npm to have `rtb` available across your terminal:
 ```bash
 npm install -g @3mr5aled/rtb
 ```
 
 ### Instant Execution with `npx`
-Run directly without permanent installation:
+Run commands directly on demand without permanent installation:
 ```bash
+# Full interactive setup & launcher install
+npx @3mr5aled/rtb install
+
 # Launch the interactive prompt launcher
 npx @3mr5aled/rtb menu
 

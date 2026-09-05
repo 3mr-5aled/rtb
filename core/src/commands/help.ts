@@ -21,6 +21,7 @@ export function getCustomHelpMenu(options?: { quiet?: boolean; json?: boolean; i
     `  ${gold.bold('rtb')} (${gold(RTB_BRAND_ARABIC)}) - ${w('Repository & Tooling Base Developer Project Operations CLI')}`,
     '',
     `  ${y('SETUP & CONFIG')}`,
+    `    rtb install [--force]                Interactive installation setup & CLI launcher`,
     `    rtb init [--force]                   Interactive workspace setup wizard`,
     `    rtb config                           Open rtb.config.json in default editor`,
     `    rtb doctor                           System health & dependency diagnostic`,

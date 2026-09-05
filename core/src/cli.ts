@@ -43,6 +43,8 @@ export const EXEMPT_COMMANDS = new Set([
   'help',
   'version',
   'init',
+  'install',
+  'setup',
   'config',
   'doctor',
   'shell-init',
