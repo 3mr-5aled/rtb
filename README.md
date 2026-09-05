@@ -106,8 +106,8 @@ curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | sh
 
 The interactive Setup Wizard will automatically:
 - Detect your OS, architecture, and active shell environment (`pwsh`, `bash`, `zsh`, `fish`).
-- Configure install directory (defaulting to `%APPDATA%\rtb` on Windows or `~/.config/rtb` on Unix).
-- Download the bundled CLI engine and native TUI binary (`rtbtui`).
+- Configure install directory (defaulting to `~/.config/rtb`).
+- Offer the choice to download the native TUI binary (`rtbtui`) now or download later on first `rtb ui` launch.
 - Configure your shell profile autoload with legacy duplicate cleanup.
 - Prompt to immediately initialize your workspace via `rtb init`.
 
@@ -119,11 +119,15 @@ For headless pipelines (GitHub Actions, Docker, Azure Pipelines), pass quiet fla
 
 **Windows PowerShell:**
 ```powershell
-# Flag option
+# Quiet installation with custom install path
 pwsh -File ./install.ps1 -Quiet -InstallPath "C:\tools\rtb"
+
+# Skip TUI binary download (lightweight CLI only)
+pwsh -File ./install.ps1 -SkipUI -Quiet
 
 # Environment variable option
 $env:RTB_QUIET = "1"
+$env:RTB_SKIP_UI = "1"
 irm https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.ps1 | iex
 ```
 
@@ -131,6 +135,10 @@ irm https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.ps1 | iex
 ```bash
 # Quiet installation
 curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB_QUIET=1 sh
+
+# Skip TUI download via CLI flag or environment variable
+curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | sh -s -- --skip-ui -q
+curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB_QUIET=1 RTB_SKIP_UI=1 sh
 
 # Custom directory in CI
 curl -fsSL https://raw.githubusercontent.com/3mr-5aled/rtb/main/install.sh | RTB_QUIET=1 RTB_INSTALL_PATH="/opt/rtb" sh

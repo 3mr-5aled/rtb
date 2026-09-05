@@ -4,7 +4,9 @@
 param(
     [string]$InstallPath = '',
     [switch]$Quiet,
-    [switch]$NoExec
+    [switch]$NoExec,
+    [switch]$SkipUI,
+    [switch]$InstallUI
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,6 +19,9 @@ try {
 
 $script:InstallPath = $InstallPath
 $script:scriptRoot  = $PSScriptRoot
+$script:SkipUI      = $SkipUI.IsPresent
+$script:InstallUI   = $InstallUI.IsPresent
+$script:shouldInstallUI = $true
 
 # Non-interactive / CI / Quiet Detection
 $script:QUIET = $Quiet.IsPresent -or ($env:RTB_QUIET -eq '1') -or ($env:RTB_NON_INTERACTIVE -in @('1', 'true', 'True')) -or ($env:CI -eq 'true') -or ($env:GITHUB_ACTIONS -eq 'true')
@@ -302,6 +307,36 @@ function global:Prompt-Profiles([string[]]$candidates) {
     return $selected
 }
 
+function global:Prompt-InstallUI {
+    $isRedirected = $false
+    try {
+        if (-not $script:ForceInteractive) {
+            $isRedirected = [Console]::IsInputRedirected
+        }
+    } catch {}
+
+    if ($script:SkipUI -or ($env:RTB_SKIP_UI -in @('1', 'true', 'True'))) {
+        return $false
+    }
+    if ($script:InstallUI -or ($env:RTB_INSTALL_UI -in @('1', 'true', 'True'))) {
+        return $true
+    }
+    if ($script:QUIET -or $isRedirected) {
+        return $true
+    }
+
+    Write-Host ""
+    Write-Host "  $(Esc '32m')?$(Esc '0m') Download RTB Terminal UI (rtbtui) now?"
+    Write-Host "    $(Esc '90m')[1] Download now (Recommended)$(Esc '0m')"
+    Write-Host "    $(Esc '90m')[2] Download later (on first 'rtb ui' run)$(Esc '0m')"
+    Write-Host -NoNewline "  $([char]0x203A) Choose [1/2] or [y/n] (Default: 1): "
+    $ans = Read-Host
+    if ($ans -match '^[2Nn]' -or $ans -eq 'later') {
+        return $false
+    }
+    return $true
+}
+
 function global:Prompt-RunInit {
     $isRedirected = $false
     try {
@@ -339,6 +374,11 @@ function global:Show-Summary([string]$installPath, [string[]]$profiles) {
         }
     } else {
         Write-Host "  ${c}Profile:${r}       (none configured)"
+    }
+    if ($script:shouldInstallUI) {
+        Write-Host "  ${c}TUI binary:${r}    Installed"
+    } else {
+        Write-Host "  ${c}TUI binary:${r}    Skipped (run 'rtb ui' to download anytime)"
     }
     Write-Host ""
     Write-Host "  ${b}Next steps:${r}"
@@ -499,7 +539,10 @@ function global:Install-Steps {
 
     # Step 3: TUI Binary (Non-critical)
     Write-Step 3 $TOTAL 'Installing rtbtui binary'
-    if ($isStandalone) {
+    if (-not $script:shouldInstallUI) {
+        $ctx = Start-Spinner 'Skipping rtbtui download (download later via "rtb ui")'
+        Stop-Spinner $ctx $true
+    } elseif ($isStandalone) {
         $binUrl = 'https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-windows-amd64.exe'
         $tmpBin = Join-Path ([System.IO.Path]::GetTempPath()) "rtbtui-$(Get-Random).exe"
         $ctx = Start-Spinner 'Downloading rtbtui.exe'
@@ -675,6 +718,7 @@ function global:Main {
     }
     $allProfiles = @($candidateProfiles | Where-Object { [bool]$_ } | Select-Object -Unique)
     $script:resolvedProfiles = Prompt-Profiles $allProfiles
+    $script:shouldInstallUI  = Prompt-InstallUI
 
     Install-Steps
     Show-Summary $script:userConfigDir $script:resolvedProfiles

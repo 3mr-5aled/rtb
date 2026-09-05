@@ -170,7 +170,7 @@ export function runDoctorChecks(ctx: CliContext): { allGood: boolean; checks: Do
     name: 'rtbtui binary',
     passed: Boolean(tuiPath),
     optional: true,
-    detail: tuiPath ? `Installed at ${tuiPath}` : 'Build with: cargo build --release -p rtbtui in tui/',
+    detail: tuiPath ? `Installed at ${tuiPath}` : 'Download on first launch with "rtb ui", or build via: cargo build --release -p rtbtui',
     path: tuiPath ?? undefined,
   });
 

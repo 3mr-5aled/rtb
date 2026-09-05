@@ -198,6 +198,39 @@ prompt_input() {
     fi
 }
 
+prompt_install_ui() {
+    if [ "$OPT_SKIP_UI" = "1" ] || [ "$RTB_SKIP_UI" = "1" ] || [ "$RTB_SKIP_UI" = "true" ]; then
+        echo "0"
+        return
+    fi
+    if [ "$OPT_INSTALL_UI" = "1" ] || [ "$RTB_INSTALL_UI" = "1" ] || [ "$RTB_INSTALL_UI" = "true" ]; then
+        echo "1"
+        return
+    fi
+
+    if [ "$RTB_QUIET" = "1" ] || [ "$IS_TTY" = "0" ]; then
+        echo "1"
+        return
+    fi
+
+    printf '\n  %s?%s Download RTB Terminal UI (rtbtui) now?\n' "$(esc '32m')" "$(esc '0m')" >&2
+    printf '    %s[1] Download now (Recommended)%s\n' "$(esc '90m')" "$(esc '0m')" >&2
+    printf '    %s[2] Download later (on first '\''rtb ui'\'' run)%s\n' "$(esc '90m')" "$(esc '0m')" >&2
+    printf '  › Choose [1/2] or [y/n] (Default: 1): ' >&2
+
+    ans=""
+    if [ -t 0 ]; then
+        read -r ans || ans=""
+    elif [ -r /dev/tty ]; then
+        read -r ans < /dev/tty 2>/dev/null || ans=""
+    fi
+
+    case "$ans" in
+        2|[Nn]*|later|Later) echo "0" ;;
+        *) echo "1" ;;
+    esac
+}
+
 detect_os_arch() {
     RAW_OS="${RTB_OS_OVERRIDE:-$(uname -s 2>/dev/null || echo 'Unknown')}"
     case "$RAW_OS" in
@@ -273,7 +306,12 @@ show_summary() {
     printf '  %s%s✔ RTB v%s installed successfully!%s\n\n' "$b" "$g" "$RTB_VERSION" "$r"
     printf '  %sRTB Version:%s   v%s\n' "$c" "$r" "$RTB_VERSION"
     printf '  %sInstall path:%s  %s\n' "$c" "$r" "$ipath"
-    printf '  %sNode runtime:%s  %s\n\n' "$c" "$r" "$(node -v 2>/dev/null || echo 'node')"
+    printf '  %sNode runtime:%s  %s\n' "$c" "$r" "$(node -v 2>/dev/null || echo 'node')"
+    if [ "$SHOULD_INSTALL_UI" = "1" ]; then
+        printf '  %sTUI binary:%s    Installed\n\n' "$c" "$r"
+    else
+        printf '  %sTUI binary:%s    Skipped (run '\''rtb ui'\'' to download anytime)\n\n' "$c" "$r"
+    fi
     printf '  %sNext steps:%s\n' "$b" "$r"
     printf '    %srtb doctor%s  %s- check workspace health and tools%s\n' "$g" "$r" "$d" "$r"
     printf '    %srtb goto%s    %s- jump across projects with fuzzy matching%s\n' "$g" "$r" "$d" "$r"
@@ -290,6 +328,7 @@ install_steps() {
     RTB_DIR="${RTB_INSTALL_PATH:-$(prompt_input "$PROMPT_TEXT" "$DEFAULT_DIR")}"
     LIB_DIR="$RTB_DIR/lib"
     BIN_DIR="${RTB_BIN_DIR:-$RTB_DIR/bin}"
+    SHOULD_INSTALL_UI="${SHOULD_INSTALL_UI:-$(prompt_install_ui)}"
 
     # Step 1: Directories
     write_step 1 $TOTAL 'Creating directories'
@@ -353,7 +392,10 @@ EOF
 
     # Step 3: TUI Binary (Non-critical)
     write_step 3 $TOTAL 'Installing rtbtui binary'
-    if [ "$IS_STANDALONE" = "1" ]; then
+    if [ "$SHOULD_INSTALL_UI" = "0" ]; then
+        start_spinner 'Skipping rtbtui download'
+        stop_spinner 1 'Skipped rtbtui download (download later via "rtb ui")'
+    elif [ "$IS_STANDALONE" = "1" ]; then
         BIN_URL="https://github.com/3mr-5aled/rtb/releases/latest/download/rtbtui-${OS_SLUG}-${ARCH_SLUG}"
         start_spinner "Downloading rtbtui ($OS_SLUG/$ARCH_SLUG)"
         if curl -fsSL --max-time 180 "$BIN_URL" -o "$BIN_DIR/rtbtui" 2>/dev/null || wget -q "$BIN_URL" -O "$BIN_DIR/rtbtui" 2>/dev/null; then
@@ -454,7 +496,41 @@ EOF
     fi
 }
 
+OPT_SKIP_UI=0
+OPT_INSTALL_UI=0
+
+parse_args() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --skip-ui|--no-ui)
+                OPT_SKIP_UI=1
+                shift
+                ;;
+            --ui|--install-ui)
+                OPT_INSTALL_UI=1
+                shift
+                ;;
+            -q|--quiet)
+                RTB_QUIET="1"
+                shift
+                ;;
+            -p|--path)
+                RTB_INSTALL_PATH="$2"
+                shift 2
+                ;;
+            --path=*)
+                RTB_INSTALL_PATH="${1#*=}"
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+}
+
 main() {
+    parse_args "$@"
     show_header
     detect_os_arch
     ensure_node
