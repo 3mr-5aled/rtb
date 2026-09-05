@@ -223,7 +223,7 @@ function global:Get-RtbInstallerVersion {
         }
     } catch {}
 
-    return '0.11.6'
+    return '0.12.0'
 }
 
 $script:VERSION = Get-RtbInstallerVersion

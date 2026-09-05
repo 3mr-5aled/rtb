@@ -5,6 +5,11 @@ All notable changes to **RTB — رتّب (Repository & Tooling Base)** will be 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.12.0] - 2026-09-05
+
+### Changed
+- feat: Phase 5 - Modern CLI UX, clack prompts wizard & menu, golden braille brand logo, ora spinners, and shell completions
+
 ## [v0.11.6] - 2026-09-05
 
 ### Changed
@@ -229,6 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial Beta Release featuring PowerShell CLI (
   rtb), Rust Terminal UI (
   rtbtui), project intelligence engine, git health monitoring, and AI agent launcher.
+
 
 
 
