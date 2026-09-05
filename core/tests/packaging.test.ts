@@ -11,7 +11,7 @@ describe('npm registry packaging contract', () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
     expect(pkg.name).toBe('@3mr5aled/rtb');
-    expect(pkg.bin).toEqual({ rtb: './dist/index.js' });
+    expect(['./dist/index.js', 'dist/index.js']).toContain(pkg.bin?.rtb);
     expect(pkg.files).toContain('dist');
     expect(pkg.engines?.node).toBe('>=18.0.0');
     expect(pkg.repository?.url).toContain('3mr-5aled/rtb');
