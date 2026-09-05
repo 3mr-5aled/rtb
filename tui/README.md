@@ -2,7 +2,7 @@
 
 > Interactive Terminal UI Project Operations Engine for D: Drive development environment.
 
-Built with Rust + Ratatui. Companion to the [`rtb` CLI](../cli).
+Built with Rust + Ratatui. Companion to the [`rtb` CLI](../core).
 
 ## Features
 

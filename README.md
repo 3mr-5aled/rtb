@@ -48,6 +48,7 @@ rtb/
 │   │   ├── inspector/      # Multi-runtime project inspector (Node, Rust, Go, Python)
 │   │   ├── navigation/     # Fuzzy scoring navigation engine
 │   │   ├── services/       # Runner & Maintenance task registries
+│   │   ├── utils/          # Golden braille logo, HeroBanner, and Ora TaskSpinners
 │   │   └── index.ts        # CLI binary entrypoint
 │   └── tests/              # Vitest test suite
 ├── tui/                    # Rust Ratatui interactive TUI source
@@ -203,14 +204,16 @@ Add the `-KeepConfig` flag if you wish to preserve your `%APPDATA%\rtb\rtb.confi
 ### Setup & Lifecycle
 | Command | Description |
 | :--- | :--- |
-| `rtb init [--force]` | Interactive setup wizard (detects workspace root and scaffolds lifecycle folders) |
+| `rtb menu` | Interactive prompt launcher (@clack/prompts) for instant project execution, navigation, diagnostics, and AI agents |
+| `rtb init [--force]` | Interactive 5-step onboarding wizard (@clack/prompts) with root auto-detection, lifecycle scaffolding, and shell hooks |
 | `rtb config` | Open active `rtb.config.json` configuration file in default editor |
 | `rtb doctor` | System health check (validates config, roots, git, runtimes, agents, and TUI binary) |
 | `rtb shell-init <bash\|zsh\|fish\|pwsh>` | Output shell wrapper function enabling directory change on `rtb goto` |
+| `rtb completion <bash\|zsh\|fish\|pwsh>` | Output shell autocompletion script for tab completion of project names and subcommands |
 | `rtb ui` | Launch native interactive Rust Terminal UI (`rtbtui`) |
 | `rtb upgrade [--check] [--force]` | Check for newer releases and perform in-place self-upgrade |
 | `rtb uninstall [--force] [-KeepConfig]` | Cleanly remove RTB binaries, module, and profile integrations |
-| `rtb --version` / `rtb --help` | Display current version or command help menu |
+| `rtb --version` / `rtb --help` | Display current version or context-aware HeroBanner & command guide |
 
 ### Navigation & Discovery
 | Command | Description |
@@ -252,6 +255,60 @@ Add the `-KeepConfig` flag if you wish to preserve your `%APPDATA%\rtb\rtb.confi
 | `rtb clean [--commit] [--dry-run]` | Safe dependency pruning (`node_modules`, `target`, `.venv`) with dry-run default |
 | `rtb index` | Generate comprehensive `PROJECT-INDEX.md` markdown catalog |
 | `rtb backup` / `rtb env` | Backup configurations or `.env` credential files |
+
+---
+
+## ✨ Modern CLI Experience & Interactive Cockpit
+
+RTB introduces a modern, developer-first terminal visual experience built with `@clack/prompts`, 24-bit ANSI truecolor Golden Braille branding, and animated `ora` spinners.
+
+### 🧭 Context-Aware Hero Banner
+Whenever you execute bare `rtb` or `rtb --help` in an interactive terminal, RTB renders a rich, context-aware Hero Banner:
+- **Golden Braille Brand Logo**: Authentic 24-bit RGB truecolor braille emblem loaded dynamically from module assets or user configuration paths.
+- **Context Awareness**: Automatically senses your current working directory. If invoked inside a managed project, it displays project metadata (runtime stack, git branch, status) alongside active workspace metrics.
+- **Categorized Quick Directory**: Presents daily development shortcuts grouped by operational category with arrow-key tip reminders.
+- **Headless & Scripting Safety**: Automatically suppressed when standard output is non-TTY, redirected, or running with `--json` or `--quiet`.
+
+### ⚡ Interactive Command Menu (`rtb menu`)
+Launch the interactive command cockpit for instant arrow-key execution without memorizing flags:
+```bash
+rtb menu
+```
+The menu provides rapid access to:
+- **Run / Build / Test**: Select any registered project and execute dev scripts with live output.
+- **Quick Goto**: Interactive selector to switch directories into any active or paused project.
+- **Launch TUI**: Start the full Ratatui interactive operations dashboard (`rtbtui`).
+- **Health Doctor**: Run Git telemetry scans or toolchain health diagnostics with real-time Ora spinners.
+- **AI Agent Cockpit**: Launch Google Antigravity, Claude, Gemini, or Cursor with auto-generated project context.
+- **Configuration**: Edit `rtb.config.json` in your default code editor.
+
+### 🧙 Interactive Onboarding Wizard (`rtb init`)
+Setting up a new development environment is as simple as running:
+```bash
+rtb init
+```
+The Clack-powered wizard guides you through:
+1. **Brand Intro**: Welcomes you with the Golden Braille emblem and configuration detection.
+2. **Project Root Selection**: Auto-detects parent directories or allows typing a custom path.
+3. **Lifecycle Scaffolding**: Interactive multi-select to choose which lifecycle folders to create (`01-Active`, `02-Backlog`, `03-Review`, `04-Paused`, `05-Archive`, `06-Prototypes`, `07-Templates`, `08-Lab`).
+4. **Automated Shell Integration**: Detects active shell (`PowerShell`, `Bash`, `Zsh`, `Fish`) and installs directory switching wrappers with a single confirmation.
+5. **Config Outro**: Displays the saved configuration path and immediate next steps.
+
+### ⌨️ Multi-Shell Autocompletion
+RTB provides native autocompletion for project names, subcommands, and flags across all major shells:
+```bash
+# PowerShell (add to $PROFILE)
+rtb completion pwsh | Out-String | Invoke-Expression
+
+# Bash (add to ~/.bashrc)
+eval "$(rtb completion bash)"
+
+# Zsh (add to ~/.zshrc)
+eval "$(rtb completion zsh)"
+
+# Fish (add to ~/.config/fish/config.fish)
+rtb completion fish | source
+```
 
 ---
 

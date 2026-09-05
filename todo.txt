@@ -1,14 +1,11 @@
-# Next to implement
+# Completed Tasks (Phase 5 - v0.12.0)
 
-- create a new modern cli installer like nextjs / vercel skills installers , (it uses the command tool logo)
+- [x] create a new modern cli installer like nextjs / vercel skills installers , (it uses the command tool logo) -> Delivered in `rtb init` using @clack/prompts with 5-step wizard, golden braille logo intro, root path discovery, 8 lifecycle multi-select folders, and automated shell integration hooks.
+- [x] on typing rtb it displays the commands i want it to display before them the logo or the app + notes like project name , version , and these things -> Delivered via context-aware HeroBanner in `core/src/utils/banner.ts` detecting project environment, version, and grouped quick action directory.
+- [x] use logo in cli not TUI only -> Delivered via multi-tier 24-bit ANSI truecolor logo loader in `core/src/utils/logo.ts` rendered on bare `rtb`, `rtb --help`, and `rtb init`.
+- [x] upgrading loading spinner -> Delivered via `TaskSpinner` with golden braille frames in `core/src/utils/spinner.ts`.
+- [x] loading spinner for loading states -> Integrated across `rtb health`, `rtb deps`, `rtb clean`, `rtb doctor`, and `rtb upgrade` with non-TTY/JSON safety.
 
-
-
-# to Edit
-- on typing rtb it displays the commands i want it to display before them the logo or the app + notes like project name , version , and these things 
-
-- use logo in cli not TUI only
-
-- upgrading loading spinner
-
-- loading spinner for loading states
+# Next to Implement
+- [ ] Optional standalone `create-rtb` NPX starter package
+- [ ] Custom CLI color palette / theme overrides via `rtb.config.json`

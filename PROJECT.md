@@ -18,6 +18,12 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 | 7 | R5: TUI Architecture Refactoring | Extract tab key handlers from `app.rs` into `tui/src/handlers/{mod,projects,git_health,cleaner,maintenance,ports}.rs` | M5 | ORIGINAL_REQUEST.md & Plan Task 7 |
 | 8 | E2E & Full Verification | Pass 100% Pester tests, Rust tests, cargo build with zero warnings, zero personal paths, verify CLI commands | M6 | ORIGINAL_REQUEST.md Acceptance Criteria |
 | 9 | Cross-Platform TypeScript/Node.js CLI Replacement | Pure ESM Node.js CLI engine with multi-runtime inspection, fuzzy goto, shell hooks, agent orchestration, and automated CI release | M7 | Wayfinder Map Issue #34 |
+| 10 | Multi-Tier Golden Braille Logo & Hero Banner | Context-aware greeting with 24-bit truecolor braille emblem, dynamic project detection, and directory guide | M8 | Wayfinder Map Issue #74 / #75 |
+| 11 | Unified Ora TaskSpinner Utility | Golden braille animated spinner frames, timing diagnostics, and strict headless/JSON suppression | M8 | Wayfinder Map Issue #74 / #76 |
+| 12 | Cross-Shell Autocompletion Integrity | Robust project name completion across pwsh, bash, zsh, fish; switch fall-through & wildcard pattern fixes | M8 | Wayfinder Map Issue #74 / #77 |
+| 13 | Interactive Setup Wizard (@clack/prompts) | Modern 5-step onboarding wizard for root detection, multi-select lifecycle folders, and shell hook installation | M8 | Wayfinder Map Issue #74 / #78 |
+| 14 | Interactive Command Menu (@clack/prompts) | Arrow-navigable command cockpit (`rtb menu`) for project running, navigation, TUI, health, and agent environments | M8 | Wayfinder Map Issue #74 / #79 |
+| 15 | E2E & Packaging Acceptance Verification | 100% green tests across 35 test files (197 tests), clean typecheck, and npm package distribution contract | M8 | Wayfinder Map Issue #74 / #80 |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -29,14 +35,18 @@ RTB (Repository & Tooling Base) is a developer workspace management tool with:
 | M5 | TUI Architecture Refactoring | `tui/src/handlers/*.rs`, `tui/src/app.rs`, `tui/src/main.rs` | M1 | DONE |
 | M6 | Full Verification & E2E Acceptance | All tests in `cli/tests/`, `cargo test -p rtbtui`, `cargo build -p rtbtui`, forensic integrity audit | M1..M5 | DONE |
 | M7 | Cross-Platform TypeScript Engine (v0.5.0) | `core/`, `install.sh`, `install.ps1`, `.github/workflows/release.yml`, Vitest & Pester suites | M1..M6 | DONE |
+| M8 | Modern CLI UX & Design System (v0.12.0) | `core/src/utils/{logo,banner,spinner}.ts`, `core/src/commands/{init,menu,completion}.ts`, Clack prompts, Ora spinners | M7 | DONE |
 
 ## Code Layout
 - `core/src/index.ts` — TypeScript/Node.js CLI entrypoint
-- `core/src/commands/` — Cross-platform subcommands (init, goto, agent, doctor, ui, run, build, test, etc.)
+- `core/src/commands/` — Cross-platform subcommands (init, menu, goto, agent, doctor, ui, run, build, test, etc.)
 - `core/src/config/loader.ts` — Cross-platform multi-tier config loader
 - `core/src/inspector/` — Multi-runtime project and workspace inspector
 - `core/src/navigation/fuzzy.ts` — Fuzzy project scoring and path discovery
 - `core/src/services/` — Execution and maintenance task registries
+- `core/src/utils/logo.ts` — Multi-tier logo loader and 24-bit ANSI converter
+- `core/src/utils/banner.ts` — Context-aware HeroBanner renderer
+- `core/src/utils/spinner.ts` — Centralized `TaskSpinner` & `withSpinner` Ora wrapper
 - `tui/src/config.rs` — Config discovery and deserialization
 - `tui/src/ui/` — Ratatui UI components and logo rendering
 - `tui/src/data/agents.rs` — Agent context file generation in Rust
