@@ -48,10 +48,18 @@ pub enum AppAction {
     SelectAllDeps,
     UnselectAllDeps,
     PruneSelectedDeps,
+    PauseProject(Option<usize>),
+    ResumeProject(Option<usize>),
+    DeployProject(Option<usize>),
+    ArchiveProject(Option<usize>),
+    LaunchAgent(Option<usize>),
     StartMaintenance(Option<usize>),
     ClearMaintenanceLogs,
     KillPort(usize),
     OpenPortUrl(usize),
+    SetProjectFilter(Option<ProjectStatus>),
+    SetGitFilter(GitFilter),
+    SetCleanerCategoryFilter(Option<ProjectStatus>),
     Quit,
 }
 
@@ -111,7 +119,7 @@ impl TabController for ProjectsTab {
                     _ => None,
                 };
                 self.selected_index = 0;
-                AppAction::Handled
+                AppAction::SetProjectFilter(self.filter.clone())
             }
             KeyCode::Char('/') => {
                 self.search_active = true;
@@ -123,9 +131,13 @@ impl TabController for ProjectsTab {
             KeyCode::Char('x') => AppAction::RunProgram(Some(self.selected_index)),
             KeyCode::Char('d') => AppAction::OpenGitDiff(Some(self.selected_index)),
             KeyCode::Char('E') => AppAction::OpenEnvVault(Some(self.selected_index)),
+            KeyCode::Char('p') => AppAction::PauseProject(Some(self.selected_index)),
+            KeyCode::Char('r') => AppAction::ResumeProject(Some(self.selected_index)),
+            KeyCode::Char('D') => AppAction::DeployProject(Some(self.selected_index)),
+            KeyCode::Char('A') => AppAction::ArchiveProject(Some(self.selected_index)),
+            KeyCode::Char('a') => AppAction::LaunchAgent(Some(self.selected_index)),
             KeyCode::Char('N') => AppAction::OpenModal(ModalKind::Scaffold),
             KeyCode::Char('?') => AppAction::OpenModal(ModalKind::Help),
-            KeyCode::Char('p') => AppAction::OpenModal(ModalKind::CommandPalette),
             KeyCode::Char('q') => AppAction::Quit,
             _ => AppAction::None,
         }
@@ -172,7 +184,7 @@ impl TabController for GitHealthTab {
             KeyCode::Char('f') => {
                 self.filter = self.filter.next();
                 self.selected_index = 0;
-                AppAction::Handled
+                AppAction::SetGitFilter(self.filter)
             }
             KeyCode::Char('o') | KeyCode::Enter => AppAction::OpenEditor(Some(self.selected_index)),
             KeyCode::Char('e') => AppAction::OpenExplorer(Some(self.selected_index)),
@@ -180,11 +192,10 @@ impl TabController for GitHealthTab {
             KeyCode::Char('b') => AppAction::OpenBranchPicker(Some(self.selected_index)),
             KeyCode::Char('c') | KeyCode::Char('C') => AppAction::OpenCommitDialog(Some(self.selected_index)),
             KeyCode::Char('P') => AppAction::GitPush(Some(self.selected_index)),
-            KeyCode::Char('l') => AppAction::GitPull(Some(self.selected_index)),
+            KeyCode::Char('p') | KeyCode::Char('l') => AppAction::GitPull(Some(self.selected_index)),
             KeyCode::Char('s') => AppAction::GitSync(Some(self.selected_index)),
             KeyCode::Char('u') => AppAction::StageUntracked(Some(self.selected_index)),
             KeyCode::Char('?') => AppAction::OpenModal(ModalKind::Help),
-            KeyCode::Char('p') => AppAction::OpenModal(ModalKind::CommandPalette),
             KeyCode::Char('q') => AppAction::Quit,
             _ => AppAction::None,
         }
@@ -242,11 +253,12 @@ impl TabController for DepCleanerTab {
                     _ => None,
                 };
                 self.selected_index = 0;
-                AppAction::Handled
+                AppAction::SetCleanerCategoryFilter(self.category_filter.clone())
             }
             KeyCode::Char('a') => AppAction::SelectAllDeps,
             KeyCode::Char('n') => AppAction::UnselectAllDeps,
-            KeyCode::Char('d') => AppAction::OpenModal(ModalKind::Confirm(ConfirmAction::PruneDependencies)),
+            KeyCode::Enter | KeyCode::Char('d') => AppAction::PruneSelectedDeps,
+            KeyCode::Char('R') => AppAction::StartScan("Re-scanning dependencies..."),
             KeyCode::Char('t') => {
                 self.threshold_days = match self.threshold_days {
                     30 => 60,
@@ -324,11 +336,11 @@ impl TabController for DevPortsTab {
                 }
                 AppAction::Handled
             }
-            KeyCode::Up => {
+            KeyCode::Up | KeyCode::Char('k') => {
                 self.selected_index = self.selected_index.saturating_sub(1);
                 AppAction::Handled
             }
-            KeyCode::Char('k') => AppAction::KillPort(self.selected_index),
+            KeyCode::Char('K') | KeyCode::Char('x') => AppAction::KillPort(self.selected_index),
             KeyCode::Char('o') => AppAction::OpenPortUrl(self.selected_index),
             KeyCode::Char('R') => AppAction::StartScan("ports"),
             KeyCode::Char('?') => AppAction::OpenModal(ModalKind::Help),
@@ -398,7 +410,7 @@ mod tests {
         assert_eq!(tab.selected_index, 1);
 
         let action = tab.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
-        assert_eq!(action, AppAction::Handled);
+        assert_eq!(action, AppAction::SetProjectFilter(Some(ProjectStatus::Active)));
         assert_eq!(tab.filter, Some(ProjectStatus::Active));
 
         let action = tab.handle_key(KeyCode::Char('N'), KeyModifiers::NONE);
@@ -414,11 +426,11 @@ mod tests {
         assert_eq!(tab.filter, GitFilter::All);
 
         let action = tab.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
-        assert_eq!(action, AppAction::Handled);
+        assert_eq!(action, AppAction::SetGitFilter(GitFilter::NeedsAttention));
         assert_eq!(tab.filter, GitFilter::NeedsAttention);
 
         let action = tab.handle_key(KeyCode::Char('p'), KeyModifiers::NONE);
-        assert_eq!(action, AppAction::OpenModal(ModalKind::CommandPalette));
+        assert_eq!(action, AppAction::GitPull(Some(0)));
 
         let action = tab.handle_key(KeyCode::Char('P'), KeyModifiers::NONE);
         assert_eq!(action, AppAction::GitPush(Some(0)));
@@ -438,11 +450,11 @@ mod tests {
         assert_eq!(tab.threshold_days, 60);
 
         let action = tab.handle_key(KeyCode::Char('c'), KeyModifiers::NONE);
-        assert_eq!(action, AppAction::Handled);
+        assert_eq!(action, AppAction::SetCleanerCategoryFilter(Some(ProjectStatus::Paused)));
         assert_eq!(tab.category_filter, Some(ProjectStatus::Paused));
 
         let action = tab.handle_key(KeyCode::Char('d'), KeyModifiers::NONE);
-        assert_eq!(action, AppAction::OpenModal(ModalKind::Confirm(ConfirmAction::PruneDependencies)));
+        assert_eq!(action, AppAction::PruneSelectedDeps);
     }
 
     #[test]
@@ -461,7 +473,7 @@ mod tests {
     #[test]
     fn test_ports_tab_actions() {
         let mut tab = DevPortsTab::default();
-        let action = tab.handle_key(KeyCode::Char('k'), KeyModifiers::NONE);
+        let action = tab.handle_key(KeyCode::Char('K'), KeyModifiers::NONE);
         assert_eq!(action, AppAction::KillPort(0));
 
         let action = tab.handle_key(KeyCode::Char('o'), KeyModifiers::NONE);

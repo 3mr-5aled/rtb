@@ -14,6 +14,10 @@ use crate::ui::dialogs::{CommitDialog, ConfirmAction, ConfirmDialog};
 use crate::ui::env_vault::EnvVaultModal;
 use crate::ui::git_diff::GitDiffModal;
 use crate::ui::scaffold::{ScaffoldModal, ScaffoldStep};
+use crate::ui::tab::{
+    AppAction, DashboardTab, DepCleanerTab, DevPortsTab, GitHealthTab, MaintenanceTab, ProjectsTab,
+    TabController,
+};
 use crate::ui::toast::{ToastLevel, ToastQueue};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyModifiers};
@@ -187,7 +191,8 @@ impl App {
             }
         }
 
-        let app = App {
+        #[allow(unused_mut)]
+        let mut app = App {
             config: config.clone(),
             current_tab: initial_tab,
             dashboard_selected_index: 0,
@@ -202,7 +207,7 @@ impl App {
             #[cfg(test)]
             is_loading: false,
             #[cfg(not(test))]
-            is_loading: !had_cache,
+            is_loading: !_had_cache,
             loading_message: "Scanning D: Drive Projects & Git Health...",
             scan_receiver: None,
             maintenance_receiver: None,
@@ -383,60 +388,77 @@ impl App {
                 self.start_background_scan("Refreshing workspace...");
             }
 
-            // Route view-specific keys
-            _ => match self.current_tab {
-                Tab::Projects => self.handle_projects_key(key),
-                Tab::GitHealth => self.handle_git_health_key(key),
-                Tab::DepCleaner => self.handle_cleaner_key(key),
-                Tab::Maintenance => self.handle_maintenance_key(key),
-                Tab::DevPorts => self.handle_ports_key(key),
-                Tab::Dashboard => {
-                    let recent = self.recent_projects();
-                    let count = recent.len();
-                    if matches!(key, KeyCode::Down | KeyCode::Char('j')) {
-                        if count > 0 {
-                            self.dashboard_selected_index = (self.dashboard_selected_index + 1).min(count - 1);
-                        }
-                    } else if matches!(key, KeyCode::Up | KeyCode::Char('k')) {
-                        self.dashboard_selected_index = self.dashboard_selected_index.saturating_sub(1);
-                    } else if matches!(key, KeyCode::Char('p')) {
-                        self.command_palette = Some(CommandPalette::new());
-                    } else if matches!(key, KeyCode::Enter | KeyCode::Char('o')) {
-                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
-                            actions::open_in_editor(project);
-                            self.status_message = Some(format!("Opened {} in VS Code", project.name));
-                        }
-                    } else if matches!(key, KeyCode::Char('e')) {
-                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
-                            actions::open_in_explorer(project);
-                            self.status_message = Some(format!("Opened {} in Explorer", project.name));
-                        }
-                    } else if matches!(key, KeyCode::Char('v')) {
-                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
-                            let readme_path = project.path.join("README.md");
-                            let content = if readme_path.exists() {
-                                std::fs::read_to_string(&readme_path)
-                                    .unwrap_or_else(|_| "Error: Unable to read README.md".into())
-                            } else {
-                                format!("# {}\n\nNo README.md file found in this project.", project.name)
-                            };
-                            self.readme_modal = Some((project.name.clone(), content, 0));
-                        }
-                    } else if matches!(key, KeyCode::Char('d')) {
-                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
-                            if let Some(diff) = GitDiffModal::load(project.name.clone(), &project.path) {
-                                self.git_diff_modal = Some(diff);
-                            }
-                        }
-                    } else if matches!(key, KeyCode::Char('x')) {
-                        if let Some(project) = recent.get(self.dashboard_selected_index).copied() {
-                            let cmd = project.get_dev_command();
-                            actions::run_live_program(project);
-                            self.status_message = Some(format!("Launched live runner for {}: {}", project.name, cmd));
-                        }
+            // Route view-specific keys via TabController
+            _ => {
+                let action = match self.current_tab {
+                    Tab::Dashboard => {
+                        let mut tab = DashboardTab {
+                            selected_index: self.dashboard_selected_index,
+                            item_count: self.recent_projects().len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.dashboard_selected_index = tab.selected_index;
+                        act
                     }
-                }
-            },
+                    Tab::Projects => {
+                        let mut tab = ProjectsTab {
+                            selected_index: self.selected_index,
+                            filter: self.project_filter.clone(),
+                            search_query: self.search_query.clone(),
+                            search_active: self.search_active,
+                            item_count: self.filtered_projects().len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.selected_index = tab.selected_index;
+                        self.search_active = tab.search_active;
+                        act
+                    }
+                    Tab::GitHealth => {
+                        let mut tab = GitHealthTab {
+                            selected_index: self.git_selected_index,
+                            filter: self.git_filter,
+                            item_count: self.filtered_git_projects().len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.git_selected_index = tab.selected_index;
+                        act
+                    }
+                    Tab::DepCleaner => {
+                        let mut tab = DepCleanerTab {
+                            selected_index: self.cleaner_selected_index,
+                            threshold_days: self.cleaner_threshold_days,
+                            category_filter: self.cleaner_category_filter.clone(),
+                            item_count: self.filtered_dep_folders().len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.cleaner_selected_index = tab.selected_index;
+                        self.cleaner_threshold_days = tab.threshold_days;
+                        act
+                    }
+                    Tab::Maintenance => {
+                        let mut tab = MaintenanceTab {
+                            selected_index: self.maintenance_state.selected_task,
+                            item_count: self.maintenance_state.tasks.len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.maintenance_state.selected_task = tab.selected_index;
+                        act
+                    }
+                    Tab::DevPorts => {
+                        let mut tab = DevPortsTab {
+                            selected_index: self.ports_selected_index,
+                            item_count: self.active_ports.len(),
+                        };
+                        let act = tab.handle_key(key, modifiers);
+                        self.ports_selected_index = tab.selected_index;
+                        act
+                    }
+                };
+
+                let handled = !matches!(action, AppAction::None);
+                self.execute_action(action);
+                return handled;
+            }
         }
         false
     }
@@ -675,6 +697,82 @@ impl App {
                     self.status_message = Some("No folders selected for pruning".into());
                 }
             }
+            AppAction::PauseProject(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if project.status == ProjectStatus::Active {
+                        self.confirm_dialog = Some(ConfirmDialog {
+                            title: "Pause Project".into(),
+                            message: format!(
+                                "Move '{}' to 04-Paused and prune dependencies?",
+                                project.name
+                            ),
+                            action: ConfirmAction::PauseProject(project.name.clone()),
+                        });
+                    } else {
+                        self.status_message = Some("Only active projects can be paused".into());
+                    }
+                }
+            }
+            AppAction::ResumeProject(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if project.status == ProjectStatus::Paused {
+                        self.confirm_dialog = Some(ConfirmDialog {
+                            title: "Resume Project".into(),
+                            message: format!(
+                                "Move '{}' back to 01-Active?",
+                                project.name
+                            ),
+                            action: ConfirmAction::ResumeProject(project.name.clone()),
+                        });
+                    }
+                }
+            }
+            AppAction::DeployProject(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if project.status == ProjectStatus::Active {
+                        self.confirm_dialog = Some(ConfirmDialog {
+                            title: "Deploy Project".into(),
+                            message: format!(
+                                "Move '{}' to 02-Deployed/01-Production?",
+                                project.name
+                            ),
+                            action: ConfirmAction::DeployProject(project.name.clone(), true),
+                        });
+                    }
+                }
+            }
+            AppAction::ArchiveProject(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    self.confirm_dialog = Some(ConfirmDialog {
+                        title: "Archive Project".into(),
+                        message: format!(
+                            "Compress '{}' to 08-Backup/project-archives/?",
+                            project.name
+                        ),
+                        action: ConfirmAction::ArchiveProject(project.name.clone()),
+                    });
+                }
+            }
+            AppAction::LaunchAgent(idx) => {
+                let project = idx.and_then(|i| self.projects.get(i)).or_else(|| self.selected_project());
+                if let Some(project) = project {
+                    if let Some(agent) = agents::get_default_agent() {
+                        let agent_name = agent.name.clone();
+                        let proj_name = project.name.clone();
+                        if agents::launch_agent(project, None) {
+                            self.status_message = Some(format!("Launched {} for {}", agent_name, proj_name));
+                        } else {
+                            self.status_message = Some("Failed to launch AI Agent".into());
+                        }
+                    } else {
+                        self.status_message = Some("No installed AI Agent found in PATH (agy, claude, gemini, codex)".into());
+                    }
+                }
+            }
             AppAction::StartMaintenance(task_idx) => {
                 if self.maintenance_state.is_running {
                     self.status_message = Some("Maintenance tasks are already running in background".into());
@@ -716,6 +814,18 @@ impl App {
                     let _ = std::process::Command::new("cmd").args(["/C", "start", &url]).spawn();
                     self.status_message = Some(format!("Opening {}", url));
                 }
+            }
+            AppAction::SetProjectFilter(filter) => {
+                self.project_filter = filter;
+                self.selected_index = 0;
+            }
+            AppAction::SetGitFilter(filter) => {
+                self.git_filter = filter;
+                self.git_selected_index = 0;
+            }
+            AppAction::SetCleanerCategoryFilter(filter) => {
+                self.cleaner_category_filter = filter;
+                self.cleaner_selected_index = 0;
             }
             AppAction::Quit => {
                 self.should_quit = true;
@@ -1281,6 +1391,7 @@ impl App {
         false
     }
 
+    #[allow(dead_code)]
     pub(crate) fn move_selection(&mut self, delta: i32) {
         let filtered = self.filtered_projects();
         if filtered.is_empty() {
@@ -1777,7 +1888,7 @@ mod tests {
         app.projects.clear();
         app.selected_index = 0;
         for &key in &unexpected_keys {
-            app.handle_projects_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert_eq!(app.selected_index, 0);
         }
 
@@ -1798,7 +1909,7 @@ mod tests {
             dev_command: None,
         });
         for &key in &unexpected_keys {
-            app.handle_projects_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert!(app.selected_index < app.projects.len());
         }
 
@@ -1806,7 +1917,7 @@ mod tests {
         app.current_tab = Tab::GitHealth;
         app.git_selected_index = 0;
         for &key in &unexpected_keys {
-            app.handle_git_health_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert_eq!(app.git_selected_index, 0);
         }
 
@@ -1815,7 +1926,7 @@ mod tests {
         app.dep_folders.clear();
         app.cleaner_selected_index = 0;
         for &key in &unexpected_keys {
-            app.handle_cleaner_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert_eq!(app.cleaner_selected_index, 0);
         }
 
@@ -1824,7 +1935,7 @@ mod tests {
         app.maintenance_state.tasks.clear();
         app.maintenance_state.selected_task = 0;
         for &key in &unexpected_keys {
-            app.handle_maintenance_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert_eq!(app.maintenance_state.selected_task, 0);
         }
 
@@ -1833,7 +1944,7 @@ mod tests {
         app.active_ports.clear();
         app.ports_selected_index = 0;
         for &key in &unexpected_keys {
-            app.handle_ports_key(key);
+            app.handle_key(key, KeyModifiers::NONE);
             assert_eq!(app.ports_selected_index, 0);
         }
     }
