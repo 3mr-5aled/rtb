@@ -36,6 +36,7 @@ export const ALL_SUBCOMMANDS = [
   'backup',
   'env',
   'ui',
+  'menu',
   'help',
   'version',
   'status',
@@ -59,20 +60,22 @@ export function getProjectNames(config: RtbConfig | null, category?: string): st
   for (const [key, entry] of Object.entries(config.projectRoots)) {
     if (targetCategory && targetCategory !== 'all') {
       const normKey = key.toLowerCase();
-      const normLabel = (entry.label || '').toLowerCase();
+      const normLabel = (entry && typeof entry === 'object' && entry.label ? entry.label : '').toLowerCase();
       if (
         normKey !== targetCategory &&
         !normKey.startsWith(targetCategory) &&
+        !normKey.includes(targetCategory) &&
         !normLabel.includes(targetCategory)
       ) {
         continue;
       }
     }
 
-    if (!entry.path || !fs.existsSync(entry.path)) continue;
+    const p = typeof entry === 'string' ? entry : entry?.path;
+    if (!p || !fs.existsSync(p)) continue;
 
     try {
-      const items = fs.readdirSync(entry.path, { withFileTypes: true });
+      const items = fs.readdirSync(p, { withFileTypes: true });
       for (const item of items) {
         if (item.isDirectory() && !item.name.startsWith('.')) {
           names.add(item.name);
@@ -125,6 +128,18 @@ _rtb_completions() {
         prev="\${COMP_WORDS[COMP_CWORD-1]}"
         words=("\${COMP_WORDS[@]}")
         cword=$COMP_CWORD
+    fi
+
+    local cmd="\${words[0]}"
+    if [ "\${cmd}" = "dev" ]; then
+        if [[ "\${cur}" == --* ]]; then
+            COMPREPLY=( $(compgen -W "--agy --claude --gemini --cursor --windsurf --aider --openhands --print" -- "\${cur}") )
+        else
+            local projs
+            projs="$(command rtb __complete projects 2>/dev/null)"
+            COMPREPLY=( $(compgen -W "\${projs}" -- "\${cur}") )
+        fi
+        return 0
     fi
 
     local sub=""
@@ -221,17 +236,23 @@ _rtb_completions() {
             ;;
     esac
 }
-complete -F _rtb_completions rtb
+complete -F _rtb_completions rtb dev
 `;
 
     case 'zsh': {
       // Use a helper to build this string to avoid ${(f) being misinterpreted
       // by esbuild/TypeScript as a template literal expression
       const zshOpenBrace = '${';
-      return '#compdef rtb\n\n_rtb() {\n'
+      return '#compdef rtb dev\n\n_rtb() {\n'
         + '    local -a commands\n'
         + '    local curcontext="$curcontext" state line\n'
         + '    typeset -A opt_args\n\n'
+        + '    if [[ "$words[1]" == "dev" ]]; then\n'
+        + '        local -a projs\n'
+        + '        projs=(' + zshOpenBrace + '(f)"$(command rtb __complete projects 2>/dev/null)"})\n'
+        + "        _describe 'project' projs\n"
+        + '        return 0\n'
+        + '    fi\n\n'
         + '    _arguments -C \\\\\n'
         + "        '1: :->command' \\\\\n"
         + "        '*:: :->args'\n\n"
@@ -269,7 +290,7 @@ complete -F _rtb_completions rtb
         + '            ;;\n'
         + '    esac\n'
         + '}\n'
-        + 'compdef _rtb rtb\n';
+        + 'compdef _rtb rtb dev\n';
     }
 
     case 'fish':
@@ -288,6 +309,7 @@ complete -c rtb -n '__fish_seen_subcommand_from status' -l json
 complete -c rtb -n '__fish_seen_subcommand_from upgrade' -l check -l force
 complete -c rtb -n '__fish_seen_subcommand_from uninstall' -l force
 complete -c rtb -n '__fish_seen_subcommand_from new' -l stack -a 'react nextjs node python generic'
+complete -c dev -f -a '(command rtb __complete projects 2>/dev/null)'
 `;
 
     case 'pwsh':
@@ -315,7 +337,7 @@ function _rtb_get_all_projects {
     }
     $names = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($prop in $cfg.projectRoots.PSObject.Properties) {
-        $p = $prop.Value.path
+        $p = if ($prop.Value.path) { $prop.Value.path } else { $prop.Value }
         if ($p -and (Test-Path $p)) {
             foreach ($d in (Get-ChildItem -Path $p -Directory -ErrorAction SilentlyContinue)) {
                 if (-not $d.Name.StartsWith('.')) {
@@ -336,22 +358,23 @@ function _rtb_get_projects_by_status($status) {
             return & $invokeTarget __complete projects $status 2>$null
         } catch { return @() }
     }
-    $names = @()
+    $names = [System.Collections.Generic.HashSet[string]]::new()
     $s = $status.ToLower()
     foreach ($prop in $cfg.projectRoots.PSObject.Properties) {
         $key = $prop.Name.ToLower()
-        if ($key -eq $s -or $key.StartsWith($s)) {
-            $p = $prop.Value.path
+        $label = if ($prop.Value.label) { $prop.Value.label.ToLower() } else { '' }
+        if ($key -eq $s -or $key.StartsWith($s) -or $key.Contains($s) -or $label.Contains($s)) {
+            $p = if ($prop.Value.path) { $prop.Value.path } else { $prop.Value }
             if ($p -and (Test-Path $p)) {
                 foreach ($d in (Get-ChildItem -Path $p -Directory -ErrorAction SilentlyContinue)) {
                     if (-not $d.Name.StartsWith('.')) {
-                        $names += $d.Name
+                        [void]$names.Add($d.Name)
                     }
                 }
             }
         }
     }
-    return $names
+    return @($names)
 }
 
 function _rtb_get_archives {
@@ -382,7 +405,7 @@ $rtbCompleter = {
         'run', 'build', 'test', 'info', 'deps', 'workspace',
         'agent', 'goto', 'open', 'new', 'pause', 'resume', 'deploy',
         'archive', 'unarchive', 'list', 'health', 'clean', 'index',
-        'guard', 'maintenance', 'backup', 'env', 'ui', 'help',
+        'guard', 'maintenance', 'backup', 'env', 'ui', 'menu', 'help',
         'version', 'status', 'shell-init', 'completion',
         'agy', 'claude', 'gemini', 'codex', 'cursor', 'windsurf', 'aider', 'openhands'
     )
@@ -390,6 +413,35 @@ $rtbCompleter = {
     $elements = $commandAst.CommandElements
     $count = $elements.Count
 
+    # Determine the invoked binary/alias command name
+    $cmdName = if ($count -ge 1) {
+        [System.IO.Path]::GetFileNameWithoutExtension($elements[0].Extent.Text).ToLower()
+    } else { 'rtb' }
+
+    # Safely escape $wordToComplete so special characters (hyphens, brackets, dots) match literally
+    $escapedWord = if ([string]::IsNullOrEmpty($wordToComplete)) { '' } else {
+        [System.Management.Automation.WildcardPattern]::Escape($wordToComplete)
+    }
+
+    # Special case: 'dev' alias is a direct shortcut for 'rtb goto'
+    if ($cmdName -eq 'dev') {
+        if ($wordToComplete -like '--*') {
+            @('--agy', '--claude', '--gemini', '--cursor', '--windsurf', '--aider', '--openhands', '--print') |
+                Where-Object { $_ -like "$escapedWord*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+            return
+        }
+        (_rtb_get_all_projects) |
+            Where-Object { $_ -like "$escapedWord*" } |
+            ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+        return
+    }
+
+    # If completing the subcommand position on 'rtb'
     $isSubcommand = $false
     if ($count -le 1) {
         $isSubcommand = $true
@@ -402,7 +454,7 @@ $rtbCompleter = {
 
     if ($isSubcommand) {
         $subCommands |
-            Where-Object { $_ -like "$wordToComplete*" } |
+            Where-Object { $_ -like "$escapedWord*" } |
             ForEach-Object {
                 [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
             }
@@ -420,14 +472,14 @@ $rtbCompleter = {
             if ($sub -eq 'agent') {
                 if ($wordToComplete -like '--*') {
                     $agentFlags |
-                        Where-Object { $_ -like "$wordToComplete*" } |
+                        Where-Object { $_ -like "$escapedWord*" } |
                         ForEach-Object {
                             [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                         }
                     return
                 }
-                ($agentNames + @('--list') + (_rtb_get_all_projects)) | Sort-Object -Unique |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                ($agentNames + @('--list') + @(_rtb_get_all_projects)) | Sort-Object -Unique |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
@@ -436,7 +488,7 @@ $rtbCompleter = {
 
             if ($sub -eq 'goto' -and $wordToComplete -like '--*') {
                 @('--agy', '--claude', '--gemini', '--cursor', '--windsurf', '--aider', '--openhands', '--print') |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
@@ -445,7 +497,7 @@ $rtbCompleter = {
 
             if ($sub -eq 'info' -and $wordToComplete -like '--*') {
                 @('--json') |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
@@ -453,8 +505,8 @@ $rtbCompleter = {
             }
 
             if ($sub -eq 'deps' -and $wordToComplete -notlike '--*') {
-                @('outdated' + (_rtb_get_all_projects)) | Sort-Object -Unique |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                (@('outdated') + @(_rtb_get_all_projects)) | Sort-Object -Unique |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
@@ -463,7 +515,7 @@ $rtbCompleter = {
 
             if ($wordToComplete -like '--*') {
                 @('--help') |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
@@ -471,67 +523,73 @@ $rtbCompleter = {
             }
 
             (_rtb_get_all_projects) |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         { $_ -in 'pause', 'deploy' } {
             if ($wordToComplete -like '--*') {
                 $flags = if ($sub -eq 'pause') { @('--prune') } else { @('--prod', '--staging') }
                 $flags |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
                 return
             }
             (_rtb_get_projects_by_status 'active') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'resume' {
             if ($wordToComplete -like '--*') {
                 @('--install') |
-                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Where-Object { $_ -like "$escapedWord*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                     }
                 return
             }
             (_rtb_get_projects_by_status 'paused') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'archive' {
             @((_rtb_get_projects_by_status 'active') + (_rtb_get_projects_by_status 'paused')) | Sort-Object -Unique |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'unarchive' {
             (_rtb_get_archives) |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'list' {
             @('--active', '--paused', '--deployed', '--vibe', '--all', '--verbose', '--json') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'new' {
@@ -539,88 +597,97 @@ $rtbCompleter = {
             if ($wordToComplete -like '--*' -or $lastElement -eq '--stack') {
                 if ($lastElement -eq '--stack') {
                     @('react', 'nextjs', 'node', 'python', 'generic') |
-                        Where-Object { $_ -like "$wordToComplete*" } |
+                        Where-Object { $_ -like "$escapedWord*" } |
                         ForEach-Object {
                             [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                         }
                 } else {
                     @('--stack') |
-                        Where-Object { $_ -like "$wordToComplete*" } |
+                        Where-Object { $_ -like "$escapedWord*" } |
                         ForEach-Object {
                             [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                         }
                 }
             }
+            break
         }
 
         'clean' {
             @('--commit', '--dry-run', '--force', '--days', '--json') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'maintenance' {
             @('--full', '--json') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'status' {
             @('--json') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'doctor' {
             @('--json') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'upgrade' {
             @('--check', '--force') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'uninstall' {
             @('--force') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'shell-init' {
             @('bash', 'zsh', 'fish', 'pwsh') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
 
         'completion' {
             @('bash', 'zsh', 'fish', 'pwsh') |
-                Where-Object { $_ -like "$wordToComplete*" } |
+                Where-Object { $_ -like "$escapedWord*" } |
                 ForEach-Object {
                     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
                 }
+            break
         }
     }
 }
 
-Register-ArgumentCompleter -CommandName 'rtb', 'dev' -ScriptBlock $rtbCompleter
-Register-ArgumentCompleter -Native -CommandName 'rtb', 'dev' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev' -ScriptBlock $rtbCompleter
 `;
 
     default:

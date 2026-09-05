@@ -4,12 +4,14 @@ import { getShellScript } from '../src/commands/shell-init.js';
 import { createCli } from '../src/cli.js';
 import type { RtbConfig } from '../src/types/config.js';
 import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
 describe('Completion System', () => {
   it('should generate valid pwsh completion script with Register-ArgumentCompleter', () => {
     const script = getCompletionScript('pwsh');
-    expect(script).toContain('Register-ArgumentCompleter -CommandName \'rtb\', \'dev\'');
-    expect(script).toContain('Register-ArgumentCompleter -Native -CommandName \'rtb\', \'dev\'');
+    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
+    expect(script).toContain("Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
     expect(script).toContain('_rtb_get_all_projects');
     expect(script).toContain('_rtb_get_projects_by_status');
     expect(script).toContain('_rtb_get_archives');
@@ -110,8 +112,69 @@ describe('Completion System', () => {
       expect(stdoutData).toContain('run');
       expect(stdoutData).toContain('build');
       expect(stdoutData).toContain('completion');
+      expect(stdoutData).toContain('menu');
     } finally {
       process.stdout.write = origWrite;
     }
+  });
+
+  it('should run rtb __complete projects active via CLI and list project directory names', async () => {
+    const cli = createCli();
+    let stdoutData = '';
+    const origWrite = process.stdout.write;
+    process.stdout.write = ((chunk: any) => {
+      stdoutData += chunk;
+      return true;
+    }) as any;
+
+    try {
+      await cli.parseAsync(['node', 'rtb', '__complete', 'projects', 'active']);
+      expect(typeof stdoutData).toBe('string');
+    } finally {
+      process.stdout.write = origWrite;
+    }
+  });
+
+  it('should complete projects containing hyphens, dots, and numbers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rtb-hyphen-test-'));
+    try {
+      fs.mkdirSync(path.join(tmpDir, 'rtb-command-tool'), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, '35-portfolio'), { recursive: true });
+      fs.mkdirSync(path.join(tmpDir, 'app.v2-web'), { recursive: true });
+
+      const mockConfig: RtbConfig = {
+        projectRoots: {
+          active: { path: tmpDir, label: 'Active' },
+        },
+      };
+
+      const projects = getProjectNames(mockConfig, 'active');
+      expect(projects).toContain('rtb-command-tool');
+      expect(projects).toContain('35-portfolio');
+      expect(projects).toContain('app.v2-web');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('should generate pwsh script containing dev completer and WildcardPattern escaping', () => {
+    const script = getCompletionScript('pwsh');
+    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
+    expect(script).toContain('[System.Management.Automation.WildcardPattern]::Escape($wordToComplete)');
+    expect(script).toContain("$cmdName -eq 'dev'");
+    expect(script).toContain("(@('outdated') + @(_rtb_get_all_projects))");
+    // Verify switch cases have break
+    expect(script).toContain("(_rtb_get_projects_by_status 'active')");
+    expect(script).toContain("(_rtb_get_projects_by_status 'paused')");
+  });
+
+  it('should support dev command in bash and zsh completion scripts', () => {
+    const bash = getCompletionScript('bash');
+    expect(bash).toContain('complete -F _rtb_completions rtb dev');
+    expect(bash).toContain('[ "${cmd}" = "dev" ]');
+
+    const zsh = getCompletionScript('zsh');
+    expect(zsh).toContain('compdef _rtb rtb dev');
+    expect(zsh).toContain('[[ "$words[1]" == "dev" ]]');
   });
 });
