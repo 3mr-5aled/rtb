@@ -154,14 +154,35 @@ export function getShellIntegrationSnippet(shell: string): string {
     case 'pwsh':
     case 'powershell':
     case 'posh':
-      return '(& rtb shell-init pwsh | Out-String) | Invoke-Expression';
+      return `$rtbBin = [System.IO.Path]::Combine($HOME, '.config', 'rtb', 'bin')
+if ((Test-Path $rtbBin) -and ($env:PATH -notmatch [regex]::Escape($rtbBin))) {
+    $env:PATH = "$rtbBin;$env:PATH"
+}
+if (Get-Command rtb -ErrorAction SilentlyContinue) {
+    (& rtb shell-init pwsh | Out-String) | Invoke-Expression
+}`;
     case 'zsh':
-      return 'eval "$(rtb shell-init zsh)"';
+      return `if [ -d "$HOME/.config/rtb/bin" ] && [[ ":$PATH:" != *":$HOME/.config/rtb/bin:"* ]]; then
+  export PATH="$HOME/.config/rtb/bin:$PATH"
+fi
+if command -v rtb >/dev/null 2>&1; then
+  eval "$(rtb shell-init zsh)"
+fi`;
     case 'fish':
-      return 'rtb shell-init fish | source';
+      return `if test -d "$HOME/.config/rtb/bin"
+  contains "$HOME/.config/rtb/bin" $PATH; or set -gx PATH "$HOME/.config/rtb/bin" $PATH
+end
+if command -v rtb >/dev/null 2>&1
+  rtb shell-init fish | source
+end`;
     case 'bash':
     default:
-      return 'eval "$(rtb shell-init bash)"';
+      return `if [ -d "$HOME/.config/rtb/bin" ] && [[ ":$PATH:" != *":$HOME/.config/rtb/bin:"* ]]; then
+  export PATH="$HOME/.config/rtb/bin:$PATH"
+fi
+if command -v rtb >/dev/null 2>&1; then
+  eval "$(rtb shell-init bash)"
+fi`;
   }
 }
 
@@ -182,8 +203,10 @@ export function configureShellIntegration(
 
   try {
     if (fs.existsSync(profilePath)) {
-      const content = fs.readFileSync(profilePath, 'utf8');
-      if (content.includes('rtb shell-init')) {
+      let content = fs.readFileSync(profilePath, 'utf8');
+
+      // Check if exact snippet or resilient pattern already exists
+      if (content.includes('$rtbBin =') || content.includes('command -v rtb') || content.includes('contains "$HOME/.config/rtb/bin"')) {
         return {
           success: true,
           profilePath,
@@ -191,11 +214,26 @@ export function configureShellIntegration(
           snippet,
         };
       }
+
+      // Upgrade legacy bare hooks
+      if (content.includes('rtb shell-init')) {
+        const legacyPattern = /(#\s*RTB shell integration\s*)?(\(&\s*rtb\s+shell-init[^\n]+\)|eval\s*"\$\(rtb\s+shell-init[^\)]+\)"|rtb\s+shell-init[^\n]+)/g;
+        content = content.replace(legacyPattern, '').trimEnd();
+        const prefix = content.length > 0 ? '\n\n' : '';
+        fs.writeFileSync(profilePath, `${content}${prefix}# RTB shell integration\n${snippet}\n`, 'utf8');
+        return {
+          success: true,
+          profilePath,
+          message: `Upgraded shell integration in ${profilePath}`,
+          snippet,
+        };
+      }
     } else {
       fs.mkdirSync(path.dirname(profilePath), { recursive: true });
     }
 
-    const prefix = fs.existsSync(profilePath) ? '\n' : '';
+    const existingContent = fs.existsSync(profilePath) ? fs.readFileSync(profilePath, 'utf8') : '';
+    const prefix = existingContent.trim().length > 0 ? '\n\n' : '';
     fs.appendFileSync(
       profilePath,
       `${prefix}# RTB shell integration\n${snippet}\n`,
@@ -287,6 +325,14 @@ export function deployCliLauncher(customBinDir?: string): DeployLauncherResult {
           if ($parts -notcontains $target) {
             $new = @($target) + $parts -join ';';
             [Environment]::SetEnvironmentVariable('PATH', $new, 'User');
+            try {
+              Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @'
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+'@ -ErrorAction SilentlyContinue
+              [UIntPtr]$res = [UIntPtr]::Zero
+              [Win32.NativeMethods]::SendMessageTimeout([IntPtr]0xffff, 0x001A, [UIntPtr]::Zero, "Environment", 2, 1000, [ref]$res) | Out-Null
+            } catch {}
           }
         `.replace(/\r?\n\s*/g, ' ');
 
@@ -337,8 +383,16 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
     const configDir = getStandardConfigDir();
     const configFile = getStandardConfigPath();
 
-      // Check existing config
-      if (fs.existsSync(configFile) && !options.force) {
+    // Check existing config
+    let shouldOverwriteConfig = true;
+    let existingConfig: RtbConfig | null = null;
+
+    if (fs.existsSync(configFile)) {
+      try {
+        existingConfig = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+      } catch {}
+
+      if (!options.force) {
         if (ctx.isJson) {
           outputJson({ status: 'already_configured', configPath: configFile });
           return;
@@ -346,12 +400,16 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
 
         if (ctx.isInteractive) {
           const overwrite = await prompts.confirm({
-            message: `Configuration already exists at ${configFile}. Overwrite?`,
+            message: `Configuration already exists at ${configFile}. Overwrite settings?`,
             initialValue: false,
           });
-          if (prompts.isCancel(overwrite) || !overwrite) {
+          if (prompts.isCancel(overwrite)) {
             prompts.cancel('Setup cancelled.');
             return;
+          }
+          if (!overwrite) {
+            shouldOverwriteConfig = false;
+            prompts.log.info(chalk.dim('Keeping existing configuration. Proceeding with remaining installation steps...'));
           }
         } else {
           console.log('');
@@ -362,37 +420,51 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
           return;
         }
       }
+    }
 
-      const homeDir = os.homedir();
-      let chosenRoot = options.root;
+    const homeDir = os.homedir();
+    let chosenRoot = options.root;
 
-      // Detect candidate paths
-      const candidateRoots = [
-        path.join(homeDir, 'Projects'),
-        path.join(homeDir, 'dev'),
-        path.join(homeDir, 'code'),
-        path.join(homeDir, 'repos'),
-        path.join(homeDir, 'workspace'),
-        'D:\\02-Projects',
-        'D:\\Projects',
-      ];
-      const existing = candidateRoots.filter((targetPath) => {
-        try {
-          return fs.existsSync(targetPath);
-        } catch {
-          return false;
-        }
-      });
-
-      // Step 1: Welcome & Brand Intro (Interactive only)
-      if (ctx.isInteractive && !ctx.isJson && !ctx.isQuiet) {
-        const logo = getLogo({ color: true });
-        if (logo) {
-          console.log(logo);
-        }
-        prompts.intro(chalk.bold.hex('#FFD700')('rtb workspace setup') + chalk.dim(' — Next-gen project orchestrator'));
+    if (!shouldOverwriteConfig && existingConfig) {
+      if (existingConfig.projectRoots?.active?.path) {
+        chosenRoot = path.dirname(existingConfig.projectRoots.active.path);
+      } else if (existingConfig.projectRoots?.projects?.path) {
+        chosenRoot = existingConfig.projectRoots.projects.path;
+      } else if (existingConfig.backupRoot) {
+        chosenRoot = path.dirname(existingConfig.backupRoot);
       }
+    }
 
+    // Detect candidate paths
+    const candidateRoots = [
+      path.join(homeDir, 'Projects'),
+      path.join(homeDir, 'dev'),
+      path.join(homeDir, 'code'),
+      path.join(homeDir, 'repos'),
+      path.join(homeDir, 'workspace'),
+      'D:\\02-Projects',
+      'D:\\Projects',
+    ];
+    const existing = candidateRoots.filter((targetPath) => {
+      try {
+        return fs.existsSync(targetPath);
+      } catch {
+        return false;
+      }
+    });
+
+    // Step 1: Welcome & Brand Intro (Interactive only)
+    if (ctx.isInteractive && !ctx.isJson && !ctx.isQuiet) {
+      const logo = getLogo({ color: true });
+      if (logo) {
+        console.log(logo);
+      }
+      prompts.intro(chalk.bold.hex('#FFD700')('rtb workspace setup') + chalk.dim(' — Next-gen project orchestrator'));
+    }
+
+    let projectRoots: RtbConfig['projectRoots'] = existingConfig?.projectRoots || {};
+
+    if (shouldOverwriteConfig) {
       // Step 2: Workspace Root Selection
       if (!chosenRoot) {
         if (ctx.isInteractive) {
@@ -454,8 +526,6 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
       chosenRoot = path.resolve(chosenRoot);
 
       // Step 3: Lifecycle Folder Scaffolding
-      let projectRoots: RtbConfig['projectRoots'] = {};
-
       if (options.flat) {
         projectRoots = {
           projects: {
@@ -529,68 +599,75 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
           },
         };
       }
+    } else {
+      if (!chosenRoot) {
+        chosenRoot = path.join(homeDir, 'Projects');
+      }
+      chosenRoot = path.resolve(chosenRoot);
+    }
 
-      // Step 4: Shell Integration Hook (Interactive only)
-      if (ctx.isInteractive && !ctx.isJson) {
-        const shell = detectCurrentShell();
-        const shouldConfigure = await prompts.confirm({
-          message: `Configure shell integration hook for ${shell}?`,
-          initialValue: true,
-        });
+    // Step 4: Shell Integration Hook (Interactive only)
+    if (ctx.isInteractive && !ctx.isJson) {
+      const shell = detectCurrentShell();
+      const shouldConfigure = await prompts.confirm({
+        message: `Configure shell integration hook for ${shell}?`,
+        initialValue: true,
+      });
 
-        if (prompts.isCancel(shouldConfigure)) {
-          prompts.cancel('Setup cancelled.');
-          return;
-        }
-
-        if (shouldConfigure) {
-          const shellResult = configureShellIntegration(shell);
-          if (shellResult.success) {
-            prompts.log.success(chalk.green(`Shell integration configured: ${shellResult.profilePath}`));
-          } else {
-            prompts.log.warn(chalk.yellow(`Could not auto-configure shell: ${shellResult.message}`));
-            prompts.log.info(chalk.dim(`Add manually:\n${shellResult.snippet}`));
-          }
-        }
+      if (prompts.isCancel(shouldConfigure)) {
+        prompts.cancel('Setup cancelled.');
+        return;
       }
 
-      // Step 5: Terminal UI Binary (Interactive or explicit flags)
-      const hasTui = Boolean(findRtbtuiBinary());
-      const skipUi = Boolean(options.skipUi || options.noUi || process.env.RTB_SKIP_UI === '1' || process.env.RTB_SKIP_UI === 'true');
-      let shouldInstallTui = Boolean(options.ui || process.env.RTB_INSTALL_UI === '1' || process.env.RTB_INSTALL_UI === 'true');
-
-      if (!hasTui && !skipUi && !shouldInstallTui && ctx.isInteractive && !ctx.isJson) {
-        const tuiChoice = await prompts.select({
-          message: 'Download RTB Terminal UI (rtbtui) dashboard?',
-          options: [
-            { value: 'now', label: 'Download now (Recommended)', hint: 'Prebuilt native dashboard binary' },
-            { value: 'later', label: 'Download later', hint: "Downloads automatically on first 'rtb ui' run" },
-          ],
-          initialValue: 'now',
-        });
-
-        if (!prompts.isCancel(tuiChoice) && tuiChoice === 'now') {
-          shouldInstallTui = true;
+      if (shouldConfigure) {
+        const shellResult = configureShellIntegration(shell);
+        if (shellResult.success) {
+          prompts.log.success(chalk.green(`Shell integration configured: ${shellResult.profilePath}`));
         } else {
-          prompts.log.info(chalk.dim("Skipped rtbtui download. Run 'rtb ui' anytime to download on demand."));
+          prompts.log.warn(chalk.yellow(`Could not auto-configure shell: ${shellResult.message}`));
+          prompts.log.info(chalk.dim(`Add manually:\n${shellResult.snippet}`));
         }
       }
+    }
 
-      if (shouldInstallTui && !hasTui) {
-        const s = prompts.spinner();
-        s.start('Downloading prebuilt rtbtui binary...');
-        const dest = await provisionRtbtuiBinary();
-        if (dest) {
-          s.stop(chalk.green(`Installed rtbtui binary: ${dest}`));
-        } else {
-          s.stop(chalk.yellow('Download failed. You can download later via "rtb ui --download".'));
-        }
+    // Step 5: Terminal UI Binary (Interactive or explicit flags)
+    const hasTui = Boolean(findRtbtuiBinary());
+    const skipUi = Boolean(options.skipUi || options.noUi || process.env.RTB_SKIP_UI === '1' || process.env.RTB_SKIP_UI === 'true');
+    let shouldInstallTui = Boolean(options.ui || process.env.RTB_INSTALL_UI === '1' || process.env.RTB_INSTALL_UI === 'true');
+
+    if (!hasTui && !skipUi && !shouldInstallTui && ctx.isInteractive && !ctx.isJson) {
+      const tuiChoice = await prompts.select({
+        message: 'Download RTB Terminal UI (rtbtui) dashboard?',
+        options: [
+          { value: 'now', label: 'Download now (Recommended)', hint: 'Prebuilt native dashboard binary' },
+          { value: 'later', label: 'Download later', hint: "Downloads automatically on first 'rtb ui' run" },
+        ],
+        initialValue: 'now',
+      });
+
+      if (!prompts.isCancel(tuiChoice) && tuiChoice === 'now') {
+        shouldInstallTui = true;
+      } else {
+        prompts.log.info(chalk.dim("Skipped rtbtui download. Run 'rtb ui' anytime to download on demand."));
       }
+    }
 
-      // Step 6: Deploy CLI Launcher & Configure PATH
-      const launcherRes = deployCliLauncher();
+    if (shouldInstallTui && !hasTui) {
+      const s = prompts.spinner();
+      s.start('Downloading prebuilt rtbtui binary...');
+      const dest = await provisionRtbtuiBinary();
+      if (dest) {
+        s.stop(chalk.green(`Installed rtbtui binary: ${dest}`));
+      } else {
+        s.stop(chalk.yellow('Download failed. You can download later via "rtb ui --download".'));
+      }
+    }
 
-      // Step 7: Completion Outro
+    // Step 6: Deploy CLI Launcher & Configure PATH
+    const launcherRes = deployCliLauncher();
+
+    // Step 7: Completion Outro
+    if (shouldOverwriteConfig) {
       const newConfig: RtbConfig = {
         version: '1.0',
         projectRoots,
@@ -606,38 +683,43 @@ export function registerInitCommand(program: Command, getContext: () => CliConte
 
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(configFile, JSON.stringify(newConfig, null, 2) + '\n', 'utf-8');
+    }
 
-      if (ctx.isJson) {
-        outputJson({
-          status: 'success',
-          configPath: configFile,
-          launcherPath: launcherRes.launcherPath,
-          config: newConfig,
-        });
-        return;
-      }
+    const finalConfig = shouldOverwriteConfig
+      ? (JSON.parse(fs.readFileSync(configFile, 'utf8')) as RtbConfig)
+      : (existingConfig || { version: '1.0', projectRoots: {} });
 
-      if (ctx.isInteractive) {
-        prompts.outro(chalk.bold.green('✔ RTB installation setup complete!'));
-      } else {
-        console.log(`\n  ${chalk.green('✔')} ${chalk.bold('RTB installation setup complete!')}`);
-      }
+    if (ctx.isJson) {
+      outputJson({
+        status: 'success',
+        configPath: configFile,
+        launcherPath: launcherRes.launcherPath,
+        config: finalConfig,
+      });
+      return;
+    }
 
-      console.log('');
-      console.log(`  ${chalk.bold.hex('#FFD700')('rtb')} ${chalk.green('is now installed and ready for use!')}`);
-      console.log('');
-      console.log(`  ${chalk.cyan('Launcher:')}   ${launcherRes.launcherPath || launcherRes.binDir}`);
-      console.log(`  ${chalk.cyan('Workspace:')}  ${chosenRoot}`);
-      console.log(`  ${chalk.cyan('Config:')}     ${configFile}`);
-      console.log(`  ${chalk.cyan('TUI Binary:')} ${hasTui || shouldInstallTui ? chalk.green('Installed') : chalk.gray("Skipped (run 'rtb ui' to download anytime)")}`);
-      console.log('');
-      console.log(`  ${chalk.bold('Try running:')}`);
-      console.log(`    ${chalk.green.bold('rtb')}                  ${chalk.dim('— open RTB workspace cockpit')}`);
-      console.log(`    ${chalk.green.bold('rtb menu')}             ${chalk.dim('— interactive prompt launcher')}`);
-      console.log(`    ${chalk.green.bold('rtb goto')} ${chalk.cyan('<project>')}   ${chalk.dim('— switch directory into any project')}`);
-      console.log(`    ${chalk.green.bold('rtb ui')}               ${chalk.dim('— interactive terminal dashboard')}`);
-      console.log(`    ${chalk.green.bold('rtb doctor')}           ${chalk.dim('— verify toolchain health & agents')}`);
-      console.log(`    ${chalk.green.bold('rtb help')}             ${chalk.dim('— view all available commands')}\n`);
+    if (ctx.isInteractive) {
+      prompts.outro(chalk.bold.green('✔ RTB installation setup complete!'));
+    } else {
+      console.log(`\n  ${chalk.green('✔')} ${chalk.bold('RTB installation setup complete!')}`);
+    }
+
+    console.log('');
+    console.log(`  ${chalk.bold.hex('#FFD700')('rtb')} ${chalk.green('is now installed and ready for use!')}`);
+    console.log('');
+    console.log(`  ${chalk.cyan('Launcher:')}   ${launcherRes.launcherPath || launcherRes.binDir}`);
+    console.log(`  ${chalk.cyan('Workspace:')}  ${chosenRoot}`);
+    console.log(`  ${chalk.cyan('Config:')}     ${configFile}${shouldOverwriteConfig ? '' : chalk.dim(' (preserved)')}`);
+    console.log(`  ${chalk.cyan('TUI Binary:')} ${hasTui || shouldInstallTui ? chalk.green('Installed') : chalk.gray("Skipped (run 'rtb ui' to download anytime)")}`);
+    console.log('');
+    console.log(`  ${chalk.bold('Try running:')}`);
+    console.log(`    ${chalk.green.bold('rtb')}                  ${chalk.dim('— open RTB workspace cockpit')}`);
+    console.log(`    ${chalk.green.bold('rtb menu')}             ${chalk.dim('— interactive prompt launcher')}`);
+    console.log(`    ${chalk.green.bold('rtb goto')} ${chalk.cyan('<project>')}   ${chalk.dim('— switch directory into any project')}`);
+    console.log(`    ${chalk.green.bold('rtb ui')}               ${chalk.dim('— interactive terminal dashboard')}`);
+    console.log(`    ${chalk.green.bold('rtb doctor')}           ${chalk.dim('— verify toolchain health & agents')}`);
+    console.log(`    ${chalk.green.bold('rtb help')}             ${chalk.dim('— view all available commands')}\n`);
     };
 
   program

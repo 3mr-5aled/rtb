@@ -80,6 +80,19 @@ describe('rtb init onboarding wizard & configuration', () => {
       const occurrences = (contentAfter.match(/rtb shell-init/g) || []).length;
       expect(occurrences).toBe(1);
     });
+
+    it('should upgrade legacy bare shell integration in existing profile', () => {
+      const mockProfile = path.join(tmpHome, '.legacy_profile');
+      fs.writeFileSync(mockProfile, '# Old stuff\n(& rtb shell-init pwsh | Out-String) | Invoke-Expression\n', 'utf8');
+
+      const res = configureShellIntegration('pwsh', mockProfile);
+      expect(res.success).toBe(true);
+      expect(res.message).toContain('Upgraded shell integration');
+
+      const contentAfter = fs.readFileSync(mockProfile, 'utf8');
+      expect(contentAfter).toContain('$rtbBin =');
+      expect(contentAfter).toContain('(& rtb shell-init pwsh | Out-String) | Invoke-Expression');
+    });
   });
 
   describe('Headless / Flag Invocations', () => {
@@ -312,6 +325,45 @@ describe('rtb init onboarding wizard & configuration', () => {
         confirmSpy.mockRestore();
         outroSpy.mockRestore();
         provisionSpy.mockRestore();
+      }
+    });
+
+    it('should keep existing configuration and continue installation when overwrite is declined', async () => {
+      fs.mkdirSync(tmpConfigDir, { recursive: true });
+      const initialConfig = {
+        version: '1.0',
+        projectRoots: {
+          active: { path: path.join(tmpWorkspace, '01-Active'), label: 'Custom Active', emoji: '🟢' },
+        },
+      };
+      fs.writeFileSync(path.join(tmpConfigDir, 'rtb.config.json'), JSON.stringify(initialConfig, null, 2));
+
+      const introSpy = vi.spyOn(prompts, 'intro').mockImplementation(() => {});
+      const confirmSpy = vi.spyOn(prompts, 'confirm').mockImplementation(async (opts: any) => {
+        if (opts.message.includes('Overwrite')) return false; // decline overwrite
+        if (opts.message.includes('shell integration')) return false;
+        return false;
+      });
+      const outroSpy = vi.spyOn(prompts, 'outro').mockImplementation(() => {});
+
+      try {
+        const cli = createCli();
+        await cli.parseAsync(['node', 'rtb', 'install', '--skip-ui']);
+
+        expect(confirmSpy).toHaveBeenCalled();
+        expect(outroSpy).toHaveBeenCalled();
+
+        // Config file should be preserved
+        const configAfter = JSON.parse(fs.readFileSync(path.join(tmpConfigDir, 'rtb.config.json'), 'utf8'));
+        expect(configAfter.projectRoots.active.label).toBe('Custom Active');
+
+        // Launcher should be deployed
+        const binDir = path.join(tmpConfigDir, 'bin');
+        expect(fs.existsSync(path.join(binDir, 'rtb.js'))).toBe(true);
+      } finally {
+        introSpy.mockRestore();
+        confirmSpy.mockRestore();
+        outroSpy.mockRestore();
       }
     });
   });
