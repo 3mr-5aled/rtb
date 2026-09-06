@@ -10,8 +10,8 @@ import os from 'node:os';
 describe('Completion System', () => {
   it('should generate valid pwsh completion script with Register-ArgumentCompleter', () => {
     const script = getCompletionScript('pwsh');
-    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
-    expect(script).toContain("Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
+    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev', 'goto'");
+    expect(script).toContain("Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev', 'goto'");
     expect(script).toContain('_rtb_get_all_projects');
     expect(script).toContain('_rtb_get_projects_by_status');
     expect(script).toContain('_rtb_get_archives');
@@ -157,24 +157,27 @@ describe('Completion System', () => {
     }
   });
 
-  it('should generate pwsh script containing dev completer and WildcardPattern escaping', () => {
+  it('should generate pwsh script containing dev and goto completers and WildcardPattern escaping', () => {
     const script = getCompletionScript('pwsh');
-    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev'");
+    expect(script).toContain("Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev', 'goto'");
     expect(script).toContain('[System.Management.Automation.WildcardPattern]::Escape($wordToComplete)');
     expect(script).toContain("$cmdName -eq 'dev'");
+    expect(script).toContain("$cmdName -eq 'goto'");
     expect(script).toContain("(@('outdated') + @(_rtb_get_all_projects))");
     // Verify switch cases have break
     expect(script).toContain("(_rtb_get_projects_by_status 'active')");
     expect(script).toContain("(_rtb_get_projects_by_status 'paused')");
   });
 
-  it('should support dev command in bash and zsh completion scripts', () => {
+  it('should support dev and goto commands in bash and zsh completion scripts', () => {
     const bash = getCompletionScript('bash');
-    expect(bash).toContain('complete -F _rtb_completions rtb dev');
+    expect(bash).toContain('complete -F _rtb_completions rtb dev goto');
     expect(bash).toContain('[ "${cmd}" = "dev" ]');
+    expect(bash).toContain('[ "${cmd}" = "goto" ]');
 
     const zsh = getCompletionScript('zsh');
-    expect(zsh).toContain('compdef _rtb rtb dev');
+    expect(zsh).toContain('compdef _rtb rtb dev goto');
     expect(zsh).toContain('[[ "$words[1]" == "dev" ]]');
+    expect(zsh).toContain('[[ "$words[1]" == "goto" ]]');
   });
 });

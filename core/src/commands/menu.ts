@@ -145,9 +145,20 @@ async function handleGoto(ctx: CliContext): Promise<void> {
   }
 
   const target = resolveProjectTarget(chosenProj as string, ctx.config);
-  prompts.outro(`Selected: ${chalk.bold.green(chosenProj as string)}`);
-  console.log(`\n  ${chalk.cyan('Path:')} ${target?.targetPath}`);
-  console.log(`  ${chalk.dim(`Tip: Run 'rtb goto ${chosenProj}' in your shell to cd into this directory.`)}\n`);
+  if (target?.targetPath) {
+    if (process.env.RTB_CD_FILE) {
+      try {
+        fs.writeFileSync(process.env.RTB_CD_FILE, target.targetPath, 'utf8');
+      } catch {}
+    }
+    prompts.outro(`Navigating to ${chalk.bold.green(chosenProj as string)}`);
+    console.log(`\n  ${chalk.cyan('Path:')} ${target.targetPath}`);
+    if (!process.env.RTB_CD_FILE) {
+      console.log(`  ${chalk.dim(`Tip: Run 'rtb goto ${chosenProj}' in your shell to cd into this directory.`)}\n`);
+    } else {
+      console.log('');
+    }
+  }
 }
 
 async function handleUi(ctx: CliContext): Promise<void> {

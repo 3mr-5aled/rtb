@@ -1,11 +1,13 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import readline from 'node:readline';
+import fs from 'node:fs';
 import type { CliContext } from '../types/context.js';
 import { findProjectPathFuzzy } from '../navigation/fuzzy.js';
 import { AgentOrchestrator } from '../services/agent.js';
 import { outputError, outputJson } from '../utils/output.js';
 import { ConfigMissingError } from '../errors.js';
+import { getProjectNames } from './completion.js';
 
 export function registerGotoCommand(program: Command, getContext: () => CliContext): void {
   program
@@ -41,9 +43,42 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
           process.exitCode = 1;
           return;
         }
-        console.log(`\n  ${chalk.yellow('Usage:')} rtb goto <project-name> [--agy|--claude|...]`);
-        console.log(`  ${chalk.gray('Tip: Use fuzzy matching or partial names to jump instantly.')}\n`);
-        return;
+        if (ctx.isInteractive && !ctx.isJson && ctx.config) {
+          const allProjects = getProjectNames(ctx.config);
+          if (allProjects.length > 0) {
+            console.log(`\n  ${chalk.yellow('Select a project to navigate to:')}`);
+            const limit = Math.min(allProjects.length, 15);
+            for (let i = 0; i < limit; i++) {
+              console.log(`  [${chalk.cyan(i + 1)}] ${allProjects[i]}`);
+            }
+            console.log('');
+            const rl = readline.createInterface({
+              input: process.stdin,
+              output: process.stdout,
+            });
+            const choiceStr: string = await new Promise((resolve) => {
+              rl.question(chalk.yellow(`  Select [1-${limit}] or Enter to cancel: `), (ans) => {
+                rl.close();
+                resolve(ans.trim());
+              });
+            });
+            const selNum = parseInt(choiceStr, 10);
+            if (!isNaN(selNum) && selNum >= 1 && selNum <= limit) {
+              projectName = allProjects[selNum - 1];
+            } else {
+              console.log(chalk.gray('  Cancelled.\n'));
+              return;
+            }
+          } else {
+            console.log(`\n  ${chalk.yellow('Usage:')} rtb goto <project-name> [--agy|--claude|...]`);
+            console.log(`  ${chalk.gray('Tip: Use fuzzy matching or partial names to jump instantly.')}\n`);
+            return;
+          }
+        } else {
+          console.log(`\n  ${chalk.yellow('Usage:')} rtb goto <project-name> [--agy|--claude|...]`);
+          console.log(`  ${chalk.gray('Tip: Use fuzzy matching or partial names to jump instantly.')}\n`);
+          return;
+        }
       }
 
       if (!ctx.config) {
@@ -115,6 +150,12 @@ export function registerGotoCommand(program: Command, getContext: () => CliConte
         // Raw stdout output for shell cd hook
         process.stdout.write(selected.path);
         return;
+      }
+
+      if (process.env.RTB_CD_FILE) {
+        try {
+          fs.writeFileSync(process.env.RTB_CD_FILE, selected.path, 'utf8');
+        } catch {}
       }
 
       const agentName = options.agy

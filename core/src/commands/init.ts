@@ -205,8 +205,14 @@ export function configureShellIntegration(
     if (fs.existsSync(profilePath)) {
       let content = fs.readFileSync(profilePath, 'utf8');
 
-      // Check if exact snippet or resilient pattern already exists
-      if (content.includes('$rtbBin =') || content.includes('command -v rtb') || content.includes('contains "$HOME/.config/rtb/bin"')) {
+      // Check if exact complete snippet or resilient pattern already exists
+      const hasCompleteHook = content.includes('rtb shell-init');
+      if (
+        hasCompleteHook &&
+        (content.includes('$rtbBin =') ||
+          content.includes('command -v rtb') ||
+          content.includes('contains "$HOME/.config/rtb/bin"'))
+      ) {
         return {
           success: true,
           profilePath,
@@ -215,9 +221,9 @@ export function configureShellIntegration(
         };
       }
 
-      // Upgrade legacy bare hooks
-      if (content.includes('rtb shell-init')) {
-        const legacyPattern = /(#\s*RTB shell integration\s*)?(\(&\s*rtb\s+shell-init[^\n]+\)|eval\s*"\$\(rtb\s+shell-init[^\)]+\)"|rtb\s+shell-init[^\n]+)/g;
+      // Upgrade legacy bare hooks or repair partial/broken shell integration blocks
+      if (content.includes('rtb shell-init') || content.includes('$rtbBin') || content.includes('Get-Command rtb')) {
+        const legacyPattern = /(#\s*RTB shell integration\s*)?(\$rtbBin\s*=[\s\S]*?if\s*\(Get-Command rtb[^\)]*\)\s*\{[^\}]*\}|\(&\s*rtb\s+shell-init[^\n]+\)|eval\s*"\$\(rtb\s+shell-init[^\)]+\)"|rtb\s+shell-init[^\n]+)/g;
         content = content.replace(legacyPattern, '').trimEnd();
         const prefix = content.length > 0 ? '\n\n' : '';
         fs.writeFileSync(profilePath, `${content}${prefix}# RTB shell integration\n${snippet}\n`, 'utf8');

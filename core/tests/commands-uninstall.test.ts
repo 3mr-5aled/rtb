@@ -47,6 +47,7 @@ describe('rtb uninstall command', () => {
     const res = performUninstall({
       keepConfig: false,
       customConfigDir: tmpConfigDir,
+      customProfileCandidates: [sampleProfile],
     });
 
     expect(fs.existsSync(tmpBinDir)).toBe(false);
@@ -63,6 +64,7 @@ describe('rtb uninstall command', () => {
     const res = performUninstall({
       keepConfig: true,
       customConfigDir: tmpConfigDir,
+      customProfileCandidates: [sampleProfile],
     });
 
     expect(fs.existsSync(tmpBinDir)).toBe(false);

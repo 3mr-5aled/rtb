@@ -9,7 +9,10 @@ import type { CliContext } from '../types/context.js';
 import { outputError, outputJson } from '../utils/output.js';
 
 export function cleanProfileContent(content: string): string {
-  const lines = content.split(/\r?\n/);
+  // First, clean multi-line RTB blocks (including $rtbBin through if (Get-Command rtb...))
+  let cleaned = content.replace(/(#\s*RTB\s+shell\s+integration\r?\n)?\$rtbBin\s*=[\s\S]*?if\s*\(Get-Command\s+rtb[^\)]*\)\s*\{[^\}]*\}(\r?\n)*/gi, '');
+
+  const lines = cleaned.split(/\r?\n/);
   const filtered = lines.filter((line) => {
     if (/rtb\s+shell-init/i.test(line)) return false;
     if (/#\s*RTB\s+Shell\s+Integration/i.test(line)) return false;
@@ -114,17 +117,23 @@ export function findRtbExecutables(): string[] {
   return executables;
 }
 
-export function performUninstall(options: { keepConfig?: boolean; customConfigDir?: string } = {}): {
+export function performUninstall(options: {
+  keepConfig?: boolean;
+  customConfigDir?: string;
+  customProfileCandidates?: string[];
+} = {}): {
   removedPaths: string[];
   cleanedProfiles: string[];
 } {
+  const isTest = Boolean(process.env.VITEST || process.env.NODE_ENV === 'test');
   const removedPaths: string[] = [];
   const homeDir = os.homedir();
   const userConfigDir = options.customConfigDir || path.join(homeDir, '.config', 'rtb');
   const binDir = process.env.RTB_BIN_DIR || path.join(userConfigDir, 'bin');
 
-  // 1. Clean shell profiles
-  const cleanedProfiles = cleanShellProfiles();
+  // 1. Clean shell profiles (safely isolate during automated tests)
+  const profileCandidates = options.customProfileCandidates || (isTest ? [] : undefined);
+  const cleanedProfiles = cleanShellProfiles(profileCandidates);
 
   // 2. Remove binary directory
   if (fs.existsSync(binDir)) {
@@ -134,23 +143,25 @@ export function performUninstall(options: { keepConfig?: boolean; customConfigDi
     } catch {}
   }
 
-  // 2b. Remove discovered standalone binary wrappers from PATH (e.g. D:\bin, etc.)
-  const discoveredExecutables = findRtbExecutables();
-  for (const exe of discoveredExecutables) {
+  // 2b. Remove discovered standalone binary wrappers from PATH (skip during tests to preserve dev environment)
+  if (!isTest) {
+    const discoveredExecutables = findRtbExecutables();
+    for (const exe of discoveredExecutables) {
+      try {
+        if (fs.existsSync(exe)) {
+          fs.unlinkSync(exe);
+          removedPaths.push(exe);
+        }
+      } catch {}
+    }
+
+    // 2c. Check and uninstall global npm package if present
     try {
-      if (fs.existsSync(exe)) {
-        fs.unlinkSync(exe);
-        removedPaths.push(exe);
-      }
+      const isWindows = process.platform === 'win32';
+      const npmCmd = isWindows ? 'npm.cmd' : 'npm';
+      spawnSync(npmCmd, ['uninstall', '-g', '@3mr5aled/rtb', '@3mr-5aled/rtb'], { stdio: 'ignore' });
     } catch {}
   }
-
-  // 2c. Check and uninstall global npm package if present
-  try {
-    const isWindows = process.platform === 'win32';
-    const npmCmd = isWindows ? 'npm.cmd' : 'npm';
-    spawnSync(npmCmd, ['uninstall', '-g', '@3mr5aled/rtb', '@3mr-5aled/rtb'], { stdio: 'ignore' });
-  } catch {}
 
   // 3. Remove user configuration directory if not keepConfig
   if (!options.keepConfig && fs.existsSync(userConfigDir)) {

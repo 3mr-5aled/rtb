@@ -131,7 +131,7 @@ _rtb_completions() {
     fi
 
     local cmd="\${words[0]}"
-    if [ "\${cmd}" = "dev" ]; then
+    if [ "\${cmd}" = "dev" ] || [ "\${cmd}" = "goto" ]; then
         if [[ "\${cur}" == --* ]]; then
             COMPREPLY=( $(compgen -W "--agy --claude --gemini --cursor --windsurf --aider --openhands --print" -- "\${cur}") )
         else
@@ -236,18 +236,18 @@ _rtb_completions() {
             ;;
     esac
 }
-complete -F _rtb_completions rtb dev
+complete -F _rtb_completions rtb dev goto
 `;
 
     case 'zsh': {
       // Use a helper to build this string to avoid ${(f) being misinterpreted
       // by esbuild/TypeScript as a template literal expression
       const zshOpenBrace = '${';
-      return '#compdef rtb dev\n\n_rtb() {\n'
+      return '#compdef rtb dev goto\n\n_rtb() {\n'
         + '    local -a commands\n'
         + '    local curcontext="$curcontext" state line\n'
         + '    typeset -A opt_args\n\n'
-        + '    if [[ "$words[1]" == "dev" ]]; then\n'
+        + '    if [[ "$words[1]" == "dev" ]] || [[ "$words[1]" == "goto" ]]; then\n'
         + '        local -a projs\n'
         + '        projs=(' + zshOpenBrace + '(f)"$(command rtb __complete projects 2>/dev/null)"})\n'
         + "        _describe 'project' projs\n"
@@ -290,7 +290,7 @@ complete -F _rtb_completions rtb dev
         + '            ;;\n'
         + '    esac\n'
         + '}\n'
-        + 'compdef _rtb rtb dev\n';
+        + 'compdef _rtb rtb dev goto\n';
     }
 
     case 'fish':
@@ -310,6 +310,7 @@ complete -c rtb -n '__fish_seen_subcommand_from upgrade' -l check -l force
 complete -c rtb -n '__fish_seen_subcommand_from uninstall' -l force
 complete -c rtb -n '__fish_seen_subcommand_from new' -l stack -a 'react nextjs node python generic'
 complete -c dev -f -a '(command rtb __complete projects 2>/dev/null)'
+complete -c goto -f -a '(command rtb __complete projects 2>/dev/null)'
 `;
 
     case 'pwsh':
@@ -423,8 +424,8 @@ $rtbCompleter = {
         [System.Management.Automation.WildcardPattern]::Escape($wordToComplete)
     }
 
-    # Special case: 'dev' alias is a direct shortcut for 'rtb goto'
-    if ($cmdName -eq 'dev') {
+    # Special case: 'dev' and 'goto' standalone commands are direct shortcuts for project navigation
+    if ($cmdName -eq 'dev' -or $cmdName -eq 'goto') {
         if ($wordToComplete -like '--*') {
             @('--agy', '--claude', '--gemini', '--cursor', '--windsurf', '--aider', '--openhands', '--print') |
                 Where-Object { $_ -like "$escapedWord*" } |
@@ -686,8 +687,8 @@ $rtbCompleter = {
     }
 }
 
-Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev' -ScriptBlock $rtbCompleter
-Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev', 'goto' -ScriptBlock $rtbCompleter
+Register-ArgumentCompleter -Native -CommandName 'rtb', 'rtb.cmd', 'rtb.ps1', 'dev', 'goto' -ScriptBlock $rtbCompleter
 `;
 
     default:

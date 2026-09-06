@@ -655,19 +655,21 @@ function global:Install-Steps {
                 if (-not (Test-Path $p)) {
                     New-Item -ItemType File -Path $p -Force | Out-Null
                 }
-                $pLines = Get-Content -LiteralPath $p -ErrorAction SilentlyContinue
-                $clean = if ($pLines) {
-                    @($pLines | Where-Object {
-                        $_ -notmatch 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1' -and
-                        $_ -notmatch 'rtb\s+shell-init' -and
-                        $_ -notmatch '#\s*RTB.*?Module' -and
-                        $_ -notmatch '#\s*RTB.*?Shell Integration'
-                    })
-                } else {
-                    @()
-                }
+                $pRaw = Get-Content -LiteralPath $p -Raw -ErrorAction SilentlyContinue
+                if (-not $pRaw) { $pRaw = '' }
+
+                # Remove legacy modules, hooks, and broken/empty RTB blocks
+                $cleaned = $pRaw -replace '(?ms)#\s*RTB\s+shell\s+integration\r?\n[^\r\n]*\$rtbBin\s*=[\s\S]*?if\s*\(Get-Command\s+rtb[^\)]*\)\s*\{[^\}]*\}(\r?\n)*', ''
+                $cleaned = $cleaned -replace '(?ms)\$rtbBin\s*=[\s\S]*?if\s*\(Get-Command\s+rtb[^\)]*\)\s*\{[^\}]*\}(\r?\n)*', ''
+                $cleaned = $cleaned -replace '(?ms)#\s*RTB\s+shell\s+integration\r?\n[^\r\n]*rtb\s+shell-init[^\r\n]*(\r?\n)*', ''
+                $cleaned = $cleaned -replace 'Import-Module\s+.*?(rtb|dev-tools|dev-cli|rtb-command-tool).*?\.psd1\r?\n', ''
+                $cleaned = $cleaned -replace '#\s*RTB.*?Module\r?\n', ''
+                $cleaned = $cleaned -replace '#\s*RTB.*?Shell Integration\r?\n', ''
+                $cleaned = $cleaned -replace '(\(&\s*rtb\s+shell-init[^\r\n]+\)|eval\s*"\$\(rtb\s+shell-init[^\)]+\)"|rtb\s+shell-init[^\r\n]+)\r?\n', ''
+                $cleaned = $cleaned.TrimEnd()
+
                 $outputLines = [System.Collections.Generic.List[string]]::new()
-                foreach ($l in $clean) { $outputLines.Add($l) }
+                if ($cleaned) { $outputLines.Add($cleaned) }
                 $outputLines.Add('')
                 $outputLines.Add('# RTB Shell Integration')
                 $outputLines.Add($line)

@@ -19,23 +19,47 @@ export function getShellScript(shell: string): string {
 #   eval "$(rtb shell-init bash)"
 
 rtb() {
+    local cd_file
+    cd_file="$(mktemp -t rtb_cd.XXXXXX 2>/dev/null || mktemp 2>/dev/null || echo "/tmp/rtb_cd_$$")"
+    export RTB_CD_FILE="$cd_file"
     if [ "$1" = "goto" ]; then
         if [ $# -le 1 ] || [ "$2" = "--help" ] || [ "$2" = "-h" ]; then
+            rm -f "$cd_file" 2>/dev/null
+            unset RTB_CD_FILE
             command rtb "$@"
             return $?
         fi
         shift
-        local target
-        target="$(command rtb goto "$@" --print 2>/dev/null)"
+        command rtb goto "$@"
         local ret=$?
-        if [ $ret -eq 0 ] && [ -n "$target" ] && [ -d "$target" ]; then
-            cd "$target" || return $ret
-            command rtb goto "$@"
-        else
-            command rtb goto "$@"
+        local target=""
+        if [ -f "$cd_file" ]; then
+            target="$(cat "$cd_file" 2>/dev/null)"
+            rm -f "$cd_file" 2>/dev/null
         fi
+        unset RTB_CD_FILE
+        if [ -z "$target" ]; then
+            target="$(command rtb goto "$@" --print 2>/dev/null)"
+        fi
+        if [ -n "$target" ] && [ -d "$target" ]; then
+            cd "$target" || return $ret
+        fi
+        return $ret
     else
         command rtb "$@"
+        local ret=$?
+        if [ -f "$cd_file" ]; then
+            local target
+            target="$(cat "$cd_file" 2>/dev/null)"
+            rm -f "$cd_file" 2>/dev/null
+            unset RTB_CD_FILE
+            if [ -n "$target" ] && [ -d "$target" ]; then
+                cd "$target" || return $ret
+            fi
+        else
+            unset RTB_CD_FILE
+        fi
+        return $ret
     fi
 }
 
@@ -51,23 +75,47 @@ goto() {
 #   eval "$(rtb shell-init zsh)"
 
 rtb() {
+    local cd_file
+    cd_file="$(mktemp -t rtb_cd.XXXXXX 2>/dev/null || mktemp 2>/dev/null || echo "/tmp/rtb_cd_$$")"
+    export RTB_CD_FILE="$cd_file"
     if [ "$1" = "goto" ]; then
         if [ $# -le 1 ] || [ "$2" = "--help" ] || [ "$2" = "-h" ]; then
+            rm -f "$cd_file" 2>/dev/null
+            unset RTB_CD_FILE
             command rtb "$@"
             return $?
         fi
         shift
-        local target
-        target="$(command rtb goto "$@" --print 2>/dev/null)"
+        command rtb goto "$@"
         local ret=$?
-        if [ $ret -eq 0 ] && [ -n "$target" ] && [ -d "$target" ]; then
-            cd "$target" || return $ret
-            command rtb goto "$@"
-        else
-            command rtb goto "$@"
+        local target=""
+        if [ -f "$cd_file" ]; then
+            target="$(cat "$cd_file" 2>/dev/null)"
+            rm -f "$cd_file" 2>/dev/null
         fi
+        unset RTB_CD_FILE
+        if [ -z "$target" ]; then
+            target="$(command rtb goto "$@" --print 2>/dev/null)"
+        fi
+        if [ -n "$target" ] && [ -d "$target" ]; then
+            cd "$target" || return $ret
+        fi
+        return $ret
     else
         command rtb "$@"
+        local ret=$?
+        if [ -f "$cd_file" ]; then
+            local target
+            target="$(cat "$cd_file" 2>/dev/null)"
+            rm -f "$cd_file" 2>/dev/null
+            unset RTB_CD_FILE
+            if [ -n "$target" ] && [ -d "$target" ]; then
+                cd "$target" || return $ret
+            fi
+        else
+            unset RTB_CD_FILE
+        fi
+        return $ret
     fi
 }
 
@@ -83,22 +131,45 @@ goto() {
 #   rtb shell-init fish | source
 
 function rtb
+    set -l cd_file (mktemp -t rtb_cd.XXXXXX 2>/dev/null; or mktemp 2>/dev/null; or echo "/tmp/rtb_cd_$fish_pid")
+    set -gx RTB_CD_FILE $cd_file
     if test (count $argv) -gt 0; and test $argv[1] = "goto"
         if test (count $argv) -le 1; or test $argv[2] = "--help"; or test $argv[2] = "-h"
+            rm -f $cd_file 2>/dev/null
+            set -e RTB_CD_FILE
             command rtb $argv
             return $status
         end
         set -l goto_args $argv[2..-1]
-        set -l target (command rtb goto $goto_args --print 2>/dev/null)
+        command rtb goto $goto_args
         set -l ret $status
-        if test $ret -eq 0; and test -n "$target"; and test -d "$target"
-            cd "$target"
-            command rtb goto $goto_args
-        else
-            command rtb goto $goto_args
+        set -l target ""
+        if test -f $cd_file
+            set target (cat $cd_file 2>/dev/null)
+            rm -f $cd_file 2>/dev/null
         end
+        set -e RTB_CD_FILE
+        if test -z "$target"
+            set target (command rtb goto $goto_args --print 2>/dev/null)
+        end
+        if test -n "$target"; and test -d "$target"
+            cd "$target"
+        end
+        return $ret
     else
         command rtb $argv
+        set -l ret $status
+        if test -f $cd_file
+            set -l target (cat $cd_file 2>/dev/null)
+            rm -f $cd_file 2>/dev/null
+            set -e RTB_CD_FILE
+            if test -n "$target"; and test -d "$target"
+                cd "$target"
+            end
+        else
+            set -e RTB_CD_FILE
+        end
+        return $ret
     end
 end
 
@@ -116,24 +187,38 @@ end
 #   (& rtb shell-init pwsh | Out-String) | Invoke-Expression
 
 function rtb {
-    $rtbApp = (Get-Command -CommandType Application,ExternalScript -Name rtb.cmd, rtb.ps1, rtb.exe, rtb -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch '\.js$' } | Select-Object -First 1)
+    $rtbApp = (Get-Command -CommandType Application,ExternalScript -Name rtb.cmd, rtb.ps1, rtb.exe, rtb -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch '\\.js$' } | Select-Object -First 1)
     $invokeTarget = if ($rtbApp) { $rtbApp.Source } else { 'rtb' }
 
-    if ($args.Count -gt 0 -and $args[0] -eq 'goto') {
-        if ($args.Count -le 1 -or $args[1] -in @('--help', '-h')) {
-            & $invokeTarget @args
-            return
-        }
-        $gotoArgs = @($args | Select-Object -Skip 1)
-        $target = (& $invokeTarget goto @gotoArgs --print 2>$null | Out-String).Trim()
-        if ($target -and (Test-Path -LiteralPath $target -PathType Container)) {
-            Set-Location -LiteralPath $target
+    $cdFile = [System.IO.Path]::GetTempFileName()
+    $env:RTB_CD_FILE = $cdFile
+    try {
+        if ($args.Count -gt 0 -and $args[0] -eq 'goto') {
+            if ($args.Count -le 1 -or $args[1] -in @('--help', '-h')) {
+                & $invokeTarget @args
+                return
+            }
+            $gotoArgs = @($args | Select-Object -Skip 1)
             & $invokeTarget goto @gotoArgs
+            $target = if (Test-Path -LiteralPath $cdFile) { (Get-Content -LiteralPath $cdFile -Raw -ErrorAction SilentlyContinue) } else { $null }
+            if ($target) { $target = $target.Trim() }
+            if (-not $target) {
+                $target = (& $invokeTarget goto @gotoArgs --print 2>$null | Out-String).Trim()
+            }
+            if ($target -and (Test-Path -LiteralPath $target -PathType Container)) {
+                Set-Location -LiteralPath $target
+            }
         } else {
-            & $invokeTarget goto @gotoArgs
+            & $invokeTarget @args
+            $target = if (Test-Path -LiteralPath $cdFile) { (Get-Content -LiteralPath $cdFile -Raw -ErrorAction SilentlyContinue) } else { $null }
+            if ($target) { $target = $target.Trim() }
+            if ($target -and (Test-Path -LiteralPath $target -PathType Container)) {
+                Set-Location -LiteralPath $target
+            }
         }
-    } else {
-        & $invokeTarget @args
+    } finally {
+        Remove-Item -LiteralPath $cdFile -Force -ErrorAction SilentlyContinue
+        Remove-Item Env:RTB_CD_FILE -ErrorAction SilentlyContinue
     }
 }
 
