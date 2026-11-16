@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "rtbtui"
-version = "0.10.0"
+version = "0.13.7"
 dependencies = [
  "anyhow",
  "bytesize",

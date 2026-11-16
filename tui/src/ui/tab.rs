@@ -100,7 +100,7 @@ impl TabController for ProjectsTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -173,7 +173,7 @@ impl TabController for GitHealthTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -233,7 +233,7 @@ impl TabController for DepCleanerTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -295,7 +295,7 @@ impl TabController for MaintenanceTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -332,7 +332,7 @@ impl TabController for DevPortsTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -369,7 +369,7 @@ impl TabController for DashboardTab {
                 if self.item_count > 0 {
                     self.selected_index = (self.selected_index + 1).min(self.item_count - 1);
                 } else {
-                    self.selected_index = self.selected_index.saturating_add(1);
+                    self.selected_index = 0;
                 }
                 AppAction::Handled
             }
@@ -401,13 +401,22 @@ mod tests {
 
     #[test]
     fn test_projects_tab_key_handling_and_state() {
-        let mut tab = ProjectsTab::default();
+        let mut tab = ProjectsTab {
+            item_count: 5,
+            ..Default::default()
+        };
         assert_eq!(tab.selected_index, 0);
         assert_eq!(tab.filter, None);
 
         let action = tab.handle_key(KeyCode::Down, KeyModifiers::NONE);
         assert_eq!(action, AppAction::Handled);
         assert_eq!(tab.selected_index, 1);
+
+        // When item_count is 0, selected_index remains 0
+        let mut empty_tab = ProjectsTab::default();
+        let action = empty_tab.handle_key(KeyCode::Down, KeyModifiers::NONE);
+        assert_eq!(action, AppAction::Handled);
+        assert_eq!(empty_tab.selected_index, 0);
 
         let action = tab.handle_key(KeyCode::Char('f'), KeyModifiers::NONE);
         assert_eq!(action, AppAction::SetProjectFilter(Some(ProjectStatus::Active)));

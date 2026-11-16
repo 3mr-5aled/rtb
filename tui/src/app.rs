@@ -456,11 +456,12 @@ impl App {
                 };
 
                 let handled = !matches!(action, AppAction::None);
+                let _ = handled;
                 self.execute_action(action);
-                return handled;
+                return self.should_quit;
             }
         }
-        false
+        self.should_quit
     }
 
     #[allow(dead_code)]
@@ -2054,6 +2055,29 @@ mod tests {
         assert_eq!(app.current_tab, Tab::Projects);
         app.handle_key(KeyCode::Char('4'), KeyModifiers::NONE);
         assert_eq!(app.current_tab, Tab::DepCleaner);
+
+        // --- 11. Navigation Keys Do Not Quit ---
+        app.current_tab = Tab::Projects;
+        let quit_down = app.handle_key(KeyCode::Down, KeyModifiers::NONE);
+        assert!(!quit_down, "Down key must not exit the TUI");
+        assert!(!app.should_quit);
+
+        let quit_up = app.handle_key(KeyCode::Up, KeyModifiers::NONE);
+        assert!(!quit_up, "Up key must not exit the TUI");
+        assert!(!app.should_quit);
+
+        let quit_j = app.handle_key(KeyCode::Char('j'), KeyModifiers::NONE);
+        assert!(!quit_j, "j key must not exit the TUI");
+        assert!(!app.should_quit);
+
+        let quit_k = app.handle_key(KeyCode::Char('k'), KeyModifiers::NONE);
+        assert!(!quit_k, "k key must not exit the TUI");
+        assert!(!app.should_quit);
+
+        // 'q' quits
+        let quit_q = app.handle_key(KeyCode::Char('q'), KeyModifiers::NONE);
+        assert!(quit_q, "q key must exit the TUI");
+        assert!(app.should_quit);
     }
 }
 
